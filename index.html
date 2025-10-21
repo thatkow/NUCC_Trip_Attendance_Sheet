@@ -973,23 +973,21 @@
       }
 
       const descriptionParagraph = targetDocument.createElement("p");
-      descriptionParagraph.textContent = `${descriptionSegments.join(
-        " "
-      )} for various expenses shown below.`;
-
-      const oweParagraph = targetDocument.createElement("p");
-      oweParagraph.className = "summary-line-green";
-      oweParagraph.textContent =
-        "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
+      descriptionParagraph.textContent = `${descriptionSegments.join(" ")} for various expenses shown below.`;
 
       const reimburseParagraph = targetDocument.createElement("p");
-      reimburseParagraph.className = "summary-line-red";
+      reimburseParagraph.className = "summary-line-green";
       reimburseParagraph.textContent =
         "Those with Reimburse values, colored green, will receive payment from the club account.";
 
+      const oweParagraph = targetDocument.createElement("p");
+      oweParagraph.className = "summary-line-red";
+      oweParagraph.textContent =
+        "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
+
       summaryDescription.appendChild(descriptionParagraph);
-      summaryDescription.appendChild(oweParagraph);
       summaryDescription.appendChild(reimburseParagraph);
+      summaryDescription.appendChild(oweParagraph);
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
