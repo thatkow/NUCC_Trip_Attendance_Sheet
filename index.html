@@ -79,6 +79,19 @@
       text-align: center;
     }
 
+    .reimburse-header {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .reimburse-label {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .due-label {
+      color: #b00020;
+      margin-left: 0.25rem;
+    }
+
     caption {
       text-align: left;
       margin-bottom: 0.5rem;
@@ -542,7 +555,11 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = [{ name: "", bold: false, notes: "" }];
+    const participants = Array.from({ length: 5 }, () => ({
+      name: "",
+      bold: false,
+      notes: ""
+    }));
 
     const baseExpenseDefinitions = [
       {
@@ -1349,7 +1366,9 @@
       headerRow.appendChild(feeHeader);
 
       const reimbHeader = document.createElement("th");
-      reimbHeader.textContent = "Reimburse(Due)";
+      reimbHeader.className = "reimburse-header";
+      reimbHeader.innerHTML =
+        '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
       headerRow.appendChild(reimbHeader);
 
       const notesHeader = document.createElement("th");
@@ -1584,7 +1603,7 @@
       row.appendChild(reimbCell);
 
       const noteCell = document.createElement("td");
-      noteCell.innerHTML = "<em>(if filled, continue on back)</em>";
+      noteCell.textContent = "";
       row.appendChild(noteCell);
 
       tfoot.appendChild(row);
@@ -1813,13 +1832,17 @@
         totalReimbCell.textContent = "";
         totalReimbCell.classList.remove("amount-due", "amount-credit");
         if (totalBalance) {
+          const prefix = document.createTextNode("Club Gear Depreciation: ");
+          totalReimbCell.appendChild(prefix);
+          const valueSpan = document.createElement("span");
           if (totalBalance > 0) {
-            totalReimbCell.textContent = `(${formatCurrency(totalBalance)})`;
-            totalReimbCell.classList.add("amount-due");
+            valueSpan.textContent = `(${formatCurrency(totalBalance)})`;
+            valueSpan.classList.add("amount-due");
           } else {
-            totalReimbCell.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
-            totalReimbCell.classList.add("amount-credit");
+            valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+            valueSpan.classList.add("amount-credit");
           }
+          totalReimbCell.appendChild(valueSpan);
         }
       }
 
