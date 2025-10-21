@@ -410,11 +410,11 @@
         <tbody>
           <tr>
             <th scope="row">Date</th>
-            <td><input type="date" value="2025-07-27" /></td>
+            <td><input type="date" id="trip-date" /></td>
             <th scope="row">Location</th>
-            <td><input type="text" value="Drum" /></td>
+            <td><input type="text" id="trip-location" /></td>
             <th scope="row">Trip Leader</th>
-            <td><input type="text" value="Rowan" /></td>
+            <td><input type="text" id="trip-leader" /></td>
           </tr>
         </tbody>
       </table>
@@ -575,6 +575,13 @@
     );
 
     const customExpenses = [];
+
+    const tripDateInput = document.getElementById("trip-date");
+    if (tripDateInput && !tripDateInput.value) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      tripDateInput.value = now.toISOString().slice(0, 10);
+    }
 
     const baseExpenseRateInputs = {
       "personal-gear": document.getElementById("personal-gear-rate"),
