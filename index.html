@@ -23,21 +23,25 @@
     }
 
     .top-section-left {
-      flex: 1 1 320px;
-      min-width: 280px;
+      flex: 2 1 0;
+      min-width: 320px;
     }
 
     .top-section-right {
-      flex: 0 0 auto;
+      flex: 1 1 33%;
+      max-width: 33%;
+      min-width: 260px;
       display: flex;
       align-items: stretch;
     }
 
     .top-section-right-inner {
       display: flex;
-      align-items: stretch;
+      align-items: center;
+      justify-content: center;
       gap: 1.25rem;
       height: 100%;
+      width: 100%;
     }
 
     .miner-image {
@@ -51,10 +55,11 @@
     .banking-info {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      justify-content: flex-start;
+      align-items: center;
+      justify-content: center;
       gap: 0.85rem;
-      text-align: left;
+      text-align: center;
+      width: 100%;
     }
 
     .banking-logo {
@@ -62,6 +67,7 @@
       width: 100%;
       height: auto;
       display: block;
+      margin: 0 auto;
     }
 
     .banking-details {
@@ -73,6 +79,8 @@
       padding: 0.75rem 1rem;
       box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
       min-width: 200px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .banking-details .banking-label {
@@ -282,53 +290,22 @@
       color: #000;
     }
 
-    .notify-preview {
+    .summary-preview {
       border: 1px solid #d0d0d0;
       border-radius: 0.5rem;
       padding: 1rem;
       background: #fff;
     }
 
-    .notify-preview table {
+    .summary-preview table {
       background: #fff;
     }
 
-    .notify-preview input,
-    .notify-preview textarea,
-    .notify-preview select,
-    .notify-preview button {
+    .summary-preview input,
+    .summary-preview textarea,
+    .summary-preview select,
+    .summary-preview button {
       pointer-events: none;
-    }
-
-    .notify-domains {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .notify-domain-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .notify-domain-group label {
-      font-weight: 600;
-    }
-
-    .notify-domain-textarea {
-      width: 100%;
-      min-height: 4rem;
-      resize: vertical;
-      font: inherit;
-      padding: 0.5rem;
-      border: 1px solid #bdbdbd;
-      border-radius: 0.4rem;
-      background: #f9f9f9;
-    }
-
-    .notify-domain-textarea[readonly] {
-      background: #f3f3f3;
     }
 
     .attendance-table input[type="text"],
@@ -417,11 +394,6 @@
       color: #333;
     }
 
-    .clerk-cell {
-      min-width: 12rem;
-      border-bottom: 1px solid #333;
-    }
-
     @media (max-width: 1100px) {
       body {
         padding: 1rem;
@@ -435,8 +407,14 @@
         align-items: center;
       }
 
+      .top-section-left {
+        flex-basis: 100%;
+      }
+
       .top-section-right {
-        width: 100%;
+        flex-basis: 100%;
+        max-width: none;
+        min-width: 0;
         justify-content: center;
       }
 
@@ -490,7 +468,7 @@
             <th scope="row">Trip Leader</th>
             <td><input type="text" id="trip-leader" list="trip-leader-options" /></td>
             <th scope="row">Clerk</th>
-            <td class="clerk-cell" id="clerk-output"></td>
+            <td><input type="text" id="clerk" list="trip-leader-options" /></td>
           </tr>
         </tbody>
       </table>
@@ -530,9 +508,11 @@
         <button class="control-button" type="button" id="remove-row">Remove Row</button>
         <button class="control-button" type="button" id="add-expense">Add Expense</button>
         <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
-        <button class="control-button" type="button" id="save-csv">Save CSV</button>
-        <button class="control-button" type="button" id="load-csv">Load CSV</button>
-        <button class="control-button" type="button" id="notify-button">Notify</button>
+        <button class="control-button" type="button" id="save-json">Save JSON</button>
+        <button class="control-button" type="button" id="load-json">Load JSON</button>
+        <button class="control-button" type="button" id="summarise-button">
+          Summarise
+        </button>
       </div>
     </div>
     <div class="top-section-right">
@@ -570,8 +550,8 @@
 
   <input
     type="file"
-    id="load-csv-input"
-    accept=".csv,text/csv"
+    id="load-json-input"
+    accept=".json,application/json"
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
@@ -588,12 +568,32 @@
     document.body.appendChild(tripLeaderDatalist);
 
     const tripLeaderInput = document.getElementById("trip-leader");
+    const clerkInput = document.getElementById("clerk");
+    const tripDateInput = document.getElementById("trip-date");
+    const tripLocationInput = document.getElementById("trip-location");
+
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
     }
 
+    if (clerkInput) {
+      clerkInput.setAttribute("list", tripLeaderListId);
+    }
+
+    if (tripDateInput) {
+      tripDateInput.addEventListener("input", () => {
+        renderBankingDetails();
+      });
+    }
+
+    if (tripLocationInput) {
+      tripLocationInput.addEventListener("input", () => {
+        renderBankingDetails();
+      });
+    }
+
     let memberNames = [];
-    let memberRecords = [];
+    let bankingDetailsData = null;
 
     const baseExpenseRates = {
       "personal-gear": 5,
@@ -656,7 +656,6 @@
 
     const customExpenses = [];
 
-    const tripDateInput = document.getElementById("trip-date");
     if (tripDateInput && !tripDateInput.value) {
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -860,42 +859,7 @@
       return node;
     }
 
-    function buildDomainContactGroups() {
-      const domainMap = new Map();
-      memberRecords.forEach((record) => {
-        const contactValue = record.contact;
-        if (!contactValue) {
-          return;
-        }
-        String(contactValue)
-          .split(/[;,\s]+/)
-          .map((piece) => piece.trim())
-          .filter(Boolean)
-          .forEach((entry) => {
-            const normalizedEntry = entry.toLowerCase();
-            const atIndex = normalizedEntry.lastIndexOf("@");
-            if (atIndex === -1 || atIndex === normalizedEntry.length - 1) {
-              return;
-            }
-            const domain = normalizedEntry.slice(atIndex + 1);
-            if (!domainMap.has(domain)) {
-              domainMap.set(domain, new Map());
-            }
-            const contactsForDomain = domainMap.get(domain);
-            if (!contactsForDomain.has(normalizedEntry)) {
-              contactsForDomain.set(normalizedEntry, entry);
-            }
-          });
-      });
-
-      return new Map(
-        Array.from(domainMap.entries()).sort(([domainA], [domainB]) =>
-          domainA.localeCompare(domainB)
-        )
-      );
-    }
-
-    function sanitizeNotifyClone(node) {
+    function sanitizeSummaryClone(node) {
       node
         .querySelectorAll(
           ".expense-toggle-group, .base-expense-inputs, .controls, button"
@@ -904,7 +868,7 @@
 
       node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         const replacement = node.ownerDocument.createElement("span");
-        replacement.className = "notify-check";
+        replacement.className = "summary-check";
         replacement.textContent = checkbox.checked ? "✔" : "";
         checkbox.replaceWith(replacement);
       });
@@ -912,9 +876,9 @@
       return node;
     }
 
-    function buildNotifyPreview(targetDocument) {
+    function buildSummaryPreview(targetDocument) {
       const container = targetDocument.createElement("div");
-      container.className = "notify-preview";
+      container.className = "summary-preview";
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
@@ -935,7 +899,7 @@
         if (!clone) {
           return;
         }
-        sanitizeNotifyClone(clone);
+        sanitizeSummaryClone(clone);
         const imported = targetDocument.importNode(clone, true);
         container.appendChild(imported);
       });
@@ -943,74 +907,64 @@
       return container;
     }
 
-    function buildDomainGroupsSection(targetDocument) {
-      const container = targetDocument.createElement("div");
-      container.className = "notify-domains";
+    function buildSummaryHtml() {
+      const summaryDocument = document.implementation.createHTMLDocument(
+        "Summarise Trip"
+      );
 
-      const domainGroups = buildDomainContactGroups();
-      if (domainGroups.size === 0) {
-        const emptyMessage = targetDocument.createElement("p");
-        emptyMessage.textContent = "No member contact information available.";
-        container.appendChild(emptyMessage);
-        return container;
+      const metaCharset = summaryDocument.createElement("meta");
+      metaCharset.setAttribute("charset", "utf-8");
+      summaryDocument.head.appendChild(metaCharset);
+
+      const baseHref = summaryDocument.createElement("base");
+      baseHref.href = document.baseURI;
+      summaryDocument.head.appendChild(baseHref);
+
+      const existingStyle = document.querySelector("style");
+      if (existingStyle) {
+        summaryDocument.head.appendChild(
+          summaryDocument.importNode(existingStyle, true)
+        );
       }
 
-      domainGroups.forEach((contactsMap, domain) => {
-        const wrapper = targetDocument.createElement("div");
-        wrapper.className = "notify-domain-group";
+      const extraStyle = summaryDocument.createElement("style");
+      extraStyle.textContent =
+        ".summary-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
+      summaryDocument.head.appendChild(extraStyle);
 
-        const label = targetDocument.createElement("label");
-        label.textContent = `${domain} (${contactsMap.size})`;
-        wrapper.appendChild(label);
+      const main = summaryDocument.createElement("main");
+      main.appendChild(buildSummaryPreview(summaryDocument));
+      summaryDocument.body.appendChild(main);
 
-        const textarea = targetDocument.createElement("textarea");
-        textarea.className = "notify-domain-textarea";
-        textarea.readOnly = true;
-        const contacts = Array.from(contactsMap.values()).sort((a, b) =>
-          a.localeCompare(b)
-        );
-        textarea.value = contacts.join(", ");
-        textarea.setAttribute("aria-label", `Contacts for ${domain}`);
-        textarea.addEventListener("focus", () => {
-          textarea.select();
-        });
-        wrapper.appendChild(textarea);
-
-        container.appendChild(wrapper);
-      });
-
-      return container;
+      return `<!DOCTYPE html>${summaryDocument.documentElement.outerHTML}`;
     }
 
-    function openNotifyWindow() {
-      const notifyWindow = window.open("", "_blank");
-      if (!notifyWindow) {
-        window.alert("Please allow pop-ups to view the notify preview.");
+    function downloadAndOpenSummaryHtml() {
+      const htmlContent = buildSummaryHtml();
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = getFileBaseName("html");
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      const summaryWindow = window.open("", "_blank");
+      if (!summaryWindow) {
+        window.alert("Please allow pop-ups to view the summary.");
+        URL.revokeObjectURL(url);
         return;
       }
 
-      const { document: notifyDocument } = notifyWindow;
-      const baseHref = document.baseURI;
-      notifyDocument.open();
-      notifyDocument.write(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${baseHref}"><title>Notify Members</title></head><body></body></html>`
-      );
-      notifyDocument.close();
+      summaryWindow.document.open();
+      summaryWindow.document.write(htmlContent);
+      summaryWindow.document.close();
 
-      const baseStyle = document.querySelector("style");
-      if (baseStyle) {
-        notifyDocument.head.appendChild(notifyDocument.importNode(baseStyle, true));
-      }
-
-      const extraStyle = notifyDocument.createElement("style");
-      extraStyle.textContent =
-        ".notify-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
-      notifyDocument.head.appendChild(extraStyle);
-
-      const main = notifyDocument.createElement("main");
-      main.appendChild(buildNotifyPreview(notifyDocument));
-      main.appendChild(buildDomainGroupsSection(notifyDocument));
-      notifyDocument.body.appendChild(main);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 0);
     }
 
     async function loadMemberOptions() {
@@ -1021,7 +975,6 @@
         }
         const text = await response.text();
         const rows = parseCsv(text);
-        const records = [];
         const names = new Set();
 
         rows.forEach((row, index) => {
@@ -1035,13 +988,9 @@
           if (index === 0 && /^(name|names)$/i.test(rawName)) {
             return;
           }
-          const contactRaw = row.length > 1 ? row[1] : "";
-          const contact = typeof contactRaw === "string" ? contactRaw.trim() : String(contactRaw || "").trim();
-          records.push({ name: rawName, contact });
           names.add(rawName);
         });
 
-        memberRecords = records;
         memberNames = Array.from(names).sort((a, b) => a.localeCompare(b));
 
         nameDatalist.innerHTML = "";
@@ -1069,64 +1018,6 @@
       if (Math.abs(value) < 1e-9) return "0";
       const fixed = Number(value).toFixed(2);
       return fixed.replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
-    }
-
-    function toCsvValue(value) {
-      if (value === null || value === undefined) {
-        return "";
-      }
-      const stringValue = String(value);
-      if (/[",\n]/.test(stringValue)) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
-    }
-
-    function buildTableCsv() {
-      const activeExpenses = getActiveExpenses();
-      const header = ["Name"];
-      activeExpenses.forEach((expense) => {
-        header.push(`${expense.name} Amount`);
-        header.push(`${expense.name} Consumer`);
-      });
-      header.push("Notes");
-
-      const rows = [header];
-      participants.forEach((participant, personIndex) => {
-        const row = [participant.name || ""];
-        activeExpenses.forEach((expense) => {
-          ensureExpenseSize(expense);
-          let amount = expense.amounts[personIndex];
-          if (isDirectChargeExpense(expense)) {
-            const rateValue = baseExpenseRates[expense.key];
-            if (rateValue === "" || !expense.consumers[personIndex]) {
-              amount = "";
-            } else {
-              const numericRate = Number(rateValue);
-              amount = Number.isFinite(numericRate) ? numericRate : "";
-            }
-          }
-          row.push(amount === "" || amount === null || amount === undefined ? "" : String(amount));
-          row.push(expense.consumers[personIndex] ? "1" : "0");
-        });
-        row.push(participant.notes || "");
-        rows.push(row);
-      });
-
-      return rows.map((row) => row.map(toCsvValue).join(",")).join("\r\n");
-    }
-
-    function downloadAttendanceCsv() {
-      const csvContent = buildTableCsv();
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "attendance-table.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
     }
 
     function parseCsv(text) {
@@ -1170,17 +1061,6 @@
       return rows.filter((row) => row.some((value) => value && value.trim() !== ""));
     }
 
-    function normalizeConsumerValue(value) {
-      if (value === null || value === undefined) {
-        return false;
-      }
-      const normalized = String(value).trim().toLowerCase();
-      if (!normalized) {
-        return false;
-      }
-      return ["1", "true", "yes", "y", "checked", "x"].includes(normalized);
-    }
-
     function syncExpenseToggleStates() {
       document
         .querySelectorAll('.expense-toggle-group input[type="checkbox"]')
@@ -1193,157 +1073,204 @@
         });
     }
 
-    function loadTableFromCsvContent(text) {
-      const rows = parseCsv(text);
-      if (rows.length === 0) {
-        window.alert("CSV file is empty.");
-        return;
+    function getDateLocationTag() {
+      const fallbackDate = new Date();
+      const dateString = tripDateInput?.value && /^\d{4}-\d{2}-\d{2}$/.test(tripDateInput.value)
+        ? tripDateInput.value
+        : fallbackDate.toISOString().slice(0, 10);
+      const formattedDate = dateString.replace(/-/g, "_");
+
+      const rawLocation = tripLocationInput?.value ? tripLocationInput.value.trim() : "";
+      const sanitizedLocation = rawLocation
+        .replace(/[^A-Za-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+      const locationPart = sanitizedLocation || "Unknown";
+
+      return `${formattedDate}_${locationPart}`;
+    }
+
+    function getFileBaseName(extension) {
+      const tag = getDateLocationTag();
+      return `${tag}.${extension}`;
+    }
+
+    function buildApplicationState() {
+      const snapshot = {
+        trip: {
+          date: tripDateInput ? tripDateInput.value : "",
+          location: tripLocationInput ? tripLocationInput.value : "",
+          leader: tripLeaderInput ? tripLeaderInput.value : "",
+          clerk: clerkInput ? clerkInput.value : ""
+        },
+        baseExpenseRates: { ...baseExpenseRates },
+        baseExpenses: baseExpenses.map((expense) => ({
+          key: expense.key,
+          name: expense.name,
+          enabled: expense.enabled,
+          amounts: [...expense.amounts],
+          consumers: [...expense.consumers]
+        })),
+        customExpenses: customExpenses.map((expense) => ({
+          name: expense.name,
+          enabled: expense.enabled,
+          amounts: [...expense.amounts],
+          consumers: [...expense.consumers]
+        })),
+        participants: participants.map((participant) => ({
+          name: participant.name,
+          bold: participant.bold,
+          notes: participant.notes
+        })),
+        sharedGearAllSelected: Boolean(
+          sharedGearMasterToggle && sharedGearMasterToggle.checked
+        )
+      };
+
+      return snapshot;
+    }
+
+    function downloadAttendanceJson() {
+      const state = buildApplicationState();
+      const jsonContent = JSON.stringify(state, null, 2);
+      const blob = new Blob([jsonContent], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = getFileBaseName("json");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function applyExpenseSnapshot(expense, snapshotEntry) {
+      const participantCount = participants.length;
+      const amounts = Array.isArray(snapshotEntry?.amounts)
+        ? snapshotEntry.amounts
+        : [];
+      const consumers = Array.isArray(snapshotEntry?.consumers)
+        ? snapshotEntry.consumers
+        : [];
+
+      if (snapshotEntry && typeof snapshotEntry.enabled === "boolean") {
+        expense.enabled = snapshotEntry.enabled;
       }
 
-      const header = rows[0];
-      if (!header.length || header[0].trim().toLowerCase() !== "name") {
-        window.alert('CSV first column must be labeled "Name".');
-        return;
+      if (isBaseRateControlled(expense)) {
+        applyBaseExpenseRateToExpense(expense.key);
+      } else {
+        expense.amounts = Array.from({ length: participantCount }, (_, index) =>
+          index < amounts.length ? amounts[index] : ""
+        );
       }
 
-      if (header.length < 2 || header[header.length - 1].trim().toLowerCase() !== "notes") {
-        window.alert('CSV must include a final column labeled "Notes".');
-        return;
-      }
-
-      const expenseEntries = [];
-      let columnIndex = 1;
-      while (columnIndex < header.length - 1) {
-        const amountHeader = header[columnIndex];
-        const consumerHeader = header[columnIndex + 1];
-        if (amountHeader === undefined || consumerHeader === undefined) {
-          break;
+      expense.consumers = Array.from({ length: participantCount }, (_, index) => {
+        if (index < consumers.length) {
+          return Boolean(consumers[index]);
         }
-        const match = amountHeader.match(/^(.*) Amount$/);
-        if (!match || consumerHeader !== `${match[1]} Consumer`) {
-          window.alert(
-            'Expense headers must follow the pattern "<Expense Name> Amount" and "<Expense Name> Consumer".'
-          );
-          return;
-        }
-        const expenseName = match[1];
-        expenseEntries.push({
-          name: expenseName,
-          amountIndex: columnIndex,
-          consumerIndex: columnIndex + 1
-        });
-        columnIndex += 2;
-      }
-
-      if (columnIndex !== header.length - 1) {
-        window.alert("CSV columns could not be interpreted.");
-        return;
-      }
-
-      const dataRows = rows.slice(1);
-      participants.length = 0;
-
-      dataRows.forEach((row) => {
-        const nameValue = row[0] ? row[0].trim() : "";
-        const notesIndex = header.length - 1;
-        const notesValue = row[notesIndex] !== undefined ? row[notesIndex] : "";
-        participants.push({ name: nameValue, bold: false, notes: notesValue });
+        return Object.prototype.hasOwnProperty.call(expense, "defaultConsumerState")
+          ? expense.defaultConsumerState
+          : true;
       });
+    }
 
-      if (participants.length === 0) {
+    function applyApplicationState(state) {
+      if (!state || typeof state !== "object") {
+        window.alert("Invalid JSON data.");
+        return;
+      }
+
+      const { trip, participants: participantData, baseExpenses: baseData, customExpenses: customData, baseExpenseRates: rateData, sharedGearAllSelected } = state;
+
+      if (tripDateInput) {
+        tripDateInput.value = trip?.date || "";
+      }
+      if (tripLocationInput) {
+        tripLocationInput.value = trip?.location || "";
+      }
+      if (tripLeaderInput) {
+        tripLeaderInput.value = trip?.leader || "";
+      }
+      if (clerkInput) {
+        clerkInput.value = trip?.clerk || "";
+      }
+
+      participants.length = 0;
+      if (Array.isArray(participantData) && participantData.length > 0) {
+        participantData.forEach((entry) => {
+          participants.push({
+            name: entry?.name || "",
+            bold: Boolean(entry?.bold),
+            notes: entry?.notes || ""
+          });
+        });
+      } else {
         participants.push({ name: "", bold: false, notes: "" });
       }
 
-      const includedExpenses = new Set(expenseEntries.map((entry) => entry.name));
-
-      baseExpenses.forEach((expense) => {
-        if (includedExpenses.has(expense.name)) {
-          expense.enabled = true;
-        } else {
-          expense.enabled = false;
-          expense.amounts = participants.map(() => "");
-          const defaultState = Object.prototype.hasOwnProperty.call(
-            expense,
-            "defaultConsumerState"
-          )
-            ? expense.defaultConsumerState
-            : true;
-          expense.consumers = participants.map(() => defaultState);
-        }
-      });
-
-      for (let index = customExpenses.length - 1; index >= 0; index -= 1) {
-        if (!includedExpenses.has(customExpenses[index].name)) {
-          customExpenses.splice(index, 1);
-        }
+      if (rateData && typeof rateData === "object") {
+        Object.keys(baseExpenseRates).forEach((key) => {
+          const raw = rateData[key];
+          if (raw === "" || raw === null) {
+            baseExpenseRates[key] = "";
+            return;
+          }
+          const numeric = Number(raw);
+          baseExpenseRates[key] = Number.isFinite(numeric) ? numeric : baseExpenseRates[key];
+        });
       }
 
-      const expenseObjects = expenseEntries.map((entry) => {
-        const baseExpense = baseExpenses.find((expense) => expense.name === entry.name);
-        if (baseExpense) {
-          return baseExpense;
-        }
-        const existingCustom = customExpenses.find((expense) => expense.name === entry.name);
-        if (existingCustom) {
-          return existingCustom;
-        }
-        const newExpense = createExpense({ name: entry.name });
-        customExpenses.push(newExpense);
-        return newExpense;
+      baseExpenses.forEach((expense) => {
+        const snapshotEntry = Array.isArray(baseData)
+          ? baseData.find((item) => item && item.key === expense.key)
+          : null;
+        applyExpenseSnapshot(expense, snapshotEntry);
       });
 
-      expenseObjects.forEach((expense, expenseIndex) => {
-        const amounts = [];
-        const consumers = [];
-        dataRows.forEach((row, rowIndex) => {
-          const amountRaw = row[expenseEntries[expenseIndex].amountIndex];
-          const consumerRaw = row[expenseEntries[expenseIndex].consumerIndex];
-          const trimmedAmount = amountRaw === undefined ? "" : String(amountRaw).trim();
-          if (trimmedAmount === "") {
-            amounts[rowIndex] = "";
-          } else {
-            const numericAmount = Number(trimmedAmount);
-            amounts[rowIndex] = Number.isFinite(numericAmount) ? numericAmount : "";
+      customExpenses.length = 0;
+      customExpenseCounter = 0;
+      if (Array.isArray(customData)) {
+        customData.forEach((entry) => {
+          const customExpense = createExpense({ name: entry?.name || "Custom Expense" });
+          if (typeof entry?.enabled === "boolean") {
+            customExpense.enabled = entry.enabled;
           }
-          consumers[rowIndex] = normalizeConsumerValue(consumerRaw);
-        });
-        while (amounts.length < participants.length) {
-          amounts.push("");
-          const defaultState = Object.prototype.hasOwnProperty.call(
-            expense,
-            "defaultConsumerState"
-          )
-            ? expense.defaultConsumerState
-            : true;
-          consumers.push(defaultState);
-        }
-        expense.amounts = amounts;
-        expense.consumers = consumers;
-        if (baseExpenses.includes(expense)) {
-          expense.enabled = true;
-        }
-        if (isBaseRateControlled(expense)) {
-          const definedValues = expense.amounts.filter((value) => value !== "");
-          if (definedValues.length === 0) {
-            baseExpenseRates[expense.key] = "";
-          } else {
-            const firstValue = definedValues[0];
-            const uniform = expense.amounts.every(
-              (value) => value === "" || value === firstValue
-            );
-            if (uniform) {
-              baseExpenseRates[expense.key] = firstValue;
-              applyBaseExpenseRateToExpense(expense.key);
-            } else {
-              baseExpenseRates[expense.key] = "";
+          customExpense.amounts = Array.from({ length: participants.length }, (_, index) => {
+            if (Array.isArray(entry?.amounts) && index < entry.amounts.length) {
+              return entry.amounts[index];
             }
-          }
-        }
-      });
+            return "";
+          });
+          customExpense.consumers = Array.from({ length: participants.length }, (_, index) => {
+            if (Array.isArray(entry?.consumers) && index < entry.consumers.length) {
+              return Boolean(entry.consumers[index]);
+            }
+            return customExpense.defaultConsumerState;
+          });
+          customExpenses.push(customExpense);
+        });
+      }
 
       syncBaseExpenseInputsFromRates();
       syncExpenseToggleStates();
       renderTable();
+
+      if (sharedGearMasterToggle) {
+        sharedGearMasterToggle.checked = Boolean(sharedGearAllSelected);
+        syncSharedGearMasterToggleState();
+      }
+
+      renderBankingDetails();
+    }
+
+    function loadTableFromJsonContent(text) {
+      try {
+        const parsed = JSON.parse(text);
+        applyApplicationState(parsed);
+      } catch (error) {
+        console.error("Could not parse JSON", error);
+        window.alert("Could not load JSON. Please check the file format.");
+      }
     }
 
     function ensureExpenseSize(expense) {
@@ -1938,17 +1865,17 @@
       renderTable();
     });
 
-    document.getElementById("save-csv").addEventListener("click", () => {
-      downloadAttendanceCsv();
+    document.getElementById("save-json").addEventListener("click", () => {
+      downloadAttendanceJson();
     });
 
-    const loadCsvInput = document.getElementById("load-csv-input");
-    document.getElementById("load-csv").addEventListener("click", () => {
-      loadCsvInput.value = "";
-      loadCsvInput.click();
+    const loadJsonInput = document.getElementById("load-json-input");
+    document.getElementById("load-json").addEventListener("click", () => {
+      loadJsonInput.value = "";
+      loadJsonInput.click();
     });
 
-    loadCsvInput.addEventListener("change", (event) => {
+    loadJsonInput.addEventListener("change", (event) => {
       const [file] = event.target.files;
       if (!file) {
         return;
@@ -1957,20 +1884,21 @@
       reader.onload = () => {
         try {
           const result = reader.result;
-          const textContent = typeof result === "string" ? result : new TextDecoder().decode(result);
-          loadTableFromCsvContent(textContent);
+          const textContent =
+            typeof result === "string" ? result : new TextDecoder().decode(result);
+          loadTableFromJsonContent(textContent);
         } catch (error) {
-          console.error("Could not load CSV", error);
-          window.alert("Could not load CSV. Please check the file format.");
+          console.error("Could not load JSON", error);
+          window.alert("Could not load JSON. Please check the file format.");
         }
       };
       reader.readAsText(file);
     });
 
-    const notifyButton = document.getElementById("notify-button");
-    if (notifyButton) {
-      notifyButton.addEventListener("click", () => {
-        openNotifyWindow();
+    const summariseButton = document.getElementById("summarise-button");
+    if (summariseButton) {
+      summariseButton.addEventListener("click", () => {
+        downloadAndOpenSummaryHtml();
       });
     }
 
@@ -2042,59 +1970,88 @@
       });
     }
 
+    function renderBankingDetails() {
+      const container = document.getElementById("banking-details");
+      if (!container) {
+        return;
+      }
+
+      const lines = [];
+
+      if (bankingDetailsData && typeof bankingDetailsData === "object") {
+        const baseLines = [
+          {
+            label: "Name",
+            value:
+              bankingDetailsData.Name !== undefined
+                ? bankingDetailsData.Name
+                : bankingDetailsData.name
+          },
+          {
+            label: "BSB",
+            value:
+              bankingDetailsData.BSB !== undefined
+                ? bankingDetailsData.BSB
+                : bankingDetailsData.bsb
+          },
+          {
+            label: "Account",
+            value:
+              bankingDetailsData.Account !== undefined
+                ? bankingDetailsData.Account
+                : bankingDetailsData.account
+          }
+        ].filter((item) => {
+          if (item.value === undefined || item.value === null) {
+            return false;
+          }
+          return String(item.value).trim() !== "";
+        });
+
+        lines.push(...baseLines);
+      }
+
+      const bankingTag = getDateLocationTag();
+      if (bankingTag) {
+        lines.push({ label: "Banking Tag", value: bankingTag });
+      }
+
+      container.innerHTML = "";
+
+      if (lines.length === 0) {
+        return;
+      }
+
+      lines.forEach((line) => {
+        const paragraph = document.createElement("p");
+        const labelSpan = document.createElement("span");
+        labelSpan.classList.add("banking-label");
+        labelSpan.textContent = `${line.label}:`;
+        const valueSpan = document.createElement("span");
+        valueSpan.textContent = String(line.value);
+        paragraph.appendChild(labelSpan);
+        paragraph.appendChild(valueSpan);
+        container.appendChild(paragraph);
+      });
+    }
+
     async function loadBankingDetails() {
       try {
-        const response = await fetch("banking.csv");
+        const response = await fetch("banking.json");
         if (!response.ok) {
+          bankingDetailsData = null;
+          renderBankingDetails();
           return;
         }
-        const text = await response.text();
-        const rows = parseCsv(text);
-        if (!rows || rows.length < 2) {
-          return;
-        }
-        const headers = rows[0];
-        const values = rows[1];
-        const record = {};
-        headers.forEach((header, index) => {
-          const key = header?.trim();
-          if (!key) {
-            return;
-          }
-          record[key] = values[index] ? values[index].trim() : "";
-        });
-
-        const container = document.getElementById("banking-details");
-        if (!container) {
-          return;
-        }
-
-        container.innerHTML = "";
-
-        const lines = [
-          { label: "Name", value: record.Name },
-          { label: "BSB", value: record.BSB },
-          { label: "Account", value: record.Account }
-        ].filter((item) => item.value);
-
-        if (lines.length === 0) {
-          return;
-        }
-
-        lines.forEach((line) => {
-          const paragraph = document.createElement("p");
-          const labelSpan = document.createElement("span");
-          labelSpan.classList.add("banking-label");
-          labelSpan.textContent = `${line.label}:`;
-          const valueSpan = document.createElement("span");
-          valueSpan.textContent = line.value;
-          paragraph.appendChild(labelSpan);
-          paragraph.appendChild(valueSpan);
-          container.appendChild(paragraph);
-        });
+        const data = await response.json();
+        bankingDetailsData =
+          data && typeof data === "object" ? data : null;
       } catch (error) {
         console.warn("Could not load banking details", error);
+        bankingDetailsData = null;
       }
+
+      renderBankingDetails();
     }
 
     async function loadClerk() {
@@ -2104,14 +2061,9 @@
           return;
         }
         const text = await response.text();
-        const clerkCell = document.getElementById("clerk-output");
-        const commentsField = document.getElementById("clerk-comments");
         const cleaned = text.trim();
-        if (clerkCell) {
-          clerkCell.textContent = cleaned;
-        }
-        if (commentsField) {
-          commentsField.value = cleaned;
+        if (clerkInput && !clerkInput.value) {
+          clerkInput.value = cleaned;
         }
       } catch (error) {
         console.warn("Could not load clerk", error);
@@ -2121,6 +2073,7 @@
     syncBaseExpenseInputsFromRates();
     loadMemberOptions();
     renderTable();
+    renderBankingDetails();
     loadBankingDetails();
     loadClerk();
   </script>
