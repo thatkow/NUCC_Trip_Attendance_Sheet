@@ -112,7 +112,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.75rem;
-      justify-content: flex-end;
+      justify-content: flex-start;
       margin-top: 1rem;
     }
 
@@ -284,6 +284,15 @@
           Petrol
         </label>
       </div>
+
+      <div class="controls">
+        <button class="control-button" type="button" id="add-row">Add Row</button>
+        <button class="control-button" type="button" id="remove-row">Remove Row</button>
+        <button class="control-button" type="button" id="add-expense">Add Expense</button>
+        <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
+        <button class="control-button" type="button" id="save-csv">Save CSV</button>
+        <button class="control-button" type="button" id="load-csv">Load CSV</button>
+      </div>
     </div>
     <div class="top-section-right">
       <img src="taxminer.png" alt="Tax Miner graphic" />
@@ -299,15 +308,6 @@
     <tbody id="attendance-body"></tbody>
     <tfoot id="attendance-foot"></tfoot>
   </table>
-
-  <div class="controls">
-    <button class="control-button" type="button" id="add-row">Add Row</button>
-    <button class="control-button" type="button" id="remove-row">Remove Row</button>
-    <button class="control-button" type="button" id="add-expense">Add Expense</button>
-    <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
-    <button class="control-button" type="button" id="save-csv">Save CSV</button>
-    <button class="control-button" type="button" id="load-csv">Load CSV</button>
-  </div>
 
   <input
     type="file"
