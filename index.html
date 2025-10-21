@@ -108,6 +108,28 @@
       font-weight: 500;
     }
 
+    .base-expense-inputs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .base-expense-inputs label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    .base-expense-inputs input[type="number"] {
+      width: 6rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 0.35rem;
+      border: 1px solid #999;
+      font-weight: 500;
+    }
+
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -128,6 +150,22 @@
 
     .control-button:hover {
       background: #00a8e8;
+    }
+
+    .warning-message {
+      color: #b00020;
+      font-weight: 600;
+      margin: 0.5rem 0 0;
+    }
+
+    .name-input.duplicate-name {
+      border-color: #b00020;
+      background: #ffe8ec;
+    }
+
+    .read-only-amount {
+      background: #f5f5f5;
+      color: #555;
     }
 
     #notify-dialog {
@@ -386,6 +424,17 @@
         </label>
       </div>
 
+      <div class="base-expense-inputs">
+        <label for="personal-gear-rate">
+          Personal Gear per person ($)
+          <input type="number" id="personal-gear-rate" step="0.01" />
+        </label>
+        <label for="shared-gear-rate">
+          Shared Gear per person ($)
+          <input type="number" id="shared-gear-rate" step="0.01" />
+        </label>
+      </div>
+
       <div class="controls">
         <button class="control-button" type="button" id="add-row">Add Row</button>
         <button class="control-button" type="button" id="remove-row">Remove Row</button>
@@ -400,6 +449,14 @@
       <img src="taxminer.png" alt="Tax Miner graphic" />
     </div>
   </div>
+
+  <p
+    id="duplicate-name-warning"
+    class="warning-message"
+    role="alert"
+    aria-live="polite"
+    hidden
+  ></p>
 
   <table class="attendance-table" id="attendance-table">
     <thead>
@@ -474,6 +531,13 @@
     let memberNames = [];
     let memberRecords = [];
 
+    const baseExpenseRates = {
+      "personal-gear": "",
+      "shared-gear": ""
+    };
+
+    const baseExpenseKeys = Object.keys(baseExpenseRates);
+
     const participants = [{ name: "", bold: false, notes: "" }];
 
     const baseExpenseDefinitions = [
@@ -502,6 +566,120 @@
     );
 
     const customExpenses = [];
+
+    const baseExpenseRateInputs = {
+      "personal-gear": document.getElementById("personal-gear-rate"),
+      "shared-gear": document.getElementById("shared-gear-rate")
+    };
+
+    function isBaseRateControlled(expense) {
+      if (!expense || !expense.key) {
+        return false;
+      }
+      return Object.prototype.hasOwnProperty.call(baseExpenseRates, expense.key);
+    }
+
+    function applyBaseExpenseRateToExpense(key) {
+      const expense = baseExpenses.find((item) => item.key === key);
+      if (!expense) {
+        return;
+      }
+      ensureExpenseSize(expense);
+      const rate = baseExpenseRates[key];
+      for (let index = 0; index < expense.amounts.length; index += 1) {
+        expense.amounts[index] = rate === "" ? "" : rate;
+      }
+    }
+
+    function syncBaseExpenseInputsFromRates() {
+      baseExpenseKeys.forEach((key) => {
+        const input = baseExpenseRateInputs[key];
+        if (!input) {
+          return;
+        }
+        const value = baseExpenseRates[key];
+        input.value = value === "" ? "" : String(value);
+      });
+    }
+
+    function updateDuplicateNameWarnings() {
+      const nameInputs = Array.from(document.querySelectorAll(".name-input"));
+      const warningElement = document.getElementById("duplicate-name-warning");
+      const counts = new Map();
+
+      nameInputs.forEach((input) => {
+        const normalized = input.value.trim().toLowerCase();
+        if (!normalized) {
+          return;
+        }
+        counts.set(normalized, (counts.get(normalized) || 0) + 1);
+      });
+
+      const duplicateKeys = new Set();
+      counts.forEach((count, key) => {
+        if (count > 1) {
+          duplicateKeys.add(key);
+        }
+      });
+
+      nameInputs.forEach((input) => {
+        const normalized = input.value.trim().toLowerCase();
+        if (normalized && duplicateKeys.has(normalized)) {
+          input.classList.add("duplicate-name");
+          input.setAttribute("aria-invalid", "true");
+        } else {
+          input.classList.remove("duplicate-name");
+          input.removeAttribute("aria-invalid");
+        }
+      });
+
+      if (warningElement) {
+        if (duplicateKeys.size > 0) {
+          const labels = [];
+          duplicateKeys.forEach((key) => {
+            const matchingInput = nameInputs.find(
+              (input) => input.value.trim().toLowerCase() === key
+            );
+            if (matchingInput) {
+              const trimmed = matchingInput.value.trim();
+              if (trimmed && !labels.includes(trimmed)) {
+                labels.push(trimmed);
+              }
+            }
+          });
+          warningElement.hidden = false;
+          warningElement.textContent = `Duplicate names detected: ${labels.join(", ")}`;
+        } else {
+          warningElement.hidden = true;
+          warningElement.textContent = "";
+        }
+      }
+    }
+
+    baseExpenseKeys.forEach((key) => {
+      const input = baseExpenseRateInputs[key];
+      if (!input) {
+        return;
+      }
+      input.addEventListener("input", () => {
+        const rawValue = input.value;
+        if (rawValue === "") {
+          baseExpenseRates[key] = "";
+          applyBaseExpenseRateToExpense(key);
+          renderTable();
+          syncBaseExpenseInputsFromRates();
+          return;
+        }
+        const numericValue = Number(rawValue);
+        if (!Number.isFinite(numericValue)) {
+          return;
+        }
+        baseExpenseRates[key] = numericValue;
+        applyBaseExpenseRateToExpense(key);
+        renderTable();
+        syncBaseExpenseInputsFromRates();
+      });
+    });
 
     function getAllExpenses() {
       return [...baseExpenses, ...customExpenses];
@@ -986,16 +1164,40 @@
         if (baseExpenses.includes(expense)) {
           expense.enabled = true;
         }
+        if (isBaseRateControlled(expense)) {
+          const definedValues = expense.amounts.filter((value) => value !== "");
+          if (definedValues.length === 0) {
+            baseExpenseRates[expense.key] = "";
+          } else {
+            const firstValue = definedValues[0];
+            const uniform = expense.amounts.every(
+              (value) => value === "" || value === firstValue
+            );
+            if (uniform) {
+              baseExpenseRates[expense.key] = firstValue;
+              applyBaseExpenseRateToExpense(expense.key);
+            } else {
+              baseExpenseRates[expense.key] = "";
+            }
+          }
+        }
       });
 
+      syncBaseExpenseInputsFromRates();
       syncExpenseToggleStates();
       renderTable();
     }
 
     function ensureExpenseSize(expense) {
       const needed = participants.length;
+      const rateKey = isBaseRateControlled(expense) ? expense.key : null;
+      const rateValue = rateKey ? baseExpenseRates[rateKey] : null;
       while (expense.amounts.length < needed) {
-        expense.amounts.push("");
+        if (rateKey) {
+          expense.amounts.push(rateValue === "" ? "" : rateValue);
+        } else {
+          expense.amounts.push("");
+        }
       }
       while (expense.consumers.length < needed) {
         expense.consumers.push(true);
@@ -1052,6 +1254,7 @@
 
       renderBody(activeExpenses);
       renderFooter(activeExpenses);
+      updateDuplicateNameWarnings();
       recalculate();
     }
 
@@ -1087,6 +1290,7 @@
             nameSelect.value = "";
           }
           recalculate();
+          updateDuplicateNameWarnings();
         });
 
         nameInput.addEventListener("keydown", (event) => {
@@ -1110,6 +1314,7 @@
           nameInput.value = value;
           recalculate();
           event.target.value = "";
+          updateDuplicateNameWarnings();
         });
 
         nameWrapper.appendChild(nameInput);
@@ -1127,7 +1332,22 @@
           amountInput.placeholder = "0.00";
           amountInput.dataset.expenseId = expense.id;
           amountInput.dataset.personIndex = String(personIndex);
+          if (isBaseRateControlled(expense)) {
+            const rate = baseExpenseRates[expense.key];
+            amountInput.value = rate === "" ? "" : rate;
+            amountInput.readOnly = true;
+            amountInput.tabIndex = -1;
+            amountInput.classList.add("read-only-amount");
+            amountInput.setAttribute(
+              "title",
+              `${expense.name} is managed from the controls above.`
+            );
+            amountInput.setAttribute("aria-readonly", "true");
+          }
           amountInput.addEventListener("input", (event) => {
+            if (event.target.readOnly) {
+              return;
+            }
             const targetExpense = findExpenseById(event.target.dataset.expenseId);
             if (!targetExpense) {
               return;
@@ -1508,6 +1728,7 @@
       }
     }
 
+    syncBaseExpenseInputsFromRates();
     loadMemberOptions();
     renderTable();
     loadSignature();
