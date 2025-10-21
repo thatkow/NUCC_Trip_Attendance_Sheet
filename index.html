@@ -13,11 +13,36 @@
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
+    .top-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-section-left {
+      flex: 1 1 320px;
+      min-width: 280px;
+    }
+
+    .top-section-right {
+      flex: 0 0 auto;
+      text-align: right;
+    }
+
+    .top-section-right img {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+    }
+
     .header-row {
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .header-row img {
@@ -108,7 +133,8 @@
     .attendance-table input[type="text"],
     .attendance-table input[type="number"],
     .attendance-table textarea,
-    .meta-table input[type="text"] {
+    .meta-table input[type="text"],
+    .signature-textarea {
       width: 100%;
       box-sizing: border-box;
       font: inherit;
@@ -133,6 +159,11 @@
 
     .attendance-table textarea {
       min-height: 2.2rem;
+      resize: vertical;
+    }
+
+    .signature-textarea {
+      min-height: 4.5rem;
       resize: vertical;
     }
 
@@ -181,6 +212,15 @@
         font-size: 0.9rem;
       }
 
+      .top-section-right {
+        text-align: center;
+        width: 100%;
+      }
+
+      .top-section-right img {
+        max-width: 150px;
+      }
+
       .controls {
         justify-content: flex-start;
       }
@@ -192,37 +232,44 @@
   </style>
 </head>
 <body>
-  <div class="header-row">
-    <img src="banner.png" alt="NUCC banner" />
-    <h1>Trip Attendance Sheet</h1>
-  </div>
+  <div class="top-section">
+    <div class="top-section-left">
+      <div class="header-row">
+        <img src="banner.png" alt="NUCC banner" />
+        <h1>Trip Attendance Sheet</h1>
+      </div>
 
-  <table class="meta-table">
-    <tbody>
-      <tr>
-        <th scope="row">Date</th>
-        <td><input type="text" value="2025-07-27" /></td>
-        <th scope="row">Location</th>
-        <td><input type="text" value="Drum" /></td>
-        <th scope="row">Trip Leader</th>
-        <td><input type="text" value="Rowan" /></td>
-      </tr>
-    </tbody>
-  </table>
+      <table class="meta-table">
+        <tbody>
+          <tr>
+            <th scope="row">Date</th>
+            <td><input type="text" value="2025-07-27" /></td>
+            <th scope="row">Location</th>
+            <td><input type="text" value="Drum" /></td>
+            <th scope="row">Trip Leader</th>
+            <td><input type="text" value="Rowan" /></td>
+          </tr>
+        </tbody>
+      </table>
 
-  <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
-    <label>
-      <input type="checkbox" data-expense-key="personal-gear" checked />
-      Personal Gear
-    </label>
-    <label>
-      <input type="checkbox" data-expense-key="shared-gear" checked />
-      Shared Gear
-    </label>
-    <label>
-      <input type="checkbox" data-expense-key="petrol" checked />
-      Petrol
-    </label>
+      <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
+        <label>
+          <input type="checkbox" data-expense-key="personal-gear" checked />
+          Personal Gear
+        </label>
+        <label>
+          <input type="checkbox" data-expense-key="shared-gear" checked />
+          Shared Gear
+        </label>
+        <label>
+          <input type="checkbox" data-expense-key="petrol" checked />
+          Petrol
+        </label>
+      </div>
+    </div>
+    <div class="top-section-right">
+      <img src="taxminer.png" alt="Tax Miner graphic" />
+    </div>
   </div>
 
   <table class="attendance-table" id="attendance-table">
@@ -261,7 +308,9 @@
           <th scope="row">Equipment</th>
         </tr>
         <tr>
-          <td style="height: 4rem;"></td>
+          <td>
+            <textarea id="signature-comments" class="signature-textarea"></textarea>
+          </td>
           <td></td>
         </tr>
       </tbody>
@@ -274,23 +323,7 @@
     nameDatalist.id = nameListId;
     document.body.appendChild(nameDatalist);
 
-    const participants = [
-      { name: "Rowan", bold: true, notes: "" },
-      { name: "Floyd", bold: true, notes: "" },
-      { name: "Britt", bold: true, notes: "drove herself" },
-      { name: "Alek", bold: true, notes: "" },
-      { name: "Carl", bold: true, notes: "" },
-      { name: "Lauren", bold: true, notes: "" },
-      { name: "Lachie", bold: true, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" }
-    ];
+    const participants = [{ name: "", bold: false, notes: "" }];
 
     const baseExpenseDefinitions = [
       { key: "personal-gear", name: "Personal Gear", enabled: true },
@@ -746,7 +779,9 @@
       if (participants.length === 0) {
         return;
       }
-      if (!window.confirm("Remove the last participant row?")) {
+      const lastParticipant = participants[participants.length - 1];
+      const hasName = Boolean(lastParticipant?.name && lastParticipant.name.trim());
+      if (hasName && !window.confirm("Remove the last participant row?")) {
         return;
       }
       participants.pop();
@@ -776,8 +811,13 @@
         }
         const text = await response.text();
         const signatureCell = document.getElementById("signature-output");
+        const commentsField = document.getElementById("signature-comments");
+        const cleaned = text.trim();
         if (signatureCell) {
-          signatureCell.textContent = text.trim();
+          signatureCell.textContent = cleaned;
+        }
+        if (commentsField) {
+          commentsField.value = cleaned;
         }
       } catch (error) {
         console.warn("Could not load signature", error);
