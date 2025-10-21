@@ -169,18 +169,20 @@
 
     .name-input-wrapper {
       display: flex;
-      gap: 0.35rem;
+      gap: 0.25rem;
       align-items: center;
     }
 
     .name-select {
-      min-width: 8rem;
-      padding: 0.3rem;
+      width: 1.75rem;
+      min-width: 1.75rem;
+      padding: 0.2rem;
       border: 1px solid #bdbdbd;
       border-radius: 0.3rem;
       background: #fff;
       font: inherit;
       height: 100%;
+      cursor: pointer;
     }
 
     .name-input.bold {
@@ -385,13 +387,13 @@
       return getAllExpenses().find((expense) => expense.id === id);
     }
 
-    function populateNameSelect(selectElement, selectedValue = "") {
-      const current = selectedValue || selectElement.value;
+    function populateNameSelect(selectElement) {
       selectElement.innerHTML = "";
 
       const placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "Select member";
+      placeholder.textContent = "";
+      placeholder.setAttribute("aria-hidden", "true");
       selectElement.appendChild(placeholder);
 
       memberNames.forEach((name) => {
@@ -401,11 +403,7 @@
         selectElement.appendChild(option);
       });
 
-      if (current && memberNames.includes(current)) {
-        selectElement.value = current;
-      } else {
-        selectElement.value = "";
-      }
+      selectElement.value = "";
     }
 
     async function loadMemberOptions() {
@@ -444,7 +442,7 @@
 
         document
           .querySelectorAll(".name-select")
-          .forEach((select) => populateNameSelect(select, select.value));
+          .forEach((select) => populateNameSelect(select));
 
         renderTable();
       } catch (error) {
@@ -542,14 +540,14 @@
         const nameSelect = document.createElement("select");
         nameSelect.className = "name-select";
         nameSelect.dataset.personIndex = String(personIndex);
-        populateNameSelect(nameSelect, participant.name);
+        nameSelect.setAttribute("aria-label", "Select member from list");
+        nameSelect.title = "Select member";
+        populateNameSelect(nameSelect);
 
         nameInput.addEventListener("input", (event) => {
           const value = event.target.value;
           participants[personIndex].name = value;
-          if (memberNames.includes(value)) {
-            nameSelect.value = value;
-          } else {
+          if (!memberNames.includes(value)) {
             nameSelect.value = "";
           }
           recalculate();
@@ -560,6 +558,7 @@
           participants[personIndex].name = value;
           nameInput.value = value;
           recalculate();
+          event.target.value = "";
         });
 
         nameWrapper.appendChild(nameInput);
