@@ -13,11 +13,36 @@
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
+    .top-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-section-left {
+      flex: 1 1 320px;
+      min-width: 280px;
+    }
+
+    .top-section-right {
+      flex: 0 0 auto;
+      text-align: right;
+    }
+
+    .top-section-right img {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+    }
+
     .header-row {
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .header-row img {
@@ -54,6 +79,19 @@
       text-align: center;
     }
 
+    .reimburse-header {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .reimburse-label {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .due-label {
+      color: #b00020;
+      margin-left: 0.25rem;
+    }
+
     caption {
       text-align: left;
       margin-bottom: 0.5rem;
@@ -83,11 +121,33 @@
       font-weight: 500;
     }
 
+    .base-expense-inputs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .base-expense-inputs label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    .base-expense-inputs input[type="number"] {
+      width: 6rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 0.35rem;
+      border: 1px solid #999;
+      font-weight: 500;
+    }
+
     .controls {
       display: flex;
       flex-wrap: wrap;
       gap: 0.75rem;
-      justify-content: flex-end;
+      justify-content: flex-start;
       margin-top: 1rem;
     }
 
@@ -105,10 +165,126 @@
       background: #00a8e8;
     }
 
+    .warning-message {
+      color: #b00020;
+      font-weight: 600;
+      margin: 0.5rem 0 0;
+    }
+
+    .name-input.duplicate-name {
+      border-color: #b00020;
+      background: #ffe8ec;
+    }
+
+    .read-only-amount {
+      background: #f5f5f5;
+      color: #555;
+    }
+
+    #notify-dialog {
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0;
+      max-width: min(960px, 90vw);
+      width: 100%;
+      color: #222;
+      box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.2);
+    }
+
+    #notify-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .notify-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: #fff;
+      max-height: 80vh;
+      box-sizing: border-box;
+    }
+
+    .notify-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .notify-dialog-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .notify-close-button {
+      border: none;
+      background: transparent;
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      color: #444;
+    }
+
+    .notify-close-button:hover,
+    .notify-close-button:focus {
+      color: #000;
+    }
+
+    .notify-preview {
+      border: 1px solid #d0d0d0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      background: #fff;
+    }
+
+    .notify-preview table {
+      background: #fff;
+    }
+
+    .notify-preview input,
+    .notify-preview textarea,
+    .notify-preview select,
+    .notify-preview button {
+      pointer-events: none;
+    }
+
+    .notify-domains {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .notify-domain-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notify-domain-group label {
+      font-weight: 600;
+    }
+
+    .notify-domain-textarea {
+      width: 100%;
+      min-height: 4rem;
+      resize: vertical;
+      font: inherit;
+      padding: 0.5rem;
+      border: 1px solid #bdbdbd;
+      border-radius: 0.4rem;
+      background: #f9f9f9;
+    }
+
+    .notify-domain-textarea[readonly] {
+      background: #f3f3f3;
+    }
+
     .attendance-table input[type="text"],
     .attendance-table input[type="number"],
     .attendance-table textarea,
-    .meta-table input[type="text"] {
+    .meta-table input[type="text"],
+    .signature-textarea {
       width: 100%;
       box-sizing: border-box;
       font: inherit;
@@ -136,6 +312,29 @@
       resize: vertical;
     }
 
+    .signature-textarea {
+      min-height: 4.5rem;
+      resize: vertical;
+    }
+
+    .name-input-wrapper {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .name-select {
+      width: 1.75rem;
+      min-width: 1.75rem;
+      padding: 0.2rem;
+      border: 1px solid #bdbdbd;
+      border-radius: 0.3rem;
+      background: #fff;
+      font: inherit;
+      height: 100%;
+      cursor: pointer;
+    }
+
     .name-input.bold {
       font-weight: 600;
     }
@@ -155,6 +354,16 @@
     .reimbursed-value {
       text-align: right;
       white-space: nowrap;
+    }
+
+    .amount-due {
+      color: #b00020;
+      font-weight: 600;
+    }
+
+    .amount-credit {
+      color: #1b5e20;
+      font-weight: 600;
     }
 
     .expense-total,
@@ -181,6 +390,15 @@
         font-size: 0.9rem;
       }
 
+      .top-section-right {
+        text-align: center;
+        width: 100%;
+      }
+
+      .top-section-right img {
+        max-width: 150px;
+      }
+
       .controls {
         justify-content: flex-start;
       }
@@ -192,38 +410,78 @@
   </style>
 </head>
 <body>
-  <div class="header-row">
-    <img src="banner.png" alt="NUCC banner" />
-    <h1>Trip Attendance Sheet</h1>
+  <div class="top-section">
+    <div class="top-section-left">
+      <div class="header-row">
+        <img src="banner.png" alt="NUCC banner" />
+        <h1>Trip Attendance Sheet</h1>
+      </div>
+
+      <table class="meta-table">
+        <tbody>
+          <tr>
+            <th scope="row">Date</th>
+            <td><input type="date" id="trip-date" /></td>
+            <th scope="row">Location</th>
+            <td><input type="text" id="trip-location" /></td>
+            <th scope="row">Trip Leader</th>
+            <td><input type="text" id="trip-leader" list="trip-leader-options" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
+        <label>
+          <input type="checkbox" data-expense-key="personal-gear" checked />
+          Personal Gear
+        </label>
+        <label>
+          <input type="checkbox" data-expense-key="shared-gear" checked />
+          Shared Gear
+        </label>
+        <label>
+          <input type="checkbox" data-expense-key="petrol" checked />
+          Petrol
+        </label>
+        <label>
+          <input type="checkbox" id="shared-gear-master-toggle" />
+          Shared Gear (All)
+        </label>
+      </div>
+
+      <div class="base-expense-inputs">
+        <label for="personal-gear-rate">
+          Personal Gear per person ($)
+          <input type="number" id="personal-gear-rate" step="0.01" value="5" />
+        </label>
+        <label for="shared-gear-rate">
+          Shared Gear per person ($)
+          <input type="number" id="shared-gear-rate" step="0.01" value="5" />
+        </label>
+      </div>
+
+      <div class="controls">
+        <button class="control-button" type="button" id="add-row">Add Row</button>
+        <button class="control-button" type="button" id="remove-row">Remove Row</button>
+        <button class="control-button" type="button" id="add-expense">Add Expense</button>
+        <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
+        <button class="control-button" type="button" id="save-csv">Save CSV</button>
+        <button class="control-button" type="button" id="load-csv">Load CSV</button>
+        <button class="control-button" type="button" id="notify-button">Notify</button>
+      </div>
+    </div>
+    <div class="top-section-right">
+      <img src="taxminer.png" alt="Tax Miner graphic" />
+    </div>
   </div>
 
-  <table class="meta-table">
-    <tbody>
-      <tr>
-        <th scope="row">Date</th>
-        <td><input type="text" value="2025-07-27" /></td>
-        <th scope="row">Location</th>
-        <td><input type="text" value="Drum" /></td>
-        <th scope="row">Trip Leader</th>
-        <td><input type="text" value="Rowan" /></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
-    <label>
-      <input type="checkbox" data-expense-key="personal-gear" checked />
-      Personal Gear
-    </label>
-    <label>
-      <input type="checkbox" data-expense-key="shared-gear" checked />
-      Shared Gear
-    </label>
-    <label>
-      <input type="checkbox" data-expense-key="petrol" checked />
-      Petrol
-    </label>
-  </div>
+  <p
+    id="duplicate-name-warning"
+    class="warning-message"
+    role="alert"
+    aria-live="polite"
+    hidden
+  ></p>
 
   <table class="attendance-table" id="attendance-table">
     <thead>
@@ -235,12 +493,13 @@
     <tfoot id="attendance-foot"></tfoot>
   </table>
 
-  <div class="controls">
-    <button class="control-button" type="button" id="add-row">Add Row</button>
-    <button class="control-button" type="button" id="remove-row">Remove Row</button>
-    <button class="control-button" type="button" id="add-expense">Add Expense</button>
-    <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
-  </div>
+  <input
+    type="file"
+    id="load-csv-input"
+    accept=".csv,text/csv"
+    style="position: absolute; left: -10000px;"
+    aria-hidden="true"
+  />
 
   <section>
     <table class="club-income-table">
@@ -261,7 +520,9 @@
           <th scope="row">Equipment</th>
         </tr>
         <tr>
-          <td style="height: 4rem;"></td>
+          <td>
+            <textarea id="signature-comments" class="signature-textarea"></textarea>
+          </td>
           <td></td>
         </tr>
       </tbody>
@@ -274,33 +535,61 @@
     nameDatalist.id = nameListId;
     document.body.appendChild(nameDatalist);
 
-    const participants = [
-      { name: "Rowan", bold: true, notes: "" },
-      { name: "Floyd", bold: true, notes: "" },
-      { name: "Britt", bold: true, notes: "drove herself" },
-      { name: "Alek", bold: true, notes: "" },
-      { name: "Carl", bold: true, notes: "" },
-      { name: "Lauren", bold: true, notes: "" },
-      { name: "Lachie", bold: true, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" },
-      { name: "", bold: false, notes: "" }
-    ];
+    const tripLeaderListId = "trip-leader-options";
+    const tripLeaderDatalist = document.createElement("datalist");
+    tripLeaderDatalist.id = tripLeaderListId;
+    document.body.appendChild(tripLeaderDatalist);
+
+    const tripLeaderInput = document.getElementById("trip-leader");
+    if (tripLeaderInput) {
+      tripLeaderInput.setAttribute("list", tripLeaderListId);
+    }
+
+    let memberNames = [];
+    let memberRecords = [];
+
+    const baseExpenseRates = {
+      "personal-gear": 5,
+      "shared-gear": 5
+    };
+
+    const baseExpenseKeys = Object.keys(baseExpenseRates);
+
+    const participants = Array.from({ length: 5 }, () => ({
+      name: "",
+      bold: false,
+      notes: ""
+    }));
 
     const baseExpenseDefinitions = [
-      { key: "personal-gear", name: "Personal Gear", enabled: true },
-      { key: "shared-gear", name: "Shared Gear", enabled: true },
-      { key: "petrol", name: "Petrol", enabled: true }
+      {
+        key: "personal-gear",
+        name: "Personal Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      {
+        key: "shared-gear",
+        name: "Shared Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      { key: "petrol", name: "Petrol", enabled: true, defaultConsumerState: true }
     ];
+
+    const sharedGearMasterToggle = document.getElementById(
+      "shared-gear-master-toggle"
+    );
 
     let customExpenseCounter = 0;
 
-    function createExpense({ name, key = null, type = "custom", enabled = true }) {
+    function createExpense({
+      name,
+      key = null,
+      type = "custom",
+      enabled = true,
+      defaultConsumerState = true
+    }) {
       const id = type === "base" ? `base-${key}` : `custom-${customExpenseCounter++}`;
       return {
         id,
@@ -308,8 +597,9 @@
         key,
         type,
         enabled,
+        defaultConsumerState,
         amounts: participants.map(() => ""),
-        consumers: participants.map(() => true)
+        consumers: participants.map(() => defaultConsumerState)
       };
     }
 
@@ -318,6 +608,138 @@
     );
 
     const customExpenses = [];
+
+    const tripDateInput = document.getElementById("trip-date");
+    if (tripDateInput && !tripDateInput.value) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      tripDateInput.value = now.toISOString().slice(0, 10);
+    }
+
+    const baseExpenseRateInputs = {
+      "personal-gear": document.getElementById("personal-gear-rate"),
+      "shared-gear": document.getElementById("shared-gear-rate")
+    };
+
+    baseExpenseKeys.forEach((key) => {
+      applyBaseExpenseRateToExpense(key);
+    });
+
+    function isBaseRateControlled(expense) {
+      if (!expense || !expense.key) {
+        return false;
+      }
+      return Object.prototype.hasOwnProperty.call(baseExpenseRates, expense.key);
+    }
+
+    function isDirectChargeExpense(expense) {
+      if (!expense) {
+        return false;
+      }
+      return expense.key === "personal-gear" || expense.key === "shared-gear";
+    }
+
+    function applyBaseExpenseRateToExpense(key) {
+      const expense = baseExpenses.find((item) => item.key === key);
+      if (!expense) {
+        return;
+      }
+      ensureExpenseSize(expense);
+      const rate = baseExpenseRates[key];
+      for (let index = 0; index < expense.amounts.length; index += 1) {
+        expense.amounts[index] = rate === "" ? "" : rate;
+      }
+    }
+
+    function syncBaseExpenseInputsFromRates() {
+      baseExpenseKeys.forEach((key) => {
+        const input = baseExpenseRateInputs[key];
+        if (!input) {
+          return;
+        }
+        const value = baseExpenseRates[key];
+        input.value = value === "" ? "" : String(value);
+      });
+    }
+
+    function updateDuplicateNameWarnings() {
+      const nameInputs = Array.from(document.querySelectorAll(".name-input"));
+      const warningElement = document.getElementById("duplicate-name-warning");
+      const counts = new Map();
+
+      nameInputs.forEach((input) => {
+        const normalized = input.value.trim().toLowerCase();
+        if (!normalized) {
+          return;
+        }
+        counts.set(normalized, (counts.get(normalized) || 0) + 1);
+      });
+
+      const duplicateKeys = new Set();
+      counts.forEach((count, key) => {
+        if (count > 1) {
+          duplicateKeys.add(key);
+        }
+      });
+
+      nameInputs.forEach((input) => {
+        const normalized = input.value.trim().toLowerCase();
+        if (normalized && duplicateKeys.has(normalized)) {
+          input.classList.add("duplicate-name");
+          input.setAttribute("aria-invalid", "true");
+        } else {
+          input.classList.remove("duplicate-name");
+          input.removeAttribute("aria-invalid");
+        }
+      });
+
+      if (warningElement) {
+        if (duplicateKeys.size > 0) {
+          const labels = [];
+          duplicateKeys.forEach((key) => {
+            const matchingInput = nameInputs.find(
+              (input) => input.value.trim().toLowerCase() === key
+            );
+            if (matchingInput) {
+              const trimmed = matchingInput.value.trim();
+              if (trimmed && !labels.includes(trimmed)) {
+                labels.push(trimmed);
+              }
+            }
+          });
+          warningElement.hidden = false;
+          warningElement.textContent = `Duplicate names detected: ${labels.join(", ")}`;
+        } else {
+          warningElement.hidden = true;
+          warningElement.textContent = "";
+        }
+      }
+    }
+
+    baseExpenseKeys.forEach((key) => {
+      const input = baseExpenseRateInputs[key];
+      if (!input) {
+        return;
+      }
+      input.addEventListener("input", () => {
+        const rawValue = input.value;
+        if (rawValue === "") {
+          baseExpenseRates[key] = "";
+          applyBaseExpenseRateToExpense(key);
+          renderTable();
+          syncBaseExpenseInputsFromRates();
+          return;
+        }
+        const numericValue = Number(rawValue);
+        if (!Number.isFinite(numericValue)) {
+          return;
+        }
+        baseExpenseRates[key] = numericValue;
+        applyBaseExpenseRateToExpense(key);
+        renderTable();
+        syncBaseExpenseInputsFromRates();
+      });
+    });
 
     function getAllExpenses() {
       return [...baseExpenses, ...customExpenses];
@@ -330,8 +752,218 @@
       ];
     }
 
+    function getSharedGearExpense() {
+      return baseExpenses.find((expense) => expense.key === "shared-gear");
+    }
+
     function findExpenseById(id) {
       return getAllExpenses().find((expense) => expense.id === id);
+    }
+
+    function populateNameSelect(selectElement) {
+      selectElement.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "";
+      placeholder.setAttribute("aria-hidden", "true");
+      selectElement.appendChild(placeholder);
+
+      memberNames.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        selectElement.appendChild(option);
+      });
+
+      selectElement.value = "";
+    }
+
+    function cloneNodeWithFormValues(node) {
+      const clone = node.cloneNode(true);
+      const originals = node.querySelectorAll("input, textarea, select");
+      const clones = clone.querySelectorAll("input, textarea, select");
+      originals.forEach((element, index) => {
+        const cloned = clones[index];
+        if (!cloned) {
+          return;
+        }
+        if (cloned.tagName === "INPUT") {
+          const input = element;
+          const cloneInput = cloned;
+          if (input.type === "checkbox" || input.type === "radio") {
+            cloneInput.checked = input.checked;
+          } else {
+            cloneInput.value = input.value;
+          }
+        } else if (cloned.tagName === "TEXTAREA" || cloned.tagName === "SELECT") {
+          cloned.value = element.value;
+        }
+      });
+      return clone;
+    }
+
+    function stripIds(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        node.removeAttribute("id");
+        node
+          .querySelectorAll("[id]")
+          .forEach((element) => element.removeAttribute("id"));
+      }
+      return node;
+    }
+
+    function buildDomainContactGroups() {
+      const domainMap = new Map();
+      memberRecords.forEach((record) => {
+        const contactValue = record.contact;
+        if (!contactValue) {
+          return;
+        }
+        String(contactValue)
+          .split(/[;,\s]+/)
+          .map((piece) => piece.trim())
+          .filter(Boolean)
+          .forEach((entry) => {
+            const normalizedEntry = entry.toLowerCase();
+            const atIndex = normalizedEntry.lastIndexOf("@");
+            if (atIndex === -1 || atIndex === normalizedEntry.length - 1) {
+              return;
+            }
+            const domain = normalizedEntry.slice(atIndex + 1);
+            if (!domainMap.has(domain)) {
+              domainMap.set(domain, new Map());
+            }
+            const contactsForDomain = domainMap.get(domain);
+            if (!contactsForDomain.has(normalizedEntry)) {
+              contactsForDomain.set(normalizedEntry, entry);
+            }
+          });
+      });
+
+      return new Map(
+        Array.from(domainMap.entries()).sort(([domainA], [domainB]) =>
+          domainA.localeCompare(domainB)
+        )
+      );
+    }
+
+    function sanitizeNotifyClone(node) {
+      node
+        .querySelectorAll(
+          ".expense-toggle-group, .base-expense-inputs, .controls, button"
+        )
+        .forEach((element) => element.remove());
+
+      node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        const replacement = node.ownerDocument.createElement("span");
+        replacement.className = "notify-check";
+        replacement.textContent = checkbox.checked ? "✔" : "";
+        checkbox.replaceWith(replacement);
+      });
+
+      return node;
+    }
+
+    function buildNotifyPreview(targetDocument) {
+      const container = targetDocument.createElement("div");
+      container.className = "notify-preview";
+
+      const sections = [];
+      const topSection = document.querySelector(".top-section");
+      if (topSection) {
+        sections.push(topSection);
+      }
+      const attendanceTable = document.getElementById("attendance-table");
+      if (attendanceTable) {
+        sections.push(attendanceTable);
+      }
+      const summarySection = document.querySelector("section");
+      if (summarySection) {
+        sections.push(summarySection);
+      }
+
+      sections.forEach((section) => {
+        const clone = stripIds(cloneNodeWithFormValues(section));
+        if (!clone) {
+          return;
+        }
+        sanitizeNotifyClone(clone);
+        const imported = targetDocument.importNode(clone, true);
+        container.appendChild(imported);
+      });
+
+      return container;
+    }
+
+    function buildDomainGroupsSection(targetDocument) {
+      const container = targetDocument.createElement("div");
+      container.className = "notify-domains";
+
+      const domainGroups = buildDomainContactGroups();
+      if (domainGroups.size === 0) {
+        const emptyMessage = targetDocument.createElement("p");
+        emptyMessage.textContent = "No member contact information available.";
+        container.appendChild(emptyMessage);
+        return container;
+      }
+
+      domainGroups.forEach((contactsMap, domain) => {
+        const wrapper = targetDocument.createElement("div");
+        wrapper.className = "notify-domain-group";
+
+        const label = targetDocument.createElement("label");
+        label.textContent = `${domain} (${contactsMap.size})`;
+        wrapper.appendChild(label);
+
+        const textarea = targetDocument.createElement("textarea");
+        textarea.className = "notify-domain-textarea";
+        textarea.readOnly = true;
+        const contacts = Array.from(contactsMap.values()).sort((a, b) =>
+          a.localeCompare(b)
+        );
+        textarea.value = contacts.join(", ");
+        textarea.setAttribute("aria-label", `Contacts for ${domain}`);
+        textarea.addEventListener("focus", () => {
+          textarea.select();
+        });
+        wrapper.appendChild(textarea);
+
+        container.appendChild(wrapper);
+      });
+
+      return container;
+    }
+
+    function openNotifyWindow() {
+      const notifyWindow = window.open("", "_blank");
+      if (!notifyWindow) {
+        window.alert("Please allow pop-ups to view the notify preview.");
+        return;
+      }
+
+      const { document: notifyDocument } = notifyWindow;
+      const baseHref = document.baseURI;
+      notifyDocument.open();
+      notifyDocument.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${baseHref}"><title>Notify Members</title></head><body></body></html>`
+      );
+      notifyDocument.close();
+
+      const baseStyle = document.querySelector("style");
+      if (baseStyle) {
+        notifyDocument.head.appendChild(notifyDocument.importNode(baseStyle, true));
+      }
+
+      const extraStyle = notifyDocument.createElement("style");
+      extraStyle.textContent =
+        ".notify-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
+      notifyDocument.head.appendChild(extraStyle);
+
+      const main = notifyDocument.createElement("main");
+      main.appendChild(buildNotifyPreview(notifyDocument));
+      main.appendChild(buildDomainGroupsSection(notifyDocument));
+      notifyDocument.body.appendChild(main);
     }
 
     async function loadMemberOptions() {
@@ -341,32 +973,45 @@
           return;
         }
         const text = await response.text();
+        const rows = parseCsv(text);
+        const records = [];
         const names = new Set();
-        text.split(/\r?\n/).forEach((line, index) => {
-          if (!line.trim()) {
+
+        rows.forEach((row, index) => {
+          if (!row || row.length === 0) {
             return;
           }
-          const [firstColumn] = line.split(",");
-          if (!firstColumn) {
+          const rawName = (row[0] || "").trim().replace(/^"(.+)"$/, "$1");
+          if (!rawName) {
             return;
           }
-          const cleaned = firstColumn.trim().replace(/^"(.+)"$/, "$1");
-          if (!cleaned) {
+          if (index === 0 && /^(name|names)$/i.test(rawName)) {
             return;
           }
-          if (index === 0 && /^(name|names)$/i.test(cleaned)) {
-            return;
-          }
-          names.add(cleaned);
+          const contactRaw = row.length > 1 ? row[1] : "";
+          const contact = typeof contactRaw === "string" ? contactRaw.trim() : String(contactRaw || "").trim();
+          records.push({ name: rawName, contact });
+          names.add(rawName);
         });
+
+        memberRecords = records;
+        memberNames = Array.from(names).sort((a, b) => a.localeCompare(b));
+
         nameDatalist.innerHTML = "";
-        Array.from(names)
-          .sort((a, b) => a.localeCompare(b))
-          .forEach((name) => {
-            const option = document.createElement("option");
-            option.value = name;
-            nameDatalist.appendChild(option);
-          });
+        tripLeaderDatalist.innerHTML = "";
+        memberNames.forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          tripLeaderDatalist.appendChild(option);
+          nameDatalist.appendChild(option.cloneNode(true));
+        });
+
+        document
+          .querySelectorAll(".name-select")
+          .forEach((select) => populateNameSelect(select));
+
+        renderTable();
       } catch (error) {
         console.warn("Could not load member list", error);
       }
@@ -379,13 +1024,300 @@
       return fixed.replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
     }
 
+    function toCsvValue(value) {
+      if (value === null || value === undefined) {
+        return "";
+      }
+      const stringValue = String(value);
+      if (/[",\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    }
+
+    function buildTableCsv() {
+      const activeExpenses = getActiveExpenses();
+      const header = ["Name"];
+      activeExpenses.forEach((expense) => {
+        header.push(`${expense.name} Amount`);
+        header.push(`${expense.name} Consumer`);
+      });
+      header.push("Notes");
+
+      const rows = [header];
+      participants.forEach((participant, personIndex) => {
+        const row = [participant.name || ""];
+        activeExpenses.forEach((expense) => {
+          ensureExpenseSize(expense);
+          let amount = expense.amounts[personIndex];
+          if (isDirectChargeExpense(expense)) {
+            const rateValue = baseExpenseRates[expense.key];
+            if (rateValue === "" || !expense.consumers[personIndex]) {
+              amount = "";
+            } else {
+              const numericRate = Number(rateValue);
+              amount = Number.isFinite(numericRate) ? numericRate : "";
+            }
+          }
+          row.push(amount === "" || amount === null || amount === undefined ? "" : String(amount));
+          row.push(expense.consumers[personIndex] ? "1" : "0");
+        });
+        row.push(participant.notes || "");
+        rows.push(row);
+      });
+
+      return rows.map((row) => row.map(toCsvValue).join(",")).join("\r\n");
+    }
+
+    function downloadAttendanceCsv() {
+      const csvContent = buildTableCsv();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "attendance-table.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let currentRow = [];
+      let currentValue = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+
+        if (inQuotes) {
+          if (char === '"') {
+            if (text[i + 1] === '"') {
+              currentValue += '"';
+              i += 1;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            currentValue += char;
+          }
+        } else if (char === '"') {
+          inQuotes = true;
+        } else if (char === ",") {
+          currentRow.push(currentValue);
+          currentValue = "";
+        } else if (char === "\n") {
+          currentRow.push(currentValue);
+          rows.push(currentRow);
+          currentRow = [];
+          currentValue = "";
+        } else if (char !== "\r") {
+          currentValue += char;
+        }
+      }
+
+      currentRow.push(currentValue);
+      rows.push(currentRow);
+
+      return rows.filter((row) => row.some((value) => value && value.trim() !== ""));
+    }
+
+    function normalizeConsumerValue(value) {
+      if (value === null || value === undefined) {
+        return false;
+      }
+      const normalized = String(value).trim().toLowerCase();
+      if (!normalized) {
+        return false;
+      }
+      return ["1", "true", "yes", "y", "checked", "x"].includes(normalized);
+    }
+
+    function syncExpenseToggleStates() {
+      document
+        .querySelectorAll('.expense-toggle-group input[type="checkbox"]')
+        .forEach((checkbox) => {
+          const key = checkbox.dataset.expenseKey;
+          const expense = baseExpenses.find((item) => item.key === key);
+          if (expense) {
+            checkbox.checked = expense.enabled;
+          }
+        });
+    }
+
+    function loadTableFromCsvContent(text) {
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        window.alert("CSV file is empty.");
+        return;
+      }
+
+      const header = rows[0];
+      if (!header.length || header[0].trim().toLowerCase() !== "name") {
+        window.alert('CSV first column must be labeled "Name".');
+        return;
+      }
+
+      if (header.length < 2 || header[header.length - 1].trim().toLowerCase() !== "notes") {
+        window.alert('CSV must include a final column labeled "Notes".');
+        return;
+      }
+
+      const expenseEntries = [];
+      let columnIndex = 1;
+      while (columnIndex < header.length - 1) {
+        const amountHeader = header[columnIndex];
+        const consumerHeader = header[columnIndex + 1];
+        if (amountHeader === undefined || consumerHeader === undefined) {
+          break;
+        }
+        const match = amountHeader.match(/^(.*) Amount$/);
+        if (!match || consumerHeader !== `${match[1]} Consumer`) {
+          window.alert(
+            'Expense headers must follow the pattern "<Expense Name> Amount" and "<Expense Name> Consumer".'
+          );
+          return;
+        }
+        const expenseName = match[1];
+        expenseEntries.push({
+          name: expenseName,
+          amountIndex: columnIndex,
+          consumerIndex: columnIndex + 1
+        });
+        columnIndex += 2;
+      }
+
+      if (columnIndex !== header.length - 1) {
+        window.alert("CSV columns could not be interpreted.");
+        return;
+      }
+
+      const dataRows = rows.slice(1);
+      participants.length = 0;
+
+      dataRows.forEach((row) => {
+        const nameValue = row[0] ? row[0].trim() : "";
+        const notesIndex = header.length - 1;
+        const notesValue = row[notesIndex] !== undefined ? row[notesIndex] : "";
+        participants.push({ name: nameValue, bold: false, notes: notesValue });
+      });
+
+      if (participants.length === 0) {
+        participants.push({ name: "", bold: false, notes: "" });
+      }
+
+      const includedExpenses = new Set(expenseEntries.map((entry) => entry.name));
+
+      baseExpenses.forEach((expense) => {
+        if (includedExpenses.has(expense.name)) {
+          expense.enabled = true;
+        } else {
+          expense.enabled = false;
+          expense.amounts = participants.map(() => "");
+          const defaultState = Object.prototype.hasOwnProperty.call(
+            expense,
+            "defaultConsumerState"
+          )
+            ? expense.defaultConsumerState
+            : true;
+          expense.consumers = participants.map(() => defaultState);
+        }
+      });
+
+      for (let index = customExpenses.length - 1; index >= 0; index -= 1) {
+        if (!includedExpenses.has(customExpenses[index].name)) {
+          customExpenses.splice(index, 1);
+        }
+      }
+
+      const expenseObjects = expenseEntries.map((entry) => {
+        const baseExpense = baseExpenses.find((expense) => expense.name === entry.name);
+        if (baseExpense) {
+          return baseExpense;
+        }
+        const existingCustom = customExpenses.find((expense) => expense.name === entry.name);
+        if (existingCustom) {
+          return existingCustom;
+        }
+        const newExpense = createExpense({ name: entry.name });
+        customExpenses.push(newExpense);
+        return newExpense;
+      });
+
+      expenseObjects.forEach((expense, expenseIndex) => {
+        const amounts = [];
+        const consumers = [];
+        dataRows.forEach((row, rowIndex) => {
+          const amountRaw = row[expenseEntries[expenseIndex].amountIndex];
+          const consumerRaw = row[expenseEntries[expenseIndex].consumerIndex];
+          const trimmedAmount = amountRaw === undefined ? "" : String(amountRaw).trim();
+          if (trimmedAmount === "") {
+            amounts[rowIndex] = "";
+          } else {
+            const numericAmount = Number(trimmedAmount);
+            amounts[rowIndex] = Number.isFinite(numericAmount) ? numericAmount : "";
+          }
+          consumers[rowIndex] = normalizeConsumerValue(consumerRaw);
+        });
+        while (amounts.length < participants.length) {
+          amounts.push("");
+          const defaultState = Object.prototype.hasOwnProperty.call(
+            expense,
+            "defaultConsumerState"
+          )
+            ? expense.defaultConsumerState
+            : true;
+          consumers.push(defaultState);
+        }
+        expense.amounts = amounts;
+        expense.consumers = consumers;
+        if (baseExpenses.includes(expense)) {
+          expense.enabled = true;
+        }
+        if (isBaseRateControlled(expense)) {
+          const definedValues = expense.amounts.filter((value) => value !== "");
+          if (definedValues.length === 0) {
+            baseExpenseRates[expense.key] = "";
+          } else {
+            const firstValue = definedValues[0];
+            const uniform = expense.amounts.every(
+              (value) => value === "" || value === firstValue
+            );
+            if (uniform) {
+              baseExpenseRates[expense.key] = firstValue;
+              applyBaseExpenseRateToExpense(expense.key);
+            } else {
+              baseExpenseRates[expense.key] = "";
+            }
+          }
+        }
+      });
+
+      syncBaseExpenseInputsFromRates();
+      syncExpenseToggleStates();
+      renderTable();
+    }
+
     function ensureExpenseSize(expense) {
       const needed = participants.length;
+      const rateKey = isBaseRateControlled(expense) ? expense.key : null;
+      const rateValue = rateKey ? baseExpenseRates[rateKey] : null;
       while (expense.amounts.length < needed) {
-        expense.amounts.push("");
+        if (rateKey) {
+          expense.amounts.push(rateValue === "" ? "" : rateValue);
+        } else {
+          expense.amounts.push("");
+        }
       }
       while (expense.consumers.length < needed) {
-        expense.consumers.push(true);
+        const defaultState = Object.prototype.hasOwnProperty.call(
+          expense,
+          "defaultConsumerState"
+        )
+          ? expense.defaultConsumerState
+          : true;
+        expense.consumers.push(defaultState);
       }
       while (expense.amounts.length > needed) {
         expense.amounts.pop();
@@ -411,14 +1343,18 @@
 
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
+        const directCharge = isDirectChargeExpense(expense);
         amountHeader.textContent = `${expense.name} ($)`;
         amountHeader.dataset.expenseId = expense.id;
+        amountHeader.dataset.directCharge = directCharge ? "true" : "false";
         headerRow.appendChild(amountHeader);
 
-        const consumeHeader = document.createElement("th");
-        consumeHeader.className = "consume-header";
-        consumeHeader.dataset.expenseId = expense.id;
-        headerRow.appendChild(consumeHeader);
+        if (!directCharge) {
+          const consumeHeader = document.createElement("th");
+          consumeHeader.className = "consume-header";
+          consumeHeader.dataset.expenseId = expense.id;
+          headerRow.appendChild(consumeHeader);
+        }
       });
 
       const breakdownHeader = document.createElement("th");
@@ -430,7 +1366,9 @@
       headerRow.appendChild(feeHeader);
 
       const reimbHeader = document.createElement("th");
-      reimbHeader.textContent = "Reimbursed ($)";
+      reimbHeader.className = "reimburse-header";
+      reimbHeader.innerHTML =
+        '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
       headerRow.appendChild(reimbHeader);
 
       const notesHeader = document.createElement("th");
@@ -439,6 +1377,7 @@
 
       renderBody(activeExpenses);
       renderFooter(activeExpenses);
+      updateDuplicateNameWarnings();
       recalculate();
     }
 
@@ -450,21 +1389,91 @@
         const row = document.createElement("tr");
 
         const nameCell = document.createElement("td");
+        const nameWrapper = document.createElement("div");
+        nameWrapper.className = "name-input-wrapper";
+
         const nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.value = participant.name;
         nameInput.setAttribute("list", nameListId);
         nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+        nameInput.dataset.personIndex = String(personIndex);
+
+        const nameSelect = document.createElement("select");
+        nameSelect.className = "name-select";
+        nameSelect.dataset.personIndex = String(personIndex);
+        nameSelect.setAttribute("aria-label", "Select member from list");
+        nameSelect.title = "Select member";
+        populateNameSelect(nameSelect);
+
         nameInput.addEventListener("input", (event) => {
-          participants[personIndex].name = event.target.value;
+          const value = event.target.value;
+          participants[personIndex].name = value;
+          if (!memberNames.includes(value)) {
+            nameSelect.value = "";
+          }
           recalculate();
+          updateDuplicateNameWarnings();
         });
-        nameCell.appendChild(nameInput);
+
+        nameInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Tab" || event.shiftKey) {
+            return;
+          }
+          const nextIndex = personIndex + 1;
+          const nextInput = document.querySelector(
+            `.name-input[data-person-index="${nextIndex}"]`
+          );
+          if (!nextInput) {
+            return;
+          }
+          event.preventDefault();
+          nextInput.focus();
+        });
+
+        nameSelect.addEventListener("change", (event) => {
+          const value = event.target.value;
+          participants[personIndex].name = value;
+          nameInput.value = value;
+          recalculate();
+          event.target.value = "";
+          updateDuplicateNameWarnings();
+        });
+
+        nameWrapper.appendChild(nameInput);
+        nameWrapper.appendChild(nameSelect);
+        nameCell.appendChild(nameWrapper);
         row.appendChild(nameCell);
 
         activeExpenses.forEach((expense) => {
           ensureExpenseSize(expense);
+          const directCharge = isDirectChargeExpense(expense);
           const amountCell = document.createElement("td");
+          if (directCharge) {
+            amountCell.classList.add("consume-cell");
+            const consumeInput = document.createElement("input");
+            consumeInput.type = "checkbox";
+            consumeInput.checked = Boolean(expense.consumers[personIndex]);
+            consumeInput.dataset.expenseId = expense.id;
+            consumeInput.dataset.personIndex = String(personIndex);
+            consumeInput.setAttribute(
+              "aria-label",
+              `${expense.name} consumed`
+            );
+            consumeInput.addEventListener("change", (event) => {
+              const targetExpense = findExpenseById(event.target.dataset.expenseId);
+              if (!targetExpense) {
+                return;
+              }
+              const index = Number(event.target.dataset.personIndex);
+              targetExpense.consumers[index] = event.target.checked;
+              recalculate();
+            });
+            amountCell.appendChild(consumeInput);
+            row.appendChild(amountCell);
+            return;
+          }
+
           const amountInput = document.createElement("input");
           amountInput.type = "number";
           amountInput.step = "0.01";
@@ -472,7 +1481,22 @@
           amountInput.placeholder = "0.00";
           amountInput.dataset.expenseId = expense.id;
           amountInput.dataset.personIndex = String(personIndex);
+          if (isBaseRateControlled(expense)) {
+            const rate = baseExpenseRates[expense.key];
+            amountInput.value = rate === "" ? "" : rate;
+            amountInput.readOnly = true;
+            amountInput.tabIndex = -1;
+            amountInput.classList.add("read-only-amount");
+            amountInput.setAttribute(
+              "title",
+              `${expense.name} is managed from the controls above.`
+            );
+            amountInput.setAttribute("aria-readonly", "true");
+          }
           amountInput.addEventListener("input", (event) => {
+            if (event.target.readOnly) {
+              return;
+            }
             const targetExpense = findExpenseById(event.target.dataset.expenseId);
             if (!targetExpense) {
               return;
@@ -492,6 +1516,10 @@
           consumeInput.checked = Boolean(expense.consumers[personIndex]);
           consumeInput.dataset.expenseId = expense.id;
           consumeInput.dataset.personIndex = String(personIndex);
+          consumeInput.setAttribute(
+            "aria-label",
+            `${expense.name} consumed`
+          );
           consumeInput.addEventListener("change", (event) => {
             const targetExpense = findExpenseById(event.target.dataset.expenseId);
             if (!targetExpense) {
@@ -548,13 +1576,18 @@
         totalCell.className = "expense-total";
         totalCell.dataset.expenseId = expense.id;
         totalCell.textContent = "Total: $0";
-        row.appendChild(totalCell);
+        if (isDirectChargeExpense(expense)) {
+          totalCell.dataset.directCharge = "true";
+          row.appendChild(totalCell);
+        } else {
+          row.appendChild(totalCell);
 
-        const consumersCell = document.createElement("td");
-        consumersCell.className = "expense-consumers";
-        consumersCell.dataset.expenseId = expense.id;
-        consumersCell.textContent = "Consumers: 0";
-        row.appendChild(consumersCell);
+          const consumersCell = document.createElement("td");
+          consumersCell.className = "expense-consumers";
+          consumersCell.dataset.expenseId = expense.id;
+          consumersCell.textContent = "Consumers: 0";
+          row.appendChild(consumersCell);
+        }
       });
 
       const breakdownCell = document.createElement("td");
@@ -570,10 +1603,63 @@
       row.appendChild(reimbCell);
 
       const noteCell = document.createElement("td");
-      noteCell.innerHTML = "<em>(if filled, continue on back)</em>";
+      noteCell.textContent = "";
       row.appendChild(noteCell);
 
       tfoot.appendChild(row);
+    }
+
+    function syncSharedGearMasterToggleState() {
+      if (!sharedGearMasterToggle) {
+        return;
+      }
+
+      const sharedGearExpense = getSharedGearExpense();
+      if (!sharedGearExpense) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        sharedGearMasterToggle.disabled = true;
+        return;
+      }
+
+      if (!sharedGearExpense.enabled) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        sharedGearMasterToggle.disabled = true;
+        return;
+      }
+
+      sharedGearMasterToggle.disabled = false;
+      ensureExpenseSize(sharedGearExpense);
+
+      let relevantIndexes = participants
+        .map((participant, index) => ({
+          index,
+          hasName: Boolean(participant.name && participant.name.trim())
+        }))
+        .filter((entry) => entry.hasName);
+
+      if (relevantIndexes.length === 0) {
+        relevantIndexes = participants.map((_, index) => ({ index }));
+      }
+
+      const total = relevantIndexes.length;
+      let checkedCount = 0;
+      relevantIndexes.forEach(({ index }) => {
+        if (sharedGearExpense.consumers[index]) {
+          checkedCount += 1;
+        }
+      });
+
+      if (total === 0) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        return;
+      }
+
+      sharedGearMasterToggle.indeterminate =
+        checkedCount > 0 && checkedCount < total;
+      sharedGearMasterToggle.checked = checkedCount === total;
     }
 
     function recalculate() {
@@ -585,6 +1671,56 @@
 
       activeExpenses.forEach((expense) => {
         ensureExpenseSize(expense);
+        if (isDirectChargeExpense(expense)) {
+          const rateValue = baseExpenseRates[expense.key];
+          const numericRate = Number(rateValue);
+          const perPersonCharge = Number.isFinite(numericRate) ? numericRate : 0;
+          let total = 0;
+          let consumerCount = 0;
+
+          participants.forEach((participant, personIndex) => {
+            const hasName = Boolean(participant.name && participant.name.trim());
+            if (!hasName) {
+              return;
+            }
+            if (expense.consumers[personIndex]) {
+              consumerCount += 1;
+              const charge = perPersonCharge;
+              participantFeeTotals[personIndex] += charge;
+              if (charge > 0) {
+                participantFeeBreakdowns[personIndex].push({
+                  name: expense.name,
+                  value: charge
+                });
+              }
+              if (charge > 0) {
+                clubIncome += charge;
+              }
+              total += charge;
+            }
+          });
+
+          const totalCell = document.querySelector(
+            `.expense-total[data-expense-id="${expense.id}"]`
+          );
+          if (totalCell) {
+            const totalText = formatCurrency(total);
+            totalCell.innerHTML = `Total: $${totalText || "0"}`;
+            const summary = document.createElement("div");
+            summary.textContent = `Selected: ${consumerCount}`;
+            totalCell.appendChild(summary);
+          }
+
+          const consumersCell = document.querySelector(
+            `.expense-consumers[data-expense-id="${expense.id}"]`
+          );
+          if (consumersCell) {
+            consumersCell.textContent = `Consumers: ${consumerCount}`;
+          }
+
+          return;
+        }
+
         let total = 0;
         const consumers = [];
 
@@ -633,17 +1769,17 @@
       });
 
       let totalFees = 0;
-      let totalReimbursed = 0;
+      let totalBalance = 0;
 
       participants.forEach((participant, personIndex) => {
         const hasName = Boolean(participant.name && participant.name.trim());
         const fee = hasName ? participantFeeTotals[personIndex] : 0;
         const contributions = hasName ? participantContributions[personIndex] : 0;
-        const reimbursed = contributions - fee;
+        const balance = fee - contributions;
 
         if (hasName) {
           totalFees += fee;
-          totalReimbursed += reimbursed;
+          totalBalance += balance;
         }
 
         const breakdownCell = document.querySelector(
@@ -672,11 +1808,16 @@
           feeCell.textContent = hasName && fee ? `$${formatCurrency(fee)}` : "";
         }
         if (reimbCell) {
-          if (hasName && reimbursed) {
-            const prefix = reimbursed < 0 ? "-$" : "$";
-            reimbCell.textContent = `${prefix}${formatCurrency(Math.abs(reimbursed))}`;
-          } else {
-            reimbCell.textContent = "";
+          reimbCell.textContent = "";
+          reimbCell.classList.remove("amount-due", "amount-credit");
+          if (hasName && balance) {
+            if (balance > 0) {
+              reimbCell.textContent = `(${formatCurrency(balance)})`;
+              reimbCell.classList.add("amount-due");
+            } else {
+              reimbCell.textContent = `$${formatCurrency(Math.abs(balance))}`;
+              reimbCell.classList.add("amount-credit");
+            }
           }
         }
       });
@@ -688,16 +1829,29 @@
 
       const totalReimbCell = document.querySelector(".total-reimbursed");
       if (totalReimbCell) {
-        const prefix = totalReimbursed < 0 ? "-$" : "$";
-        totalReimbCell.textContent = totalReimbursed
-          ? `${prefix}${formatCurrency(Math.abs(totalReimbursed))}`
-          : "";
+        totalReimbCell.textContent = "";
+        totalReimbCell.classList.remove("amount-due", "amount-credit");
+        if (totalBalance) {
+          const prefix = document.createTextNode("Club Gear Depreciation: ");
+          totalReimbCell.appendChild(prefix);
+          const valueSpan = document.createElement("span");
+          if (totalBalance > 0) {
+            valueSpan.textContent = `(${formatCurrency(totalBalance)})`;
+            valueSpan.classList.add("amount-due");
+          } else {
+            valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+            valueSpan.classList.add("amount-credit");
+          }
+          totalReimbCell.appendChild(valueSpan);
+        }
       }
 
       const clubIncomeCell = document.getElementById("club-income-value");
       if (clubIncomeCell) {
         clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
       }
+
+      syncSharedGearMasterToggleState();
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
@@ -737,8 +1891,51 @@
       renderTable();
     });
 
+    document.getElementById("save-csv").addEventListener("click", () => {
+      downloadAttendanceCsv();
+    });
+
+    const loadCsvInput = document.getElementById("load-csv-input");
+    document.getElementById("load-csv").addEventListener("click", () => {
+      loadCsvInput.value = "";
+      loadCsvInput.click();
+    });
+
+    loadCsvInput.addEventListener("change", (event) => {
+      const [file] = event.target.files;
+      if (!file) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result;
+          const textContent = typeof result === "string" ? result : new TextDecoder().decode(result);
+          loadTableFromCsvContent(textContent);
+        } catch (error) {
+          console.error("Could not load CSV", error);
+          window.alert("Could not load CSV. Please check the file format.");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    const notifyButton = document.getElementById("notify-button");
+    if (notifyButton) {
+      notifyButton.addEventListener("click", () => {
+        openNotifyWindow();
+      });
+    }
+
     document.getElementById("add-row").addEventListener("click", () => {
       participants.push({ name: "", bold: false, notes: "" });
+      if (sharedGearMasterToggle && sharedGearMasterToggle.checked) {
+        const sharedGearExpense = getSharedGearExpense();
+        if (sharedGearExpense && sharedGearExpense.enabled) {
+          ensureExpenseSize(sharedGearExpense);
+          sharedGearExpense.consumers[participants.length - 1] = true;
+        }
+      }
       renderTable();
     });
 
@@ -746,7 +1943,9 @@
       if (participants.length === 0) {
         return;
       }
-      if (!window.confirm("Remove the last participant row?")) {
+      const lastParticipant = participants[participants.length - 1];
+      const hasName = Boolean(lastParticipant?.name && lastParticipant.name.trim());
+      if (hasName && !window.confirm("Remove the last participant row?")) {
         return;
       }
       participants.pop();
@@ -768,6 +1967,34 @@
         });
       });
 
+    if (sharedGearMasterToggle) {
+      sharedGearMasterToggle.addEventListener("change", (event) => {
+        const sharedGearExpense = getSharedGearExpense();
+        if (!sharedGearExpense || !sharedGearExpense.enabled) {
+          sharedGearMasterToggle.checked = false;
+          sharedGearMasterToggle.indeterminate = false;
+          return;
+        }
+
+        ensureExpenseSize(sharedGearExpense);
+        const desired = event.target.checked;
+        for (let index = 0; index < sharedGearExpense.consumers.length; index += 1) {
+          sharedGearExpense.consumers[index] = desired;
+        }
+
+        document
+          .querySelectorAll(
+            `input[type="checkbox"][data-expense-id="${sharedGearExpense.id}"]`
+          )
+          .forEach((checkbox) => {
+            checkbox.checked = desired;
+          });
+
+        sharedGearMasterToggle.indeterminate = false;
+        recalculate();
+      });
+    }
+
     async function loadSignature() {
       try {
         const response = await fetch("signature.txt");
@@ -776,14 +2003,20 @@
         }
         const text = await response.text();
         const signatureCell = document.getElementById("signature-output");
+        const commentsField = document.getElementById("signature-comments");
+        const cleaned = text.trim();
         if (signatureCell) {
-          signatureCell.textContent = text.trim();
+          signatureCell.textContent = cleaned;
+        }
+        if (commentsField) {
+          commentsField.value = cleaned;
         }
       } catch (error) {
         console.warn("Could not load signature", error);
       }
     }
 
+    syncBaseExpenseInputsFromRates();
     loadMemberOptions();
     renderTable();
     loadSignature();
