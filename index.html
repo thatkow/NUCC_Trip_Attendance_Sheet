@@ -130,6 +130,107 @@
       background: #00a8e8;
     }
 
+    #notify-dialog {
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0;
+      max-width: min(960px, 90vw);
+      width: 100%;
+      color: #222;
+      box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.2);
+    }
+
+    #notify-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .notify-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: #fff;
+      max-height: 80vh;
+      box-sizing: border-box;
+    }
+
+    .notify-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .notify-dialog-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .notify-close-button {
+      border: none;
+      background: transparent;
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      color: #444;
+    }
+
+    .notify-close-button:hover,
+    .notify-close-button:focus {
+      color: #000;
+    }
+
+    .notify-preview {
+      border: 1px solid #d0d0d0;
+      border-radius: 0.5rem;
+      overflow: auto;
+      max-height: 45vh;
+      padding: 1rem;
+      background: #fff;
+    }
+
+    .notify-preview table {
+      background: #fff;
+    }
+
+    .notify-preview input,
+    .notify-preview textarea,
+    .notify-preview select,
+    .notify-preview button {
+      pointer-events: none;
+    }
+
+    .notify-domains {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .notify-domain-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notify-domain-group label {
+      font-weight: 600;
+    }
+
+    .notify-domain-textarea {
+      width: 100%;
+      min-height: 4rem;
+      resize: vertical;
+      font: inherit;
+      padding: 0.5rem;
+      border: 1px solid #bdbdbd;
+      border-radius: 0.4rem;
+      background: #f9f9f9;
+    }
+
+    .notify-domain-textarea[readonly] {
+      background: #f3f3f3;
+    }
+
     .attendance-table input[type="text"],
     .attendance-table input[type="number"],
     .attendance-table textarea,
@@ -292,6 +393,7 @@
         <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
         <button class="control-button" type="button" id="save-csv">Save CSV</button>
         <button class="control-button" type="button" id="load-csv">Load CSV</button>
+        <button class="control-button" type="button" id="notify-button">Notify</button>
       </div>
     </div>
     <div class="top-section-right">
@@ -316,6 +418,24 @@
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
+
+  <dialog id="notify-dialog" aria-labelledby="notify-dialog-title">
+    <div class="notify-container">
+      <div class="notify-dialog-header">
+        <h2 id="notify-dialog-title">Notify Members</h2>
+        <button
+          type="button"
+          class="notify-close-button"
+          id="notify-close"
+          aria-label="Close notify dialog"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="notify-preview" id="notify-preview"></div>
+      <div class="notify-domains" id="notify-domain-groups"></div>
+    </div>
+  </dialog>
 
   <section>
     <table class="club-income-table">
@@ -352,6 +472,7 @@
     document.body.appendChild(nameDatalist);
 
     let memberNames = [];
+    let memberRecords = [];
 
     const participants = [{ name: "", bold: false, notes: "" }];
 
@@ -416,6 +537,170 @@
       selectElement.value = "";
     }
 
+    function cloneNodeWithFormValues(node) {
+      const clone = node.cloneNode(true);
+      const originals = node.querySelectorAll("input, textarea, select");
+      const clones = clone.querySelectorAll("input, textarea, select");
+      originals.forEach((element, index) => {
+        const cloned = clones[index];
+        if (!cloned) {
+          return;
+        }
+        if (cloned.tagName === "INPUT") {
+          const input = element;
+          const cloneInput = cloned;
+          if (input.type === "checkbox" || input.type === "radio") {
+            cloneInput.checked = input.checked;
+          } else {
+            cloneInput.value = input.value;
+          }
+        } else if (cloned.tagName === "TEXTAREA" || cloned.tagName === "SELECT") {
+          cloned.value = element.value;
+        }
+      });
+      return clone;
+    }
+
+    function stripIds(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        node.removeAttribute("id");
+        node
+          .querySelectorAll("[id]")
+          .forEach((element) => element.removeAttribute("id"));
+      }
+      return node;
+    }
+
+    function buildDomainContactGroups() {
+      const domainMap = new Map();
+      memberRecords.forEach((record) => {
+        const contactValue = record.contact;
+        if (!contactValue) {
+          return;
+        }
+        String(contactValue)
+          .split(/[;,\s]+/)
+          .map((piece) => piece.trim())
+          .filter(Boolean)
+          .forEach((entry) => {
+            const normalizedEntry = entry.toLowerCase();
+            const atIndex = normalizedEntry.lastIndexOf("@");
+            if (atIndex === -1 || atIndex === normalizedEntry.length - 1) {
+              return;
+            }
+            const domain = normalizedEntry.slice(atIndex + 1);
+            if (!domainMap.has(domain)) {
+              domainMap.set(domain, new Map());
+            }
+            const contactsForDomain = domainMap.get(domain);
+            if (!contactsForDomain.has(normalizedEntry)) {
+              contactsForDomain.set(normalizedEntry, entry);
+            }
+          });
+      });
+
+      return new Map(
+        Array.from(domainMap.entries()).sort(([domainA], [domainB]) =>
+          domainA.localeCompare(domainB)
+        )
+      );
+    }
+
+    function renderNotifyPreview() {
+      const preview = document.getElementById("notify-preview");
+      if (!preview) {
+        return;
+      }
+      preview.innerHTML = "";
+
+      const sections = [];
+      const topSection = document.querySelector(".top-section");
+      if (topSection) {
+        sections.push(topSection);
+      }
+      const attendanceTable = document.getElementById("attendance-table");
+      if (attendanceTable) {
+        sections.push(attendanceTable);
+      }
+      const summarySection = document.querySelector("section");
+      if (summarySection) {
+        sections.push(summarySection);
+      }
+
+      sections.forEach((section) => {
+        const clone = stripIds(cloneNodeWithFormValues(section));
+        if (clone) {
+          preview.appendChild(clone);
+        }
+      });
+    }
+
+    function renderDomainGroups() {
+      const container = document.getElementById("notify-domain-groups");
+      if (!container) {
+        return;
+      }
+      container.innerHTML = "";
+
+      const domainGroups = buildDomainContactGroups();
+      if (domainGroups.size === 0) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.textContent = "No member contact information available.";
+        container.appendChild(emptyMessage);
+        return;
+      }
+
+      domainGroups.forEach((contactsMap, domain) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "notify-domain-group";
+
+        const label = document.createElement("label");
+        label.textContent = `${domain} (${contactsMap.size})`;
+        wrapper.appendChild(label);
+
+        const textarea = document.createElement("textarea");
+        textarea.className = "notify-domain-textarea";
+        textarea.readOnly = true;
+        const contacts = Array.from(contactsMap.values()).sort((a, b) =>
+          a.localeCompare(b)
+        );
+        textarea.value = contacts.join(", ");
+        textarea.setAttribute("aria-label", `Contacts for ${domain}`);
+        textarea.addEventListener("focus", () => {
+          textarea.select();
+        });
+        wrapper.appendChild(textarea);
+
+        container.appendChild(wrapper);
+      });
+    }
+
+    function openNotifyDialog() {
+      const dialog = document.getElementById("notify-dialog");
+      if (!dialog) {
+        return;
+      }
+      renderNotifyPreview();
+      renderDomainGroups();
+      if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog.setAttribute("open", "open");
+      }
+    }
+
+    function closeNotifyDialog() {
+      const dialog = document.getElementById("notify-dialog");
+      if (!dialog) {
+        return;
+      }
+      if (typeof dialog.close === "function") {
+        dialog.close();
+      } else {
+        dialog.removeAttribute("open");
+      }
+    }
+
     async function loadMemberOptions() {
       try {
         const response = await fetch("members.csv");
@@ -423,24 +708,28 @@
           return;
         }
         const text = await response.text();
+        const rows = parseCsv(text);
+        const records = [];
         const names = new Set();
-        text.split(/\r?\n/).forEach((line, index) => {
-          if (!line.trim()) {
+
+        rows.forEach((row, index) => {
+          if (!row || row.length === 0) {
             return;
           }
-          const [firstColumn] = line.split(",");
-          if (!firstColumn) {
+          const rawName = (row[0] || "").trim().replace(/^"(.+)"$/, "$1");
+          if (!rawName) {
             return;
           }
-          const cleaned = firstColumn.trim().replace(/^"(.+)"$/, "$1");
-          if (!cleaned) {
+          if (index === 0 && /^(name|names)$/i.test(rawName)) {
             return;
           }
-          if (index === 0 && /^(name|names)$/i.test(cleaned)) {
-            return;
-          }
-          names.add(cleaned);
+          const contactRaw = row.length > 1 ? row[1] : "";
+          const contact = typeof contactRaw === "string" ? contactRaw.trim() : String(contactRaw || "").trim();
+          records.push({ name: rawName, contact });
+          names.add(rawName);
         });
+
+        memberRecords = records;
         memberNames = Array.from(names).sort((a, b) => a.localeCompare(b));
 
         nameDatalist.innerHTML = "";
@@ -1131,6 +1420,39 @@
       };
       reader.readAsText(file);
     });
+
+    const notifyButton = document.getElementById("notify-button");
+    if (notifyButton) {
+      notifyButton.addEventListener("click", () => {
+        openNotifyDialog();
+      });
+    }
+
+    const notifyClose = document.getElementById("notify-close");
+    if (notifyClose) {
+      notifyClose.addEventListener("click", () => {
+        closeNotifyDialog();
+      });
+    }
+
+    const notifyDialog = document.getElementById("notify-dialog");
+    if (notifyDialog) {
+      notifyDialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        closeNotifyDialog();
+      });
+      notifyDialog.addEventListener("click", (event) => {
+        const rect = notifyDialog.getBoundingClientRect();
+        const isInDialog =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+        if (!isInDialog) {
+          closeNotifyDialog();
+        }
+      });
+    }
 
     document.getElementById("add-row").addEventListener("click", () => {
       participants.push({ name: "", bold: false, notes: "" });
