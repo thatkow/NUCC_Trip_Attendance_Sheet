@@ -1452,10 +1452,26 @@
       nameHeader.textContent = "Name";
       headerRow.appendChild(nameHeader);
 
+      function getExpenseHeaderLabel(expense) {
+        if (!expense) {
+          return "";
+        }
+        if (isDirectChargeExpense(expense)) {
+          if (expense.key === "personal-gear") {
+            return "Hired Personal Gear?";
+          }
+          if (expense.key === "shared-gear") {
+            return "Used Shared Gear?";
+          }
+          return `${expense.name}?`;
+        }
+        return `${expense.name} ($)`;
+      }
+
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
         const directCharge = isDirectChargeExpense(expense);
-        amountHeader.textContent = `${expense.name} ($)`;
+        amountHeader.textContent = getExpenseHeaderLabel(expense);
         amountHeader.dataset.expenseId = expense.id;
         amountHeader.dataset.directCharge = directCharge ? "true" : "false";
         headerRow.appendChild(amountHeader);
@@ -1464,6 +1480,7 @@
           const consumeHeader = document.createElement("th");
           consumeHeader.className = "consume-header";
           consumeHeader.dataset.expenseId = expense.id;
+          consumeHeader.textContent = "Inc?";
           headerRow.appendChild(consumeHeader);
         }
       });
