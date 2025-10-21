@@ -305,7 +305,17 @@
     <button class="control-button" type="button" id="remove-row">Remove Row</button>
     <button class="control-button" type="button" id="add-expense">Add Expense</button>
     <button class="control-button" type="button" id="remove-expense">Remove Expense</button>
+    <button class="control-button" type="button" id="save-csv">Save CSV</button>
+    <button class="control-button" type="button" id="load-csv">Load CSV</button>
   </div>
+
+  <input
+    type="file"
+    id="load-csv-input"
+    accept=".csv,text/csv"
+    style="position: absolute; left: -10000px;"
+    aria-hidden="true"
+  />
 
   <section>
     <table class="club-income-table">
@@ -455,6 +465,242 @@
       if (Math.abs(value) < 1e-9) return "0";
       const fixed = Number(value).toFixed(2);
       return fixed.replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+    }
+
+    function toCsvValue(value) {
+      if (value === null || value === undefined) {
+        return "";
+      }
+      const stringValue = String(value);
+      if (/[",\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    }
+
+    function buildTableCsv() {
+      const activeExpenses = getActiveExpenses();
+      const header = ["Name"];
+      activeExpenses.forEach((expense) => {
+        header.push(`${expense.name} Amount`);
+        header.push(`${expense.name} Consumer`);
+      });
+      header.push("Notes");
+
+      const rows = [header];
+      participants.forEach((participant, personIndex) => {
+        const row = [participant.name || ""];
+        activeExpenses.forEach((expense) => {
+          ensureExpenseSize(expense);
+          const amount = expense.amounts[personIndex];
+          row.push(amount === "" || amount === null || amount === undefined ? "" : String(amount));
+          row.push(expense.consumers[personIndex] ? "1" : "0");
+        });
+        row.push(participant.notes || "");
+        rows.push(row);
+      });
+
+      return rows.map((row) => row.map(toCsvValue).join(",")).join("\r\n");
+    }
+
+    function downloadAttendanceCsv() {
+      const csvContent = buildTableCsv();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "attendance-table.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let currentRow = [];
+      let currentValue = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+
+        if (inQuotes) {
+          if (char === '"') {
+            if (text[i + 1] === '"') {
+              currentValue += '"';
+              i += 1;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            currentValue += char;
+          }
+        } else if (char === '"') {
+          inQuotes = true;
+        } else if (char === ",") {
+          currentRow.push(currentValue);
+          currentValue = "";
+        } else if (char === "\n") {
+          currentRow.push(currentValue);
+          rows.push(currentRow);
+          currentRow = [];
+          currentValue = "";
+        } else if (char !== "\r") {
+          currentValue += char;
+        }
+      }
+
+      currentRow.push(currentValue);
+      rows.push(currentRow);
+
+      return rows.filter((row) => row.some((value) => value && value.trim() !== ""));
+    }
+
+    function normalizeConsumerValue(value) {
+      if (value === null || value === undefined) {
+        return false;
+      }
+      const normalized = String(value).trim().toLowerCase();
+      if (!normalized) {
+        return false;
+      }
+      return ["1", "true", "yes", "y", "checked", "x"].includes(normalized);
+    }
+
+    function syncExpenseToggleStates() {
+      document
+        .querySelectorAll('.expense-toggle-group input[type="checkbox"]')
+        .forEach((checkbox) => {
+          const key = checkbox.dataset.expenseKey;
+          const expense = baseExpenses.find((item) => item.key === key);
+          if (expense) {
+            checkbox.checked = expense.enabled;
+          }
+        });
+    }
+
+    function loadTableFromCsvContent(text) {
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        window.alert("CSV file is empty.");
+        return;
+      }
+
+      const header = rows[0];
+      if (!header.length || header[0].trim().toLowerCase() !== "name") {
+        window.alert('CSV first column must be labeled "Name".');
+        return;
+      }
+
+      if (header.length < 2 || header[header.length - 1].trim().toLowerCase() !== "notes") {
+        window.alert('CSV must include a final column labeled "Notes".');
+        return;
+      }
+
+      const expenseEntries = [];
+      let columnIndex = 1;
+      while (columnIndex < header.length - 1) {
+        const amountHeader = header[columnIndex];
+        const consumerHeader = header[columnIndex + 1];
+        if (amountHeader === undefined || consumerHeader === undefined) {
+          break;
+        }
+        const match = amountHeader.match(/^(.*) Amount$/);
+        if (!match || consumerHeader !== `${match[1]} Consumer`) {
+          window.alert(
+            'Expense headers must follow the pattern "<Expense Name> Amount" and "<Expense Name> Consumer".'
+          );
+          return;
+        }
+        const expenseName = match[1];
+        expenseEntries.push({
+          name: expenseName,
+          amountIndex: columnIndex,
+          consumerIndex: columnIndex + 1
+        });
+        columnIndex += 2;
+      }
+
+      if (columnIndex !== header.length - 1) {
+        window.alert("CSV columns could not be interpreted.");
+        return;
+      }
+
+      const dataRows = rows.slice(1);
+      participants.length = 0;
+
+      dataRows.forEach((row) => {
+        const nameValue = row[0] ? row[0].trim() : "";
+        const notesIndex = header.length - 1;
+        const notesValue = row[notesIndex] !== undefined ? row[notesIndex] : "";
+        participants.push({ name: nameValue, bold: false, notes: notesValue });
+      });
+
+      if (participants.length === 0) {
+        participants.push({ name: "", bold: false, notes: "" });
+      }
+
+      const includedExpenses = new Set(expenseEntries.map((entry) => entry.name));
+
+      baseExpenses.forEach((expense) => {
+        if (includedExpenses.has(expense.name)) {
+          expense.enabled = true;
+        } else {
+          expense.enabled = false;
+          expense.amounts = participants.map(() => "");
+          expense.consumers = participants.map(() => true);
+        }
+      });
+
+      for (let index = customExpenses.length - 1; index >= 0; index -= 1) {
+        if (!includedExpenses.has(customExpenses[index].name)) {
+          customExpenses.splice(index, 1);
+        }
+      }
+
+      const expenseObjects = expenseEntries.map((entry) => {
+        const baseExpense = baseExpenses.find((expense) => expense.name === entry.name);
+        if (baseExpense) {
+          return baseExpense;
+        }
+        const existingCustom = customExpenses.find((expense) => expense.name === entry.name);
+        if (existingCustom) {
+          return existingCustom;
+        }
+        const newExpense = createExpense({ name: entry.name });
+        customExpenses.push(newExpense);
+        return newExpense;
+      });
+
+      expenseObjects.forEach((expense, expenseIndex) => {
+        const amounts = [];
+        const consumers = [];
+        dataRows.forEach((row, rowIndex) => {
+          const amountRaw = row[expenseEntries[expenseIndex].amountIndex];
+          const consumerRaw = row[expenseEntries[expenseIndex].consumerIndex];
+          const trimmedAmount = amountRaw === undefined ? "" : String(amountRaw).trim();
+          if (trimmedAmount === "") {
+            amounts[rowIndex] = "";
+          } else {
+            const numericAmount = Number(trimmedAmount);
+            amounts[rowIndex] = Number.isFinite(numericAmount) ? numericAmount : "";
+          }
+          consumers[rowIndex] = normalizeConsumerValue(consumerRaw);
+        });
+        while (amounts.length < participants.length) {
+          amounts.push("");
+          consumers.push(true);
+        }
+        expense.amounts = amounts;
+        expense.consumers = consumers;
+        if (baseExpenses.includes(expense)) {
+          expense.enabled = true;
+        }
+      });
+
+      syncExpenseToggleStates();
+      renderTable();
     }
 
     function ensureExpenseSize(expense) {
@@ -839,6 +1085,35 @@
       }
       customExpenses.splice(index, 1);
       renderTable();
+    });
+
+    document.getElementById("save-csv").addEventListener("click", () => {
+      downloadAttendanceCsv();
+    });
+
+    const loadCsvInput = document.getElementById("load-csv-input");
+    document.getElementById("load-csv").addEventListener("click", () => {
+      loadCsvInput.value = "";
+      loadCsvInput.click();
+    });
+
+    loadCsvInput.addEventListener("change", (event) => {
+      const [file] = event.target.files;
+      if (!file) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result;
+          const textContent = typeof result === "string" ? result : new TextDecoder().decode(result);
+          loadTableFromCsvContent(textContent);
+        } catch (error) {
+          console.error("Could not load CSV", error);
+          window.alert("Could not load CSV. Please check the file format.");
+        }
+      };
+      reader.readAsText(file);
     });
 
     document.getElementById("add-row").addEventListener("click", () => {
