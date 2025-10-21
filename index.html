@@ -782,6 +782,7 @@
         nameInput.value = participant.name;
         nameInput.setAttribute("list", nameListId);
         nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+        nameInput.dataset.personIndex = String(personIndex);
 
         const nameSelect = document.createElement("select");
         nameSelect.className = "name-select";
@@ -797,6 +798,21 @@
             nameSelect.value = "";
           }
           recalculate();
+        });
+
+        nameInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Tab" || event.shiftKey) {
+            return;
+          }
+          const nextIndex = personIndex + 1;
+          const nextInput = document.querySelector(
+            `.name-input[data-person-index="${nextIndex}"]`
+          );
+          if (!nextInput) {
+            return;
+          }
+          event.preventDefault();
+          nextInput.focus();
         });
 
         nameSelect.addEventListener("change", (event) => {
