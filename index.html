@@ -23,14 +23,13 @@
     }
 
     .top-section-left {
-      flex: 0 1 60%;
-      max-width: 60%;
+      flex: 2 1 0;
       min-width: 320px;
     }
 
     .top-section-right {
-      flex: 0 1 40%;
-      max-width: 40%;
+      flex: 1 1 33%;
+      max-width: 33%;
       min-width: 260px;
       display: flex;
       align-items: stretch;
@@ -38,23 +37,21 @@
 
     .top-section-right-inner {
       display: flex;
-      align-items: stretch;
+      align-items: center;
       justify-content: center;
       gap: 1.25rem;
       height: 100%;
       width: 100%;
       flex-wrap: nowrap;
-      min-width: 0;
     }
 
     .miner-image {
       display: block;
-      flex: 1 1 auto;
-      min-width: 0;
-      max-width: 100%;
+      flex: 2 1 0;
+      max-width: clamp(220px, 70%, 360px);
       max-height: 100%;
       height: auto;
-      width: 100%;
+      width: auto;
       object-fit: contain;
       align-self: center;
     }
@@ -66,10 +63,9 @@
       justify-content: center;
       gap: 0.85rem;
       text-align: center;
-      flex: 0 0 220px;
-      max-width: 240px;
-      min-width: 200px;
       width: 100%;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     .banking-logo {
@@ -482,7 +478,6 @@
 
       .top-section-left {
         flex-basis: 100%;
-        max-width: none;
       }
 
       .top-section-right {
@@ -508,8 +503,6 @@
       .banking-info {
         align-items: center;
         max-width: 100%;
-        min-width: 0;
-        flex: 0 1 auto;
       }
 
       .banking-details {
