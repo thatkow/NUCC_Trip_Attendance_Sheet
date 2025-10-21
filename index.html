@@ -345,6 +345,16 @@
       white-space: nowrap;
     }
 
+    .amount-due {
+      color: #b00020;
+      font-weight: 600;
+    }
+
+    .amount-credit {
+      color: #1b5e20;
+      font-weight: 600;
+    }
+
     .expense-total,
     .expense-consumers {
       font-size: 0.85rem;
@@ -476,24 +486,6 @@
     aria-hidden="true"
   />
 
-  <dialog id="notify-dialog" aria-labelledby="notify-dialog-title">
-    <div class="notify-container">
-      <div class="notify-dialog-header">
-        <h2 id="notify-dialog-title">Notify Members</h2>
-        <button
-          type="button"
-          class="notify-close-button"
-          id="notify-close"
-          aria-label="Close notify dialog"
-        >
-          &times;
-        </button>
-      </div>
-      <div class="notify-preview" id="notify-preview"></div>
-      <div class="notify-domains" id="notify-domain-groups"></div>
-    </div>
-  </dialog>
-
   <section>
     <table class="club-income-table">
       <tbody>
@@ -541,14 +533,30 @@
     const participants = [{ name: "", bold: false, notes: "" }];
 
     const baseExpenseDefinitions = [
-      { key: "personal-gear", name: "Personal Gear", enabled: true },
-      { key: "shared-gear", name: "Shared Gear", enabled: true },
-      { key: "petrol", name: "Petrol", enabled: true }
+      {
+        key: "personal-gear",
+        name: "Personal Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      {
+        key: "shared-gear",
+        name: "Shared Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      { key: "petrol", name: "Petrol", enabled: true, defaultConsumerState: true }
     ];
 
     let customExpenseCounter = 0;
 
-    function createExpense({ name, key = null, type = "custom", enabled = true }) {
+    function createExpense({
+      name,
+      key = null,
+      type = "custom",
+      enabled = true,
+      defaultConsumerState = true
+    }) {
       const id = type === "base" ? `base-${key}` : `custom-${customExpenseCounter++}`;
       return {
         id,
@@ -556,8 +564,9 @@
         key,
         type,
         enabled,
+        defaultConsumerState,
         amounts: participants.map(() => ""),
-        consumers: participants.map(() => true)
+        consumers: participants.map(() => defaultConsumerState)
       };
     }
 
@@ -581,6 +590,13 @@
         return false;
       }
       return Object.prototype.hasOwnProperty.call(baseExpenseRates, expense.key);
+    }
+
+    function isDirectChargeExpense(expense) {
+      if (!expense) {
+        return false;
+      }
+      return expense.key === "personal-gear" || expense.key === "shared-gear";
     }
 
     function applyBaseExpenseRateToExpense(key) {
@@ -788,12 +804,26 @@
       );
     }
 
-    function renderNotifyPreview() {
-      const preview = document.getElementById("notify-preview");
-      if (!preview) {
-        return;
-      }
-      preview.innerHTML = "";
+    function sanitizeNotifyClone(node) {
+      node
+        .querySelectorAll(
+          ".expense-toggle-group, .base-expense-inputs, .controls, button"
+        )
+        .forEach((element) => element.remove());
+
+      node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        const replacement = node.ownerDocument.createElement("span");
+        replacement.className = "notify-check";
+        replacement.textContent = checkbox.checked ? "✔" : "";
+        checkbox.replaceWith(replacement);
+      });
+
+      return node;
+    }
+
+    function buildNotifyPreview(targetDocument) {
+      const container = targetDocument.createElement("div");
+      container.className = "notify-preview";
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
@@ -811,36 +841,38 @@
 
       sections.forEach((section) => {
         const clone = stripIds(cloneNodeWithFormValues(section));
-        if (clone) {
-          preview.appendChild(clone);
+        if (!clone) {
+          return;
         }
+        sanitizeNotifyClone(clone);
+        const imported = targetDocument.importNode(clone, true);
+        container.appendChild(imported);
       });
+
+      return container;
     }
 
-    function renderDomainGroups() {
-      const container = document.getElementById("notify-domain-groups");
-      if (!container) {
-        return;
-      }
-      container.innerHTML = "";
+    function buildDomainGroupsSection(targetDocument) {
+      const container = targetDocument.createElement("div");
+      container.className = "notify-domains";
 
       const domainGroups = buildDomainContactGroups();
       if (domainGroups.size === 0) {
-        const emptyMessage = document.createElement("p");
+        const emptyMessage = targetDocument.createElement("p");
         emptyMessage.textContent = "No member contact information available.";
         container.appendChild(emptyMessage);
-        return;
+        return container;
       }
 
       domainGroups.forEach((contactsMap, domain) => {
-        const wrapper = document.createElement("div");
+        const wrapper = targetDocument.createElement("div");
         wrapper.className = "notify-domain-group";
 
-        const label = document.createElement("label");
+        const label = targetDocument.createElement("label");
         label.textContent = `${domain} (${contactsMap.size})`;
         wrapper.appendChild(label);
 
-        const textarea = document.createElement("textarea");
+        const textarea = targetDocument.createElement("textarea");
         textarea.className = "notify-domain-textarea";
         textarea.readOnly = true;
         const contacts = Array.from(contactsMap.values()).sort((a, b) =>
@@ -855,32 +887,39 @@
 
         container.appendChild(wrapper);
       });
+
+      return container;
     }
 
-    function openNotifyDialog() {
-      const dialog = document.getElementById("notify-dialog");
-      if (!dialog) {
+    function openNotifyWindow() {
+      const notifyWindow = window.open("", "_blank");
+      if (!notifyWindow) {
+        window.alert("Please allow pop-ups to view the notify preview.");
         return;
       }
-      renderNotifyPreview();
-      renderDomainGroups();
-      if (typeof dialog.showModal === "function") {
-        dialog.showModal();
-      } else {
-        dialog.setAttribute("open", "open");
-      }
-    }
 
-    function closeNotifyDialog() {
-      const dialog = document.getElementById("notify-dialog");
-      if (!dialog) {
-        return;
+      const { document: notifyDocument } = notifyWindow;
+      const baseHref = document.baseURI;
+      notifyDocument.open();
+      notifyDocument.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><base href="${baseHref}"><title>Notify Members</title></head><body></body></html>`
+      );
+      notifyDocument.close();
+
+      const baseStyle = document.querySelector("style");
+      if (baseStyle) {
+        notifyDocument.head.appendChild(notifyDocument.importNode(baseStyle, true));
       }
-      if (typeof dialog.close === "function") {
-        dialog.close();
-      } else {
-        dialog.removeAttribute("open");
-      }
+
+      const extraStyle = notifyDocument.createElement("style");
+      extraStyle.textContent =
+        ".notify-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
+      notifyDocument.head.appendChild(extraStyle);
+
+      const main = notifyDocument.createElement("main");
+      main.appendChild(buildNotifyPreview(notifyDocument));
+      main.appendChild(buildDomainGroupsSection(notifyDocument));
+      notifyDocument.body.appendChild(main);
     }
 
     async function loadMemberOptions() {
@@ -963,7 +1002,16 @@
         const row = [participant.name || ""];
         activeExpenses.forEach((expense) => {
           ensureExpenseSize(expense);
-          const amount = expense.amounts[personIndex];
+          let amount = expense.amounts[personIndex];
+          if (isDirectChargeExpense(expense)) {
+            const rateValue = baseExpenseRates[expense.key];
+            if (rateValue === "" || !expense.consumers[personIndex]) {
+              amount = "";
+            } else {
+              const numericRate = Number(rateValue);
+              amount = Number.isFinite(numericRate) ? numericRate : "";
+            }
+          }
           row.push(amount === "" || amount === null || amount === undefined ? "" : String(amount));
           row.push(expense.consumers[personIndex] ? "1" : "0");
         });
@@ -1120,7 +1168,13 @@
         } else {
           expense.enabled = false;
           expense.amounts = participants.map(() => "");
-          expense.consumers = participants.map(() => true);
+          const defaultState = Object.prototype.hasOwnProperty.call(
+            expense,
+            "defaultConsumerState"
+          )
+            ? expense.defaultConsumerState
+            : true;
+          expense.consumers = participants.map(() => defaultState);
         }
       });
 
@@ -1161,7 +1215,13 @@
         });
         while (amounts.length < participants.length) {
           amounts.push("");
-          consumers.push(true);
+          const defaultState = Object.prototype.hasOwnProperty.call(
+            expense,
+            "defaultConsumerState"
+          )
+            ? expense.defaultConsumerState
+            : true;
+          consumers.push(defaultState);
         }
         expense.amounts = amounts;
         expense.consumers = consumers;
@@ -1204,7 +1264,13 @@
         }
       }
       while (expense.consumers.length < needed) {
-        expense.consumers.push(true);
+        const defaultState = Object.prototype.hasOwnProperty.call(
+          expense,
+          "defaultConsumerState"
+        )
+          ? expense.defaultConsumerState
+          : true;
+        expense.consumers.push(defaultState);
       }
       while (expense.amounts.length > needed) {
         expense.amounts.pop();
@@ -1230,14 +1296,18 @@
 
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
+        const directCharge = isDirectChargeExpense(expense);
         amountHeader.textContent = `${expense.name} ($)`;
         amountHeader.dataset.expenseId = expense.id;
+        amountHeader.dataset.directCharge = directCharge ? "true" : "false";
         headerRow.appendChild(amountHeader);
 
-        const consumeHeader = document.createElement("th");
-        consumeHeader.className = "consume-header";
-        consumeHeader.dataset.expenseId = expense.id;
-        headerRow.appendChild(consumeHeader);
+        if (!directCharge) {
+          const consumeHeader = document.createElement("th");
+          consumeHeader.className = "consume-header";
+          consumeHeader.dataset.expenseId = expense.id;
+          headerRow.appendChild(consumeHeader);
+        }
       });
 
       const breakdownHeader = document.createElement("th");
@@ -1249,7 +1319,7 @@
       headerRow.appendChild(feeHeader);
 
       const reimbHeader = document.createElement("th");
-      reimbHeader.textContent = "Reimbursed ($)";
+      reimbHeader.textContent = "Reimburse(Due)";
       headerRow.appendChild(reimbHeader);
 
       const notesHeader = document.createElement("th");
@@ -1328,7 +1398,33 @@
 
         activeExpenses.forEach((expense) => {
           ensureExpenseSize(expense);
+          const directCharge = isDirectChargeExpense(expense);
           const amountCell = document.createElement("td");
+          if (directCharge) {
+            amountCell.classList.add("consume-cell");
+            const consumeInput = document.createElement("input");
+            consumeInput.type = "checkbox";
+            consumeInput.checked = Boolean(expense.consumers[personIndex]);
+            consumeInput.dataset.expenseId = expense.id;
+            consumeInput.dataset.personIndex = String(personIndex);
+            consumeInput.setAttribute(
+              "aria-label",
+              `${expense.name} consumed`
+            );
+            consumeInput.addEventListener("change", (event) => {
+              const targetExpense = findExpenseById(event.target.dataset.expenseId);
+              if (!targetExpense) {
+                return;
+              }
+              const index = Number(event.target.dataset.personIndex);
+              targetExpense.consumers[index] = event.target.checked;
+              recalculate();
+            });
+            amountCell.appendChild(consumeInput);
+            row.appendChild(amountCell);
+            return;
+          }
+
           const amountInput = document.createElement("input");
           amountInput.type = "number";
           amountInput.step = "0.01";
@@ -1371,6 +1467,10 @@
           consumeInput.checked = Boolean(expense.consumers[personIndex]);
           consumeInput.dataset.expenseId = expense.id;
           consumeInput.dataset.personIndex = String(personIndex);
+          consumeInput.setAttribute(
+            "aria-label",
+            `${expense.name} consumed`
+          );
           consumeInput.addEventListener("change", (event) => {
             const targetExpense = findExpenseById(event.target.dataset.expenseId);
             if (!targetExpense) {
@@ -1427,13 +1527,18 @@
         totalCell.className = "expense-total";
         totalCell.dataset.expenseId = expense.id;
         totalCell.textContent = "Total: $0";
-        row.appendChild(totalCell);
+        if (isDirectChargeExpense(expense)) {
+          totalCell.dataset.directCharge = "true";
+          row.appendChild(totalCell);
+        } else {
+          row.appendChild(totalCell);
 
-        const consumersCell = document.createElement("td");
-        consumersCell.className = "expense-consumers";
-        consumersCell.dataset.expenseId = expense.id;
-        consumersCell.textContent = "Consumers: 0";
-        row.appendChild(consumersCell);
+          const consumersCell = document.createElement("td");
+          consumersCell.className = "expense-consumers";
+          consumersCell.dataset.expenseId = expense.id;
+          consumersCell.textContent = "Consumers: 0";
+          row.appendChild(consumersCell);
+        }
       });
 
       const breakdownCell = document.createElement("td");
@@ -1464,6 +1569,56 @@
 
       activeExpenses.forEach((expense) => {
         ensureExpenseSize(expense);
+        if (isDirectChargeExpense(expense)) {
+          const rateValue = baseExpenseRates[expense.key];
+          const numericRate = Number(rateValue);
+          const perPersonCharge = Number.isFinite(numericRate) ? numericRate : 0;
+          let total = 0;
+          let consumerCount = 0;
+
+          participants.forEach((participant, personIndex) => {
+            const hasName = Boolean(participant.name && participant.name.trim());
+            if (!hasName) {
+              return;
+            }
+            if (expense.consumers[personIndex]) {
+              consumerCount += 1;
+              const charge = perPersonCharge;
+              participantFeeTotals[personIndex] += charge;
+              if (charge > 0) {
+                participantFeeBreakdowns[personIndex].push({
+                  name: expense.name,
+                  value: charge
+                });
+              }
+              if (charge > 0) {
+                clubIncome += charge;
+              }
+              total += charge;
+            }
+          });
+
+          const totalCell = document.querySelector(
+            `.expense-total[data-expense-id="${expense.id}"]`
+          );
+          if (totalCell) {
+            const totalText = formatCurrency(total);
+            totalCell.innerHTML = `Total: $${totalText || "0"}`;
+            const summary = document.createElement("div");
+            summary.textContent = `Selected: ${consumerCount}`;
+            totalCell.appendChild(summary);
+          }
+
+          const consumersCell = document.querySelector(
+            `.expense-consumers[data-expense-id="${expense.id}"]`
+          );
+          if (consumersCell) {
+            consumersCell.textContent = `Consumers: ${consumerCount}`;
+          }
+
+          return;
+        }
+
         let total = 0;
         const consumers = [];
 
@@ -1512,17 +1667,17 @@
       });
 
       let totalFees = 0;
-      let totalReimbursed = 0;
+      let totalBalance = 0;
 
       participants.forEach((participant, personIndex) => {
         const hasName = Boolean(participant.name && participant.name.trim());
         const fee = hasName ? participantFeeTotals[personIndex] : 0;
         const contributions = hasName ? participantContributions[personIndex] : 0;
-        const reimbursed = contributions - fee;
+        const balance = fee - contributions;
 
         if (hasName) {
           totalFees += fee;
-          totalReimbursed += reimbursed;
+          totalBalance += balance;
         }
 
         const breakdownCell = document.querySelector(
@@ -1551,11 +1706,16 @@
           feeCell.textContent = hasName && fee ? `$${formatCurrency(fee)}` : "";
         }
         if (reimbCell) {
-          if (hasName && reimbursed) {
-            const prefix = reimbursed < 0 ? "-$" : "$";
-            reimbCell.textContent = `${prefix}${formatCurrency(Math.abs(reimbursed))}`;
-          } else {
-            reimbCell.textContent = "";
+          reimbCell.textContent = "";
+          reimbCell.classList.remove("amount-due", "amount-credit");
+          if (hasName && balance) {
+            if (balance > 0) {
+              reimbCell.textContent = `(${formatCurrency(balance)})`;
+              reimbCell.classList.add("amount-due");
+            } else {
+              reimbCell.textContent = `$${formatCurrency(Math.abs(balance))}`;
+              reimbCell.classList.add("amount-credit");
+            }
           }
         }
       });
@@ -1567,10 +1727,17 @@
 
       const totalReimbCell = document.querySelector(".total-reimbursed");
       if (totalReimbCell) {
-        const prefix = totalReimbursed < 0 ? "-$" : "$";
-        totalReimbCell.textContent = totalReimbursed
-          ? `${prefix}${formatCurrency(Math.abs(totalReimbursed))}`
-          : "";
+        totalReimbCell.textContent = "";
+        totalReimbCell.classList.remove("amount-due", "amount-credit");
+        if (totalBalance) {
+          if (totalBalance > 0) {
+            totalReimbCell.textContent = `(${formatCurrency(totalBalance)})`;
+            totalReimbCell.classList.add("amount-due");
+          } else {
+            totalReimbCell.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+            totalReimbCell.classList.add("amount-credit");
+          }
+        }
       }
 
       const clubIncomeCell = document.getElementById("club-income-value");
@@ -1648,33 +1815,7 @@
     const notifyButton = document.getElementById("notify-button");
     if (notifyButton) {
       notifyButton.addEventListener("click", () => {
-        openNotifyDialog();
-      });
-    }
-
-    const notifyClose = document.getElementById("notify-close");
-    if (notifyClose) {
-      notifyClose.addEventListener("click", () => {
-        closeNotifyDialog();
-      });
-    }
-
-    const notifyDialog = document.getElementById("notify-dialog");
-    if (notifyDialog) {
-      notifyDialog.addEventListener("cancel", (event) => {
-        event.preventDefault();
-        closeNotifyDialog();
-      });
-      notifyDialog.addEventListener("click", (event) => {
-        const rect = notifyDialog.getBoundingClientRect();
-        const isInDialog =
-          event.clientX >= rect.left &&
-          event.clientX <= rect.right &&
-          event.clientY >= rect.top &&
-          event.clientY <= rect.bottom;
-        if (!isInDialog) {
-          closeNotifyDialog();
-        }
+        openNotifyWindow();
       });
     }
 
