@@ -42,14 +42,18 @@
       gap: 1.25rem;
       height: 100%;
       width: 100%;
+      flex-wrap: nowrap;
     }
 
     .miner-image {
       display: block;
-      max-width: 220px;
-      height: 100%;
+      flex: 2 1 0;
+      max-width: clamp(220px, 70%, 360px);
+      max-height: 100%;
+      height: auto;
       width: auto;
       object-fit: contain;
+      align-self: center;
     }
 
     .banking-info {
@@ -60,6 +64,8 @@
       gap: 0.85rem;
       text-align: center;
       width: 100%;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     .banking-logo {
@@ -297,6 +303,12 @@
       background: #fff;
     }
 
+    .summary-description {
+      font-size: 0.95rem;
+      margin: 0 0 1rem;
+      line-height: 1.5;
+    }
+
     .summary-preview table {
       background: #fff;
     }
@@ -426,12 +438,14 @@
       }
 
       .miner-image {
-        max-width: 200px;
+        flex: 0 0 auto;
+        max-width: 240px;
         height: auto;
       }
 
       .banking-info {
         align-items: center;
+        max-width: 100%;
       }
 
       .banking-details {
@@ -839,11 +853,36 @@
           const cloneInput = cloned;
           if (input.type === "checkbox" || input.type === "radio") {
             cloneInput.checked = input.checked;
+            if (input.checked) {
+              cloneInput.setAttribute("checked", "");
+            } else {
+              cloneInput.removeAttribute("checked");
+            }
           } else {
             cloneInput.value = input.value;
+            if (input.value === "") {
+              cloneInput.removeAttribute("value");
+            } else {
+              cloneInput.setAttribute("value", input.value);
+            }
           }
-        } else if (cloned.tagName === "TEXTAREA" || cloned.tagName === "SELECT") {
+        } else if (cloned.tagName === "TEXTAREA") {
           cloned.value = element.value;
+          cloned.textContent = element.value;
+        } else if (cloned.tagName === "SELECT") {
+          cloned.value = element.value;
+          const selectedValues = Array.from(element.options)
+            .filter((option) => option.selected)
+            .map((option) => option.value);
+          cloned.querySelectorAll("option").forEach((option) => {
+            const isSelected = selectedValues.includes(option.value);
+            option.selected = isSelected;
+            if (isSelected) {
+              option.setAttribute("selected", "");
+            } else {
+              option.removeAttribute("selected");
+            }
+          });
         }
       });
       return clone;
@@ -876,9 +915,52 @@
       return node;
     }
 
+    function formatSummaryDate(rawValue) {
+      if (!rawValue) {
+        return "";
+      }
+
+      const parsed = new Date(rawValue);
+      if (Number.isNaN(parsed.getTime())) {
+        return rawValue;
+      }
+
+      try {
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
+          parsed
+        );
+      } catch (error) {
+        return rawValue;
+      }
+    }
+
     function buildSummaryPreview(targetDocument) {
       const container = targetDocument.createElement("div");
       container.className = "summary-preview";
+
+      const summaryDescription = targetDocument.createElement("p");
+      summaryDescription.className = "summary-description";
+
+      const tripLocationValue = (tripLocationInput?.value || "").trim();
+      const formattedDate = formatSummaryDate(tripDateInput?.value || "");
+      const dateValue = formattedDate || tripDateInput?.value || "";
+
+      let descriptionText = "Cost accounting for";
+      if (tripLocationValue) {
+        descriptionText += ` ${tripLocationValue}`;
+      } else {
+        descriptionText += " this trip";
+      }
+
+      if (dateValue) {
+        descriptionText += ` on ${dateValue}`;
+      }
+
+      descriptionText +=
+        " for various expenses shown below. If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right. Those with Reimburse values, colored green, will receive payment from the club account.";
+
+      summaryDescription.textContent = descriptionText;
+      container.appendChild(summaryDescription);
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
