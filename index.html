@@ -317,6 +317,10 @@
       margin-bottom: 0;
     }
 
+    .summary-description .summary-line-gold {
+      color: #b8860b;
+    }
+
     .summary-description .summary-line-green {
       color: #1b5e20;
     }
@@ -958,6 +962,7 @@
       summaryDescription.className = "summary-description";
 
       const tripLocationValue = (tripLocationInput?.value || "").trim();
+      const tripLeaderValue = (tripLeaderInput?.value || "").trim();
       const formattedDate = formatSummaryDate(tripDateInput?.value || "");
       const dateValue = formattedDate || tripDateInput?.value || "";
 
@@ -975,6 +980,12 @@
       const descriptionParagraph = targetDocument.createElement("p");
       descriptionParagraph.textContent = `${descriptionSegments.join(" ")} for various expenses shown below.`;
 
+      const leaderParagraph = targetDocument.createElement("p");
+      leaderParagraph.className = "summary-line-gold";
+      leaderParagraph.textContent = tripLeaderValue
+        ? `Trip leader, ${tripLeaderValue}, please send a copy of this Trip Attendance Sheet to the treasurer to track dues and transfer reimbursements.`
+        : "Trip leader, please send a copy of this Trip Attendance Sheet to the treasurer to track dues and transfer reimbursements.";
+
       const reimburseParagraph = targetDocument.createElement("p");
       reimburseParagraph.className = "summary-line-green";
       reimburseParagraph.textContent =
@@ -986,6 +997,7 @@
         "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
 
       summaryDescription.appendChild(descriptionParagraph);
+      summaryDescription.appendChild(leaderParagraph);
       summaryDescription.appendChild(reimburseParagraph);
       summaryDescription.appendChild(oweParagraph);
 
@@ -2138,7 +2150,7 @@
 
       const bankingTag = getDateLocationTag();
       if (bankingTag) {
-        lines.push({ label: "Banking Tag", value: bankingTag });
+        lines.push({ label: "Tag", value: bankingTag });
       }
 
       container.innerHTML = "";
