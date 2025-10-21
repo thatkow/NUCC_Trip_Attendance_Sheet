@@ -167,6 +167,22 @@
       resize: vertical;
     }
 
+    .name-input-wrapper {
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    .name-select {
+      min-width: 8rem;
+      padding: 0.3rem;
+      border: 1px solid #bdbdbd;
+      border-radius: 0.3rem;
+      background: #fff;
+      font: inherit;
+      height: 100%;
+    }
+
     .name-input.bold {
       font-weight: 600;
     }
@@ -323,6 +339,8 @@
     nameDatalist.id = nameListId;
     document.body.appendChild(nameDatalist);
 
+    let memberNames = [];
+
     const participants = [{ name: "", bold: false, notes: "" }];
 
     const baseExpenseDefinitions = [
@@ -367,6 +385,29 @@
       return getAllExpenses().find((expense) => expense.id === id);
     }
 
+    function populateNameSelect(selectElement, selectedValue = "") {
+      const current = selectedValue || selectElement.value;
+      selectElement.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select member";
+      selectElement.appendChild(placeholder);
+
+      memberNames.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        selectElement.appendChild(option);
+      });
+
+      if (current && memberNames.includes(current)) {
+        selectElement.value = current;
+      } else {
+        selectElement.value = "";
+      }
+    }
+
     async function loadMemberOptions() {
       try {
         const response = await fetch("members.csv");
@@ -392,14 +433,20 @@
           }
           names.add(cleaned);
         });
+        memberNames = Array.from(names).sort((a, b) => a.localeCompare(b));
+
         nameDatalist.innerHTML = "";
-        Array.from(names)
-          .sort((a, b) => a.localeCompare(b))
-          .forEach((name) => {
-            const option = document.createElement("option");
-            option.value = name;
-            nameDatalist.appendChild(option);
-          });
+        memberNames.forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          nameDatalist.appendChild(option);
+        });
+
+        document
+          .querySelectorAll(".name-select")
+          .forEach((select) => populateNameSelect(select, select.value));
+
+        renderTable();
       } catch (error) {
         console.warn("Could not load member list", error);
       }
@@ -483,16 +530,41 @@
         const row = document.createElement("tr");
 
         const nameCell = document.createElement("td");
+        const nameWrapper = document.createElement("div");
+        nameWrapper.className = "name-input-wrapper";
+
         const nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.value = participant.name;
         nameInput.setAttribute("list", nameListId);
         nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+
+        const nameSelect = document.createElement("select");
+        nameSelect.className = "name-select";
+        nameSelect.dataset.personIndex = String(personIndex);
+        populateNameSelect(nameSelect, participant.name);
+
         nameInput.addEventListener("input", (event) => {
-          participants[personIndex].name = event.target.value;
+          const value = event.target.value;
+          participants[personIndex].name = value;
+          if (memberNames.includes(value)) {
+            nameSelect.value = value;
+          } else {
+            nameSelect.value = "";
+          }
           recalculate();
         });
-        nameCell.appendChild(nameInput);
+
+        nameSelect.addEventListener("change", (event) => {
+          const value = event.target.value;
+          participants[personIndex].name = value;
+          nameInput.value = value;
+          recalculate();
+        });
+
+        nameWrapper.appendChild(nameInput);
+        nameWrapper.appendChild(nameSelect);
+        nameCell.appendChild(nameWrapper);
         row.appendChild(nameCell);
 
         activeExpenses.forEach((expense) => {
