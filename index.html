@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NUCC Trip Attendance Sheet</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    h1 {
+      margin-top: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 1.2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      background: #fff;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 0.4rem 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    thead th {
+      background: #eaeaea;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    caption {
+      text-align: left;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .meta-table th,
+    .meta-table td {
+      border-color: #999;
+    }
+
+    .meta-table thead th {
+      background: #f0f0f0;
+    }
+
+    .add-expense {
+      margin: 0 0 0.75rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.95rem;
+      border-radius: 0.4rem;
+      border: 1px solid #0077b6;
+      background: #0096c7;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .add-expense:hover {
+      background: #00a8e8;
+    }
+
+    .attendance-table input[type="text"],
+    .attendance-table input[type="number"],
+    .attendance-table textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font: inherit;
+      padding: 0.3rem;
+      border: 1px solid #bdbdbd;
+      border-radius: 0.3rem;
+    }
+
+    .attendance-table input[type="number"] {
+      text-align: right;
+    }
+
+    .attendance-table textarea {
+      min-height: 2.2rem;
+      resize: vertical;
+    }
+
+    .name-input.bold {
+      font-weight: 600;
+    }
+
+    .totals-row td {
+      font-weight: 600;
+      background: #f4f4f4;
+    }
+
+    .totals-row em {
+      font-weight: 400;
+      color: #666;
+    }
+
+    .fee-breakdown,
+    .fee-value,
+    .reimbursed-value {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .expense-total,
+    .expense-consumers {
+      font-size: 0.85rem;
+      color: #333;
+    }
+
+    @media (max-width: 1100px) {
+      body {
+        padding: 1rem;
+      }
+
+      table {
+        font-size: 0.9rem;
+      }
+
+      .add-expense {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>NUCC Trip Attendance Sheet</h1>
+
+  <table class="meta-table">
+    <tbody>
+      <tr>
+        <th scope="row">Dates</th>
+        <td>2025-07-27</td>
+        <th scope="row">Location</th>
+        <td>Drum</td>
+      </tr>
+      <tr>
+        <th scope="row">Trip Leader</th>
+        <td>Rowan</td>
+        <th scope="row">Trip fee</th>
+        <td>$</td>
+        <th scope="row">Driver reimbursement</th>
+        <td>$</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button class="add-expense" type="button" id="add-expense">Add Expense</button>
+
+  <table class="attendance-table" id="attendance-table">
+    <thead>
+      <tr id="attendance-header">
+        <th>Name</th>
+      </tr>
+    </thead>
+    <tbody id="attendance-body"></tbody>
+    <tfoot id="attendance-foot"></tfoot>
+  </table>
+
+  <section>
+    <h2>Calculation of Trip Fee</h2>
+    <table>
+      <tbody>
+        <tr>
+          <th scope="row">Petrol = $ × cars = $94</th>
+          <td>15.7</td>
+        </tr>
+        <tr>
+          <th scope="row">Gear Maintenance = $10 pp</th>
+          <td></td>
+        </tr>
+        <tr>
+          <th scope="row">Dinner 40</th>
+          <td>5.7</td>
+        </tr>
+        <tr>
+          <th scope="row"></th>
+          <td></td>
+        </tr>
+        <tr>
+          <th scope="row"></th>
+          <td></td>
+        </tr>
+        <tr>
+          <th scope="row"></th>
+          <td></td>
+        </tr>
+        <tr>
+          <th scope="row">Total cost per person</th>
+          <td><strong>$</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <tbody>
+        <tr>
+          <th scope="row">Club Income (fees − costs)</th>
+          <td></td>
+          <th scope="row" style="text-align: right;">Signature</th>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <tbody>
+        <tr>
+          <th scope="row">Comments</th>
+          <th scope="row">Equipment</th>
+        </tr>
+        <tr>
+          <td style="height: 4rem;"></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    const participants = [
+      { name: "Rowan", bold: true, notes: "" },
+      { name: "Floyd", bold: true, notes: "" },
+      { name: "Britt", bold: true, notes: "drove herself" },
+      { name: "Alek", bold: true, notes: "" },
+      { name: "Carl", bold: true, notes: "" },
+      { name: "Lauren", bold: true, notes: "" },
+      { name: "Lachie", bold: true, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" },
+      { name: "", bold: false, notes: "" }
+    ];
+
+    let expenses = [
+      {
+        name: "Member Fee",
+        amounts: [5, 5, 5, 5, 5, 5, 5, "", "", "", "", "", "", "", ""],
+        consumers: [true, true, true, true, true, true, true, false, false, false, false, false, false, false, false]
+      },
+      {
+        name: "Guest Surcharge",
+        amounts: [0, 5, 0, 0, 0, 0, 0, "", "", "", "", "", "", "", ""],
+        consumers: [false, true, false, false, false, false, false, false, false, false, false, false, false, false, false]
+      },
+      {
+        name: "Petrol",
+        amounts: [30, 0, 0, 15.1, 0, 20, 29.1, "", "", "", "", "", "", "", ""],
+        consumers: [true, true, false, true, true, true, true, false, false, false, false, false, false, false, false]
+      },
+      {
+        name: "Dinner",
+        amounts: [9, 0, 0, 0, 0, 15, 15.9, "", "", "", "", "", "", "", ""],
+        consumers: [true, true, true, true, true, true, true, false, false, false, false, false, false, false, false]
+      }
+    ];
+
+    function formatCurrency(value) {
+      if (!Number.isFinite(value)) return "";
+      const fixed = value.toFixed(2);
+      return fixed.replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+    }
+
+    function ensureExpenseSize(expense) {
+      const needed = participants.length;
+      while (expense.amounts.length < needed) {
+        expense.amounts.push("");
+      }
+      while (expense.consumers.length < needed) {
+        expense.consumers.push(false);
+      }
+    }
+
+    function renderTable() {
+      const headerRow = document.getElementById("attendance-header");
+      headerRow.innerHTML = "";
+      const nameHeader = document.createElement("th");
+      nameHeader.textContent = "Name";
+      headerRow.appendChild(nameHeader);
+
+      expenses.forEach((expense, index) => {
+        ensureExpenseSize(expense);
+        const amountHeader = document.createElement("th");
+        amountHeader.textContent = `${expense.name} ($)`;
+        amountHeader.dataset.expenseIndex = index;
+        headerRow.appendChild(amountHeader);
+
+        const consumeHeader = document.createElement("th");
+        consumeHeader.textContent = `Consumed ${expense.name}`;
+        consumeHeader.dataset.expenseIndex = index;
+        headerRow.appendChild(consumeHeader);
+      });
+
+      const breakdownHeader = document.createElement("th");
+      breakdownHeader.textContent = "Fee Breakdown";
+      headerRow.appendChild(breakdownHeader);
+
+      const feeHeader = document.createElement("th");
+      feeHeader.textContent = "Fee ($)";
+      headerRow.appendChild(feeHeader);
+
+      const reimbHeader = document.createElement("th");
+      reimbHeader.textContent = "Reimbursed ($)";
+      headerRow.appendChild(reimbHeader);
+
+      const notesHeader = document.createElement("th");
+      notesHeader.textContent = "Notes";
+      headerRow.appendChild(notesHeader);
+
+      renderBody();
+      renderFooter();
+      recalculate();
+    }
+
+    function renderBody() {
+      const tbody = document.getElementById("attendance-body");
+      tbody.innerHTML = "";
+
+      participants.forEach((participant, personIndex) => {
+        const row = document.createElement("tr");
+
+        const nameCell = document.createElement("td");
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.value = participant.name;
+        nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+        nameInput.addEventListener("input", (event) => {
+          participants[personIndex].name = event.target.value;
+        });
+        nameCell.appendChild(nameInput);
+        row.appendChild(nameCell);
+
+        expenses.forEach((expense, expenseIndex) => {
+          ensureExpenseSize(expense);
+          const amountCell = document.createElement("td");
+          const amountInput = document.createElement("input");
+          amountInput.type = "number";
+          amountInput.step = "0.01";
+          amountInput.value = expense.amounts[personIndex] !== "" ? expense.amounts[personIndex] : "";
+          amountInput.addEventListener("input", (event) => {
+            const value = event.target.value.trim();
+            expenses[expenseIndex].amounts[personIndex] = value === "" ? "" : Number(value);
+            recalculate();
+          });
+          amountCell.appendChild(amountInput);
+          row.appendChild(amountCell);
+
+          const consumeCell = document.createElement("td");
+          const consumeInput = document.createElement("input");
+          consumeInput.type = "checkbox";
+          consumeInput.checked = Boolean(expense.consumers[personIndex]);
+          consumeInput.addEventListener("change", (event) => {
+            expenses[expenseIndex].consumers[personIndex] = event.target.checked;
+            recalculate();
+          });
+          consumeCell.appendChild(consumeInput);
+          row.appendChild(consumeCell);
+        });
+
+        const breakdownCell = document.createElement("td");
+        breakdownCell.className = "fee-breakdown";
+        breakdownCell.dataset.personIndex = personIndex;
+        row.appendChild(breakdownCell);
+
+        const feeCell = document.createElement("td");
+        feeCell.className = "fee-value";
+        feeCell.dataset.personIndex = personIndex;
+        row.appendChild(feeCell);
+
+        const reimbCell = document.createElement("td");
+        reimbCell.className = "reimbursed-value";
+        reimbCell.dataset.personIndex = personIndex;
+        row.appendChild(reimbCell);
+
+        const notesCell = document.createElement("td");
+        const notesInput = document.createElement("textarea");
+        notesInput.value = participant.notes;
+        notesInput.addEventListener("input", (event) => {
+          participants[personIndex].notes = event.target.value;
+        });
+        notesCell.appendChild(notesInput);
+        row.appendChild(notesCell);
+
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderFooter() {
+      const tfoot = document.getElementById("attendance-foot");
+      tfoot.innerHTML = "";
+      const row = document.createElement("tr");
+      row.className = "totals-row";
+
+      const blankCell = document.createElement("td");
+      blankCell.textContent = "";
+      row.appendChild(blankCell);
+
+      expenses.forEach((expense, index) => {
+        const totalCell = document.createElement("td");
+        totalCell.className = "expense-total";
+        totalCell.dataset.expenseIndex = index;
+        totalCell.textContent = "Total: $0";
+        row.appendChild(totalCell);
+
+        const consumersCell = document.createElement("td");
+        consumersCell.className = "expense-consumers";
+        consumersCell.dataset.expenseIndex = index;
+        consumersCell.textContent = "Consumers: 0";
+        row.appendChild(consumersCell);
+      });
+
+      const breakdownCell = document.createElement("td");
+      breakdownCell.innerHTML = "<strong>Total</strong>";
+      row.appendChild(breakdownCell);
+
+      const feeCell = document.createElement("td");
+      feeCell.className = "fee-value total-fee";
+      row.appendChild(feeCell);
+
+      const reimbCell = document.createElement("td");
+      reimbCell.className = "reimbursed-value total-reimbursed";
+      row.appendChild(reimbCell);
+
+      const noteCell = document.createElement("td");
+      noteCell.innerHTML = "<em>(if filled, continue on back)</em>";
+      row.appendChild(noteCell);
+
+      tfoot.appendChild(row);
+    }
+
+    function recalculate() {
+      const participantFeeTotals = new Array(participants.length).fill(0);
+      const participantFeeBreakdowns = participants.map(() => []);
+      const participantContributions = new Array(participants.length).fill(0);
+
+      expenses.forEach((expense, expenseIndex) => {
+        let total = 0;
+        const consumers = [];
+        expense.amounts.forEach((amount, personIndex) => {
+          if (amount !== "" && Number.isFinite(Number(amount))) {
+            total += Number(amount);
+            participantContributions[personIndex] += Number(amount);
+          }
+          if (expense.consumers[personIndex]) {
+            consumers.push(personIndex);
+          }
+        });
+
+        const consumerCount = consumers.length;
+        const share = consumerCount > 0 ? total / consumerCount : 0;
+
+        consumers.forEach((personIndex) => {
+          participantFeeTotals[personIndex] += share;
+          if (share > 0) {
+            participantFeeBreakdowns[personIndex].push(formatCurrency(share));
+          }
+        });
+
+        const totalCell = document.querySelector(`.expense-total[data-expense-index="${expenseIndex}"]`);
+        if (totalCell) {
+          totalCell.textContent = `Total: $${formatCurrency(total)}`;
+        }
+        const consumersCell = document.querySelector(`.expense-consumers[data-expense-index="${expenseIndex}"]`);
+        if (consumersCell) {
+          const shareText = consumerCount > 0 ? `Share: $${formatCurrency(share)}` : "Share: $0";
+          consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
+        }
+      });
+
+      let totalFees = 0;
+      let totalReimbursed = 0;
+
+      participants.forEach((participant, personIndex) => {
+        const fee = participantFeeTotals[personIndex];
+        const contributions = participantContributions[personIndex];
+        const reimbursed = contributions - fee;
+        totalFees += fee;
+        totalReimbursed += reimbursed;
+
+        const breakdownCell = document.querySelector(`.fee-breakdown[data-person-index="${personIndex}"]`);
+        const feeCell = document.querySelector(`.fee-value[data-person-index="${personIndex}"]`);
+        const reimbCell = document.querySelector(`.reimbursed-value[data-person-index="${personIndex}"]`);
+
+        if (breakdownCell) {
+          const breakdown = participantFeeBreakdowns[personIndex];
+          breakdownCell.textContent = breakdown.length ? breakdown.join(" + ") : "";
+        }
+        if (feeCell) {
+          feeCell.textContent = fee ? `$${formatCurrency(fee)}` : "";
+        }
+        if (reimbCell) {
+          if (reimbursed) {
+            const prefix = reimbursed < 0 ? "-$" : "$";
+            reimbCell.textContent = `${prefix}${formatCurrency(Math.abs(reimbursed))}`;
+          } else {
+            reimbCell.textContent = "";
+          }
+        }
+      });
+
+      const totalFeeCell = document.querySelector(".total-fee");
+      if (totalFeeCell) {
+        totalFeeCell.textContent = totalFees ? `$${formatCurrency(totalFees)}` : "";
+      }
+
+      const totalReimbCell = document.querySelector(".total-reimbursed");
+      if (totalReimbCell) {
+        const prefix = totalReimbursed < 0 ? "-$" : "$";
+        totalReimbCell.textContent = totalReimbursed ? `${prefix}${formatCurrency(Math.abs(totalReimbursed))}` : "";
+      }
+    }
+
+    document.getElementById("add-expense").addEventListener("click", () => {
+      const expenseName = window.prompt("Enter a name for the new expense:");
+      if (!expenseName) {
+        return;
+      }
+      const amounts = participants.map(() => "");
+      const consumers = participants.map(() => false);
+      expenses.push({ name: expenseName.trim(), amounts, consumers });
+      renderTable();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
