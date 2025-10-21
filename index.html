@@ -16,7 +16,7 @@
     .top-section {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: stretch;
       flex-wrap: wrap;
       gap: 1.5rem;
       margin-bottom: 1.5rem;
@@ -29,13 +29,64 @@
 
     .top-section-right {
       flex: 0 0 auto;
-      text-align: right;
+      display: flex;
+      align-items: stretch;
     }
 
-    .top-section-right img {
+    .top-section-right-inner {
+      display: flex;
+      align-items: stretch;
+      gap: 1.25rem;
+      height: 100%;
+    }
+
+    .miner-image {
+      display: block;
+      max-width: 220px;
+      height: 100%;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .banking-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 0.85rem;
+      text-align: left;
+    }
+
+    .banking-logo {
       max-width: 180px;
       width: 100%;
       height: auto;
+      display: block;
+    }
+
+    .banking-details {
+      font-size: 0.95rem;
+      line-height: 1.4;
+      background: #ffffff;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
+      min-width: 200px;
+    }
+
+    .banking-details .banking-label {
+      font-weight: 600;
+      margin-right: 0.35rem;
+      color: #004d40;
+    }
+
+    .banking-details p {
+      margin: 0;
+    }
+
+    .banking-details p + p {
+      margin-top: 0.35rem;
     }
 
     .header-row {
@@ -283,8 +334,7 @@
     .attendance-table input[type="text"],
     .attendance-table input[type="number"],
     .attendance-table textarea,
-    .meta-table input[type="text"],
-    .signature-textarea {
+    .meta-table input[type="text"] {
       width: 100%;
       box-sizing: border-box;
       font: inherit;
@@ -309,11 +359,6 @@
 
     .attendance-table textarea {
       min-height: 2.2rem;
-      resize: vertical;
-    }
-
-    .signature-textarea {
-      min-height: 4.5rem;
       resize: vertical;
     }
 
@@ -372,11 +417,7 @@
       color: #333;
     }
 
-    .club-income-table th {
-      text-align: left;
-    }
-
-    .signature-cell {
+    .clerk-cell {
       min-width: 12rem;
       border-bottom: 1px solid #333;
     }
@@ -390,13 +431,33 @@
         font-size: 0.9rem;
       }
 
-      .top-section-right {
-        text-align: center;
-        width: 100%;
+      .top-section {
+        align-items: center;
       }
 
-      .top-section-right img {
-        max-width: 150px;
+      .top-section-right {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .top-section-right-inner {
+        flex-direction: column;
+        align-items: center;
+        height: auto;
+        text-align: center;
+      }
+
+      .miner-image {
+        max-width: 200px;
+        height: auto;
+      }
+
+      .banking-info {
+        align-items: center;
+      }
+
+      .banking-details {
+        text-align: left;
       }
 
       .controls {
@@ -424,8 +485,12 @@
             <td><input type="date" id="trip-date" /></td>
             <th scope="row">Location</th>
             <td><input type="text" id="trip-location" /></td>
+          </tr>
+          <tr>
             <th scope="row">Trip Leader</th>
             <td><input type="text" id="trip-leader" list="trip-leader-options" /></td>
+            <th scope="row">Clerk</th>
+            <td class="clerk-cell" id="clerk-output"></td>
           </tr>
         </tbody>
       </table>
@@ -471,7 +536,17 @@
       </div>
     </div>
     <div class="top-section-right">
-      <img src="taxminer.png" alt="Tax Miner graphic" />
+      <div class="top-section-right-inner">
+        <img
+          src="taxminer.png"
+          alt="Tax Miner graphic"
+          class="miner-image"
+        />
+        <div class="banking-info">
+          <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
+          <div class="banking-details" id="banking-details" aria-live="polite"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -500,34 +575,6 @@
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
-
-  <section>
-    <table class="club-income-table">
-      <tbody>
-        <tr>
-          <th scope="row">Club Income</th>
-          <td id="club-income-value"></td>
-          <th scope="row" style="text-align: right;">Signature</th>
-          <td class="signature-cell" id="signature-output"></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <table>
-      <tbody>
-        <tr>
-          <th scope="row">Comments</th>
-          <th scope="row">Equipment</th>
-        </tr>
-        <tr>
-          <td>
-            <textarea id="signature-comments" class="signature-textarea"></textarea>
-          </td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
 
   <script>
     const nameListId = "member-options";
@@ -1995,31 +2042,87 @@
       });
     }
 
-    async function loadSignature() {
+    async function loadBankingDetails() {
+      try {
+        const response = await fetch("banking.csv");
+        if (!response.ok) {
+          return;
+        }
+        const text = await response.text();
+        const rows = parseCsv(text);
+        if (!rows || rows.length < 2) {
+          return;
+        }
+        const headers = rows[0];
+        const values = rows[1];
+        const record = {};
+        headers.forEach((header, index) => {
+          const key = header?.trim();
+          if (!key) {
+            return;
+          }
+          record[key] = values[index] ? values[index].trim() : "";
+        });
+
+        const container = document.getElementById("banking-details");
+        if (!container) {
+          return;
+        }
+
+        container.innerHTML = "";
+
+        const lines = [
+          { label: "Name", value: record.Name },
+          { label: "BSB", value: record.BSB },
+          { label: "Account", value: record.Account }
+        ].filter((item) => item.value);
+
+        if (lines.length === 0) {
+          return;
+        }
+
+        lines.forEach((line) => {
+          const paragraph = document.createElement("p");
+          const labelSpan = document.createElement("span");
+          labelSpan.classList.add("banking-label");
+          labelSpan.textContent = `${line.label}:`;
+          const valueSpan = document.createElement("span");
+          valueSpan.textContent = line.value;
+          paragraph.appendChild(labelSpan);
+          paragraph.appendChild(valueSpan);
+          container.appendChild(paragraph);
+        });
+      } catch (error) {
+        console.warn("Could not load banking details", error);
+      }
+    }
+
+    async function loadClerk() {
       try {
         const response = await fetch("signature.txt");
         if (!response.ok) {
           return;
         }
         const text = await response.text();
-        const signatureCell = document.getElementById("signature-output");
-        const commentsField = document.getElementById("signature-comments");
+        const clerkCell = document.getElementById("clerk-output");
+        const commentsField = document.getElementById("clerk-comments");
         const cleaned = text.trim();
-        if (signatureCell) {
-          signatureCell.textContent = cleaned;
+        if (clerkCell) {
+          clerkCell.textContent = cleaned;
         }
         if (commentsField) {
           commentsField.value = cleaned;
         }
       } catch (error) {
-        console.warn("Could not load signature", error);
+        console.warn("Could not load clerk", error);
       }
     }
 
     syncBaseExpenseInputsFromRates();
     loadMemberOptions();
     renderTable();
-    loadSignature();
+    loadBankingDetails();
+    loadClerk();
   </script>
 </body>
 </html>
