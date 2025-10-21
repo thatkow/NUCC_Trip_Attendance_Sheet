@@ -28,8 +28,8 @@
     }
 
     .top-section-right {
-      flex: 1 1 33%;
-      max-width: 33%;
+      flex: 1 1 40%;
+      max-width: 40%;
       min-width: 260px;
       display: flex;
       align-items: stretch;
@@ -42,14 +42,18 @@
       gap: 1.25rem;
       height: 100%;
       width: 100%;
+      flex-wrap: nowrap;
     }
 
     .miner-image {
       display: block;
-      max-width: 220px;
-      height: 100%;
+      flex: 2 1 0;
+      max-width: clamp(220px, 70%, 360px);
+      max-height: 100%;
+      height: auto;
       width: auto;
       object-fit: contain;
+      align-self: center;
     }
 
     .banking-info {
@@ -60,6 +64,8 @@
       gap: 0.85rem;
       text-align: center;
       width: 100%;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     .banking-logo {
@@ -297,6 +303,32 @@
       background: #fff;
     }
 
+    .summary-description {
+      font-size: 0.95rem;
+      margin: 1rem 0 0;
+      line-height: 1.5;
+    }
+
+    .summary-description p {
+      margin: 0 0 0.75rem;
+    }
+
+    .summary-description p:last-child {
+      margin-bottom: 0;
+    }
+
+    .summary-description .summary-line-gold {
+      color: #b8860b;
+    }
+
+    .summary-description .summary-line-green {
+      color: #1b5e20;
+    }
+
+    .summary-description .summary-line-red {
+      color: #b00020;
+    }
+
     .summary-preview table {
       background: #fff;
     }
@@ -306,6 +338,43 @@
     .summary-preview select,
     .summary-preview button {
       pointer-events: none;
+    }
+
+    .summary-preview .summary-value,
+    .summary-preview .summary-select,
+    .summary-preview .summary-multiline {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: inherit;
+      font: inherit;
+    }
+
+    .summary-preview .summary-value {
+      display: block;
+      width: 100%;
+      flex: 1 1 auto;
+    }
+
+    .summary-preview .summary-value.summary-number {
+      text-align: right;
+    }
+
+    .summary-preview .summary-multiline {
+      display: block;
+      white-space: pre-wrap;
+    }
+
+    .summary-preview .summary-select {
+      display: inline-block;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    .summary-preview .summary-select.name-select {
+      min-width: 1.75rem;
+      text-align: center;
     }
 
     .attendance-table input[type="text"],
@@ -426,12 +495,14 @@
       }
 
       .miner-image {
-        max-width: 200px;
+        flex: 0 0 auto;
+        max-width: 240px;
         height: auto;
       }
 
       .banking-info {
         align-items: center;
+        max-width: 100%;
       }
 
       .banking-details {
@@ -839,11 +910,36 @@
           const cloneInput = cloned;
           if (input.type === "checkbox" || input.type === "radio") {
             cloneInput.checked = input.checked;
+            if (input.checked) {
+              cloneInput.setAttribute("checked", "");
+            } else {
+              cloneInput.removeAttribute("checked");
+            }
           } else {
             cloneInput.value = input.value;
+            if (input.value === "") {
+              cloneInput.removeAttribute("value");
+            } else {
+              cloneInput.setAttribute("value", input.value);
+            }
           }
-        } else if (cloned.tagName === "TEXTAREA" || cloned.tagName === "SELECT") {
+        } else if (cloned.tagName === "TEXTAREA") {
           cloned.value = element.value;
+          cloned.textContent = element.value;
+        } else if (cloned.tagName === "SELECT") {
+          cloned.value = element.value;
+          const selectedValues = Array.from(element.options)
+            .filter((option) => option.selected)
+            .map((option) => option.value);
+          cloned.querySelectorAll("option").forEach((option) => {
+            const isSelected = selectedValues.includes(option.value);
+            option.selected = isSelected;
+            if (isSelected) {
+              option.setAttribute("selected", "");
+            } else {
+              option.removeAttribute("selected");
+            }
+          });
         }
       });
       return clone;
@@ -873,12 +969,136 @@
         checkbox.replaceWith(replacement);
       });
 
+      node.querySelectorAll("textarea").forEach((textarea) => {
+        const display = node.ownerDocument.createElement("div");
+        const classes = ["summary-multiline"];
+        const existingClasses = textarea.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+        display.textContent = textarea.value || textarea.textContent || "";
+        textarea.replaceWith(display);
+      });
+
+      node.querySelectorAll("select").forEach((select) => {
+        const display = node.ownerDocument.createElement("span");
+        const classes = ["summary-select"];
+        const existingClasses = select.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+
+        const selectedOptions = Array.from(select.selectedOptions || []);
+        const textContent = selectedOptions.length
+          ? selectedOptions
+              .map((option) => (option.textContent || "").trim())
+              .filter((text) => text.length > 0)
+              .join(", ")
+          : select.value || "";
+        display.textContent = textContent;
+        select.replaceWith(display);
+      });
+
+      node.querySelectorAll("input").forEach((input) => {
+        if (input.type === "checkbox") {
+          return;
+        }
+        const display = node.ownerDocument.createElement("span");
+        const classes = ["summary-value"];
+        if (input.type === "number") {
+          classes.push("summary-number");
+        }
+        const existingClasses = input.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+        display.textContent = input.value || "";
+        input.replaceWith(display);
+      });
+
       return node;
+    }
+
+    function formatSummaryDate(rawValue) {
+      if (!rawValue) {
+        return "";
+      }
+
+      const parsed = new Date(rawValue);
+      if (Number.isNaN(parsed.getTime())) {
+        return rawValue;
+      }
+
+      try {
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
+          parsed
+        );
+      } catch (error) {
+        return rawValue;
+      }
     }
 
     function buildSummaryPreview(targetDocument) {
       const container = targetDocument.createElement("div");
       container.className = "summary-preview";
+
+      const summaryDescription = targetDocument.createElement("div");
+      summaryDescription.className = "summary-description";
+
+      const tripLocationValue = (tripLocationInput?.value || "").trim();
+      const tripLeaderValue = (tripLeaderInput?.value || "").trim();
+      const formattedDate = formatSummaryDate(tripDateInput?.value || "");
+      const dateValue = formattedDate || tripDateInput?.value || "";
+
+      const descriptionSegments = ["Cost accounting for"];
+      if (tripLocationValue) {
+        descriptionSegments.push(tripLocationValue);
+      } else {
+        descriptionSegments.push("this trip");
+      }
+
+      if (dateValue) {
+        descriptionSegments.push(`on ${dateValue}`);
+      }
+
+      const descriptionParagraph = targetDocument.createElement("p");
+      descriptionParagraph.textContent = `${descriptionSegments.join(" ")} for various expenses shown below.`;
+
+      const leaderParagraph = targetDocument.createElement("p");
+      leaderParagraph.className = "summary-line-gold";
+      leaderParagraph.textContent = tripLeaderValue
+        ? `Trip leader, ${tripLeaderValue}, please send a copy of this Trip Attendance Sheet to the treasurer to track dues and transfer reimbursements.`
+        : "Trip leader, please send a copy of this Trip Attendance Sheet to the treasurer to track dues and transfer reimbursements.";
+
+      const reimburseParagraph = targetDocument.createElement("p");
+      reimburseParagraph.className = "summary-line-green";
+      reimburseParagraph.textContent =
+        "Those with Reimburse values, colored green, will receive payment from the club account.";
+
+      const oweParagraph = targetDocument.createElement("p");
+      oweParagraph.className = "summary-line-red";
+      oweParagraph.textContent =
+        "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
+
+      summaryDescription.appendChild(descriptionParagraph);
+      summaryDescription.appendChild(leaderParagraph);
+      summaryDescription.appendChild(reimburseParagraph);
+      summaryDescription.appendChild(oweParagraph);
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
@@ -894,6 +1114,8 @@
         sections.push(summarySection);
       }
 
+      let descriptionInserted = false;
+
       sections.forEach((section) => {
         const clone = stripIds(cloneNodeWithFormValues(section));
         if (!clone) {
@@ -901,8 +1123,22 @@
         }
         sanitizeSummaryClone(clone);
         const imported = targetDocument.importNode(clone, true);
+
+        if (!descriptionInserted && section === topSection) {
+          const metaTable = imported.querySelector(".meta-table");
+          if (metaTable) {
+            metaTable.insertAdjacentElement("afterend", summaryDescription);
+          } else {
+            imported.insertBefore(summaryDescription, imported.firstChild);
+          }
+          descriptionInserted = true;
+        }
         container.appendChild(imported);
       });
+
+      if (!descriptionInserted) {
+        container.insertBefore(summaryDescription, container.firstChild);
+      }
 
       return container;
     }
@@ -1315,10 +1551,26 @@
       nameHeader.textContent = "Name";
       headerRow.appendChild(nameHeader);
 
+      function getExpenseHeaderLabel(expense) {
+        if (!expense) {
+          return "";
+        }
+        if (isDirectChargeExpense(expense)) {
+          if (expense.key === "personal-gear") {
+            return "Hired Personal Gear?";
+          }
+          if (expense.key === "shared-gear") {
+            return "Used Shared Gear?";
+          }
+          return `${expense.name}?`;
+        }
+        return `${expense.name} ($)`;
+      }
+
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
         const directCharge = isDirectChargeExpense(expense);
-        amountHeader.textContent = `${expense.name} ($)`;
+        amountHeader.textContent = getExpenseHeaderLabel(expense);
         amountHeader.dataset.expenseId = expense.id;
         amountHeader.dataset.directCharge = directCharge ? "true" : "false";
         headerRow.appendChild(amountHeader);
@@ -1327,6 +1579,7 @@
           const consumeHeader = document.createElement("th");
           consumeHeader.className = "consume-header";
           consumeHeader.dataset.expenseId = expense.id;
+          consumeHeader.textContent = "Inc?";
           headerRow.appendChild(consumeHeader);
         }
       });
@@ -2013,7 +2266,7 @@
 
       const bankingTag = getDateLocationTag();
       if (bankingTag) {
-        lines.push({ label: "Banking Tag", value: bankingTag });
+        lines.push({ label: "Tag", value: bankingTag });
       }
 
       container.innerHTML = "";
