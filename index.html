@@ -305,8 +305,24 @@
 
     .summary-description {
       font-size: 0.95rem;
-      margin: 0 0 1rem;
+      margin: 1rem 0 0;
       line-height: 1.5;
+    }
+
+    .summary-description p {
+      margin: 0 0 0.75rem;
+    }
+
+    .summary-description p:last-child {
+      margin-bottom: 0;
+    }
+
+    .summary-description .summary-line-green {
+      color: #1b5e20;
+    }
+
+    .summary-description .summary-line-red {
+      color: #b00020;
     }
 
     .summary-preview table {
@@ -938,29 +954,42 @@
       const container = targetDocument.createElement("div");
       container.className = "summary-preview";
 
-      const summaryDescription = targetDocument.createElement("p");
+      const summaryDescription = targetDocument.createElement("div");
       summaryDescription.className = "summary-description";
 
       const tripLocationValue = (tripLocationInput?.value || "").trim();
       const formattedDate = formatSummaryDate(tripDateInput?.value || "");
       const dateValue = formattedDate || tripDateInput?.value || "";
 
-      let descriptionText = "Cost accounting for";
+      const descriptionSegments = ["Cost accounting for"];
       if (tripLocationValue) {
-        descriptionText += ` ${tripLocationValue}`;
+        descriptionSegments.push(tripLocationValue);
       } else {
-        descriptionText += " this trip";
+        descriptionSegments.push("this trip");
       }
 
       if (dateValue) {
-        descriptionText += ` on ${dateValue}`;
+        descriptionSegments.push(`on ${dateValue}`);
       }
 
-      descriptionText +=
-        " for various expenses shown below. If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right. Those with Reimburse values, colored green, will receive payment from the club account.";
+      const descriptionParagraph = targetDocument.createElement("p");
+      descriptionParagraph.textContent = `${descriptionSegments.join(
+        " "
+      )} for various expenses shown below.`;
 
-      summaryDescription.textContent = descriptionText;
-      container.appendChild(summaryDescription);
+      const oweParagraph = targetDocument.createElement("p");
+      oweParagraph.className = "summary-line-green";
+      oweParagraph.textContent =
+        "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
+
+      const reimburseParagraph = targetDocument.createElement("p");
+      reimburseParagraph.className = "summary-line-red";
+      reimburseParagraph.textContent =
+        "Those with Reimburse values, colored green, will receive payment from the club account.";
+
+      summaryDescription.appendChild(descriptionParagraph);
+      summaryDescription.appendChild(oweParagraph);
+      summaryDescription.appendChild(reimburseParagraph);
 
       const sections = [];
       const topSection = document.querySelector(".top-section");
@@ -976,6 +1005,8 @@
         sections.push(summarySection);
       }
 
+      let descriptionInserted = false;
+
       sections.forEach((section) => {
         const clone = stripIds(cloneNodeWithFormValues(section));
         if (!clone) {
@@ -983,8 +1014,22 @@
         }
         sanitizeSummaryClone(clone);
         const imported = targetDocument.importNode(clone, true);
+
+        if (!descriptionInserted && section === topSection) {
+          const metaTable = imported.querySelector(".meta-table");
+          if (metaTable) {
+            metaTable.insertAdjacentElement("afterend", summaryDescription);
+          } else {
+            imported.insertBefore(summaryDescription, imported.firstChild);
+          }
+          descriptionInserted = true;
+        }
         container.appendChild(imported);
       });
+
+      if (!descriptionInserted) {
+        container.insertBefore(summaryDescription, container.firstChild);
+      }
 
       return container;
     }
