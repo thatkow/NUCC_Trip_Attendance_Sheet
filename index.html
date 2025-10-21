@@ -427,11 +427,11 @@
       <div class="base-expense-inputs">
         <label for="personal-gear-rate">
           Personal Gear per person ($)
-          <input type="number" id="personal-gear-rate" step="0.01" />
+          <input type="number" id="personal-gear-rate" step="0.01" value="5" />
         </label>
         <label for="shared-gear-rate">
           Shared Gear per person ($)
-          <input type="number" id="shared-gear-rate" step="0.01" />
+          <input type="number" id="shared-gear-rate" step="0.01" value="5" />
         </label>
       </div>
 
@@ -532,8 +532,8 @@
     let memberRecords = [];
 
     const baseExpenseRates = {
-      "personal-gear": "",
-      "shared-gear": ""
+      "personal-gear": 5,
+      "shared-gear": 5
     };
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
@@ -571,6 +571,10 @@
       "personal-gear": document.getElementById("personal-gear-rate"),
       "shared-gear": document.getElementById("shared-gear-rate")
     };
+
+    baseExpenseKeys.forEach((key) => {
+      applyBaseExpenseRateToExpense(key);
+    });
 
     function isBaseRateControlled(expense) {
       if (!expense || !expense.key) {
