@@ -340,6 +340,43 @@
       pointer-events: none;
     }
 
+    .summary-preview .summary-value,
+    .summary-preview .summary-select,
+    .summary-preview .summary-multiline {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: inherit;
+      font: inherit;
+    }
+
+    .summary-preview .summary-value {
+      display: block;
+      width: 100%;
+      flex: 1 1 auto;
+    }
+
+    .summary-preview .summary-value.summary-number {
+      text-align: right;
+    }
+
+    .summary-preview .summary-multiline {
+      display: block;
+      white-space: pre-wrap;
+    }
+
+    .summary-preview .summary-select {
+      display: inline-block;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    .summary-preview .summary-select.name-select {
+      min-width: 1.75rem;
+      text-align: center;
+    }
+
     .attendance-table input[type="text"],
     .attendance-table input[type="number"],
     .attendance-table textarea,
@@ -930,6 +967,68 @@
         replacement.className = "summary-check";
         replacement.textContent = checkbox.checked ? "✔" : "";
         checkbox.replaceWith(replacement);
+      });
+
+      node.querySelectorAll("textarea").forEach((textarea) => {
+        const display = node.ownerDocument.createElement("div");
+        const classes = ["summary-multiline"];
+        const existingClasses = textarea.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+        display.textContent = textarea.value || textarea.textContent || "";
+        textarea.replaceWith(display);
+      });
+
+      node.querySelectorAll("select").forEach((select) => {
+        const display = node.ownerDocument.createElement("span");
+        const classes = ["summary-select"];
+        const existingClasses = select.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+
+        const selectedOptions = Array.from(select.selectedOptions || []);
+        const textContent = selectedOptions.length
+          ? selectedOptions
+              .map((option) => (option.textContent || "").trim())
+              .filter((text) => text.length > 0)
+              .join(", ")
+          : select.value || "";
+        display.textContent = textContent;
+        select.replaceWith(display);
+      });
+
+      node.querySelectorAll("input").forEach((input) => {
+        if (input.type === "checkbox") {
+          return;
+        }
+        const display = node.ownerDocument.createElement("span");
+        const classes = ["summary-value"];
+        if (input.type === "number") {
+          classes.push("summary-number");
+        }
+        const existingClasses = input.className.trim();
+        if (existingClasses) {
+          classes.push(
+            ...existingClasses
+              .split(/\s+/)
+              .filter((className) => className.length > 0)
+          );
+        }
+        display.className = classes.join(" ");
+        display.textContent = input.value || "";
+        input.replaceWith(display);
       });
 
       return node;
