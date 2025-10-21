@@ -79,6 +79,19 @@
       text-align: center;
     }
 
+    .reimburse-header {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .reimburse-label {
+      color: #1b5e20;
+    }
+
+    .reimburse-header .due-label {
+      color: #b00020;
+      margin-left: 0.25rem;
+    }
+
     caption {
       text-align: left;
       margin-bottom: 0.5rem;
@@ -221,8 +234,6 @@
     .notify-preview {
       border: 1px solid #d0d0d0;
       border-radius: 0.5rem;
-      overflow: auto;
-      max-height: 45vh;
       padding: 1rem;
       background: #fff;
     }
@@ -410,11 +421,11 @@
         <tbody>
           <tr>
             <th scope="row">Date</th>
-            <td><input type="date" value="2025-07-27" /></td>
+            <td><input type="date" id="trip-date" /></td>
             <th scope="row">Location</th>
-            <td><input type="text" value="Drum" /></td>
+            <td><input type="text" id="trip-location" /></td>
             <th scope="row">Trip Leader</th>
-            <td><input type="text" value="Rowan" /></td>
+            <td><input type="text" id="trip-leader" list="trip-leader-options" /></td>
           </tr>
         </tbody>
       </table>
@@ -431,6 +442,10 @@
         <label>
           <input type="checkbox" data-expense-key="petrol" checked />
           Petrol
+        </label>
+        <label>
+          <input type="checkbox" id="shared-gear-master-toggle" />
+          Shared Gear (All)
         </label>
       </div>
 
@@ -520,6 +535,16 @@
     nameDatalist.id = nameListId;
     document.body.appendChild(nameDatalist);
 
+    const tripLeaderListId = "trip-leader-options";
+    const tripLeaderDatalist = document.createElement("datalist");
+    tripLeaderDatalist.id = tripLeaderListId;
+    document.body.appendChild(tripLeaderDatalist);
+
+    const tripLeaderInput = document.getElementById("trip-leader");
+    if (tripLeaderInput) {
+      tripLeaderInput.setAttribute("list", tripLeaderListId);
+    }
+
     let memberNames = [];
     let memberRecords = [];
 
@@ -530,7 +555,11 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = [{ name: "", bold: false, notes: "" }];
+    const participants = Array.from({ length: 5 }, () => ({
+      name: "",
+      bold: false,
+      notes: ""
+    }));
 
     const baseExpenseDefinitions = [
       {
@@ -547,6 +576,10 @@
       },
       { key: "petrol", name: "Petrol", enabled: true, defaultConsumerState: true }
     ];
+
+    const sharedGearMasterToggle = document.getElementById(
+      "shared-gear-master-toggle"
+    );
 
     let customExpenseCounter = 0;
 
@@ -575,6 +608,13 @@
     );
 
     const customExpenses = [];
+
+    const tripDateInput = document.getElementById("trip-date");
+    if (tripDateInput && !tripDateInput.value) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      tripDateInput.value = now.toISOString().slice(0, 10);
+    }
 
     const baseExpenseRateInputs = {
       "personal-gear": document.getElementById("personal-gear-rate"),
@@ -710,6 +750,10 @@
         ...baseExpenses.filter((expense) => expense.enabled),
         ...customExpenses
       ];
+    }
+
+    function getSharedGearExpense() {
+      return baseExpenses.find((expense) => expense.key === "shared-gear");
     }
 
     function findExpenseById(id) {
@@ -954,10 +998,13 @@
         memberNames = Array.from(names).sort((a, b) => a.localeCompare(b));
 
         nameDatalist.innerHTML = "";
+        tripLeaderDatalist.innerHTML = "";
         memberNames.forEach((name) => {
           const option = document.createElement("option");
           option.value = name;
-          nameDatalist.appendChild(option);
+          option.textContent = name;
+          tripLeaderDatalist.appendChild(option);
+          nameDatalist.appendChild(option.cloneNode(true));
         });
 
         document
@@ -1319,7 +1366,9 @@
       headerRow.appendChild(feeHeader);
 
       const reimbHeader = document.createElement("th");
-      reimbHeader.textContent = "Reimburse(Due)";
+      reimbHeader.className = "reimburse-header";
+      reimbHeader.innerHTML =
+        '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
       headerRow.appendChild(reimbHeader);
 
       const notesHeader = document.createElement("th");
@@ -1554,10 +1603,63 @@
       row.appendChild(reimbCell);
 
       const noteCell = document.createElement("td");
-      noteCell.innerHTML = "<em>(if filled, continue on back)</em>";
+      noteCell.textContent = "";
       row.appendChild(noteCell);
 
       tfoot.appendChild(row);
+    }
+
+    function syncSharedGearMasterToggleState() {
+      if (!sharedGearMasterToggle) {
+        return;
+      }
+
+      const sharedGearExpense = getSharedGearExpense();
+      if (!sharedGearExpense) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        sharedGearMasterToggle.disabled = true;
+        return;
+      }
+
+      if (!sharedGearExpense.enabled) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        sharedGearMasterToggle.disabled = true;
+        return;
+      }
+
+      sharedGearMasterToggle.disabled = false;
+      ensureExpenseSize(sharedGearExpense);
+
+      let relevantIndexes = participants
+        .map((participant, index) => ({
+          index,
+          hasName: Boolean(participant.name && participant.name.trim())
+        }))
+        .filter((entry) => entry.hasName);
+
+      if (relevantIndexes.length === 0) {
+        relevantIndexes = participants.map((_, index) => ({ index }));
+      }
+
+      const total = relevantIndexes.length;
+      let checkedCount = 0;
+      relevantIndexes.forEach(({ index }) => {
+        if (sharedGearExpense.consumers[index]) {
+          checkedCount += 1;
+        }
+      });
+
+      if (total === 0) {
+        sharedGearMasterToggle.checked = false;
+        sharedGearMasterToggle.indeterminate = false;
+        return;
+      }
+
+      sharedGearMasterToggle.indeterminate =
+        checkedCount > 0 && checkedCount < total;
+      sharedGearMasterToggle.checked = checkedCount === total;
     }
 
     function recalculate() {
@@ -1730,13 +1832,17 @@
         totalReimbCell.textContent = "";
         totalReimbCell.classList.remove("amount-due", "amount-credit");
         if (totalBalance) {
+          const prefix = document.createTextNode("Club Gear Depreciation: ");
+          totalReimbCell.appendChild(prefix);
+          const valueSpan = document.createElement("span");
           if (totalBalance > 0) {
-            totalReimbCell.textContent = `(${formatCurrency(totalBalance)})`;
-            totalReimbCell.classList.add("amount-due");
+            valueSpan.textContent = `(${formatCurrency(totalBalance)})`;
+            valueSpan.classList.add("amount-due");
           } else {
-            totalReimbCell.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
-            totalReimbCell.classList.add("amount-credit");
+            valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+            valueSpan.classList.add("amount-credit");
           }
+          totalReimbCell.appendChild(valueSpan);
         }
       }
 
@@ -1744,6 +1850,8 @@
       if (clubIncomeCell) {
         clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
       }
+
+      syncSharedGearMasterToggleState();
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
@@ -1821,6 +1929,13 @@
 
     document.getElementById("add-row").addEventListener("click", () => {
       participants.push({ name: "", bold: false, notes: "" });
+      if (sharedGearMasterToggle && sharedGearMasterToggle.checked) {
+        const sharedGearExpense = getSharedGearExpense();
+        if (sharedGearExpense && sharedGearExpense.enabled) {
+          ensureExpenseSize(sharedGearExpense);
+          sharedGearExpense.consumers[participants.length - 1] = true;
+        }
+      }
       renderTable();
     });
 
@@ -1851,6 +1966,34 @@
           renderTable();
         });
       });
+
+    if (sharedGearMasterToggle) {
+      sharedGearMasterToggle.addEventListener("change", (event) => {
+        const sharedGearExpense = getSharedGearExpense();
+        if (!sharedGearExpense || !sharedGearExpense.enabled) {
+          sharedGearMasterToggle.checked = false;
+          sharedGearMasterToggle.indeterminate = false;
+          return;
+        }
+
+        ensureExpenseSize(sharedGearExpense);
+        const desired = event.target.checked;
+        for (let index = 0; index < sharedGearExpense.consumers.length; index += 1) {
+          sharedGearExpense.consumers[index] = desired;
+        }
+
+        document
+          .querySelectorAll(
+            `input[type="checkbox"][data-expense-id="${sharedGearExpense.id}"]`
+          )
+          .forEach((checkbox) => {
+            checkbox.checked = desired;
+          });
+
+        sharedGearMasterToggle.indeterminate = false;
+        recalculate();
+      });
+    }
 
     async function loadSignature() {
       try {
