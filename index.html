@@ -1342,7 +1342,7 @@
       const reimbHeader = document.createElement("th");
       reimbHeader.className = "reimburse-header";
       reimbHeader.innerHTML =
-        '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
+        '<span class="reimburse-label">Reimburse</span><span class="due-label"> / Due ($30)</span>';
       headerRow.appendChild(reimbHeader);
 
       const notesHeader = document.createElement("th");
@@ -1786,7 +1786,7 @@
           reimbCell.classList.remove("amount-due", "amount-credit");
           if (hasName && balance) {
             if (balance > 0) {
-              reimbCell.textContent = `(${formatCurrency(balance)})`;
+              reimbCell.textContent = `($${formatCurrency(balance)})`;
               reimbCell.classList.add("amount-due");
             } else {
               reimbCell.textContent = `$${formatCurrency(Math.abs(balance))}`;
@@ -1810,7 +1810,7 @@
           totalReimbCell.appendChild(prefix);
           const valueSpan = document.createElement("span");
           if (totalBalance > 0) {
-            valueSpan.textContent = `(${formatCurrency(totalBalance)})`;
+            valueSpan.textContent = `($${formatCurrency(totalBalance)})`;
             valueSpan.classList.add("amount-due");
           } else {
             valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
