@@ -673,7 +673,7 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = Array.from({ length: 5 }, () => ({
+    const participants = Array.from({ length: 10 }, () => ({
       name: "",
       bold: false,
       notes: ""
@@ -1034,6 +1034,21 @@
       return node;
     }
 
+    function removeEmptySummaryNameRows(node) {
+      node
+        .querySelectorAll(".attendance-table tbody tr")
+        .forEach((row) => {
+          const nameElement =
+            row.querySelector(".name-input") || row.querySelector("td");
+          const textContent =
+            (nameElement?.textContent || "").replace(/\s+/g, " ").trim();
+          if (!textContent) {
+            row.remove();
+          }
+        });
+      return node;
+    }
+
     function formatSummaryDate(rawValue) {
       if (!rawValue) {
         return "";
@@ -1122,6 +1137,7 @@
           return;
         }
         sanitizeSummaryClone(clone);
+        removeEmptySummaryNameRows(clone);
         const imported = targetDocument.importNode(clone, true);
 
         if (!descriptionInserted && section === topSection) {
