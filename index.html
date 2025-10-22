@@ -463,6 +463,58 @@
       color: #333;
     }
 
+    .tutorial-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 999;
+    }
+
+    .tutorial-overlay.is-hidden {
+      display: none;
+    }
+
+    .tutorial-content {
+      position: relative;
+      max-width: 720px;
+      width: min(100%, 720px);
+      background: #ffffff;
+      border-radius: 1rem;
+      padding: 2rem 2.5rem;
+      box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .tutorial-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      border: none;
+      background: transparent;
+      font-size: 2rem;
+      line-height: 1;
+      cursor: pointer;
+      color: #4a4a4a;
+    }
+
+    .tutorial-close:hover,
+    .tutorial-close:focus {
+      color: #000;
+    }
+
+    .tutorial-video {
+      width: 100%;
+      border-radius: 0.75rem;
+      background: #000;
+      max-height: 60vh;
+    }
+
     @media (max-width: 1100px) {
       body {
         padding: 1rem;
@@ -516,10 +568,54 @@
       .control-button {
         width: 100%;
       }
+
+      .tutorial-content {
+        padding: 1.5rem;
+        max-height: 90vh;
+      }
+
+      .tutorial-video {
+        max-height: 40vh;
+      }
     }
   </style>
 </head>
 <body>
+  <div
+    class="tutorial-overlay is-hidden"
+    id="tutorial-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tutorial-title"
+  >
+    <div class="tutorial-content">
+      <button
+        type="button"
+        class="tutorial-close"
+        id="tutorial-close"
+        aria-label="Close tutorial"
+      >
+        &times;
+      </button>
+      <h2 id="tutorial-title">Welcome to the NUCC Trip Attendance Sheet</h2>
+      <p>
+        This dashboard helps you capture who attended the outing, record essential
+        trip logistics, and track costs. As the trip leader, please ensure every
+        participant is listed, expenses are allocated, and banking details are
+        confirmed before submitting the sheet.
+      </p>
+      <video
+        class="tutorial-video"
+        id="tutorial-video"
+        controls
+        preload="metadata"
+      >
+        <source src="tutorial.mp4" type="video/mp4" />
+        Your browser does not support the tutorial video.
+      </video>
+    </div>
+  </div>
+
   <div class="top-section">
     <div class="top-section-left">
       <div class="header-row">
@@ -709,6 +805,44 @@
   />
 
   <script>
+    const tutorialOverlay = document.getElementById("tutorial-overlay");
+    const tutorialCloseButton = document.getElementById("tutorial-close");
+    const tutorialVideo = document.getElementById("tutorial-video");
+
+    function hideTutorialOverlay() {
+      if (!tutorialOverlay) return;
+      tutorialOverlay.classList.add("is-hidden");
+      if (tutorialVideo) {
+        tutorialVideo.pause();
+        tutorialVideo.currentTime = 0;
+      }
+    }
+
+    if (tutorialOverlay) {
+      window.addEventListener("load", () => {
+        tutorialOverlay.classList.remove("is-hidden");
+        if (tutorialCloseButton) {
+          tutorialCloseButton.focus();
+        }
+      });
+
+      tutorialOverlay.addEventListener("click", (event) => {
+        if (event.target === tutorialOverlay) {
+          hideTutorialOverlay();
+        }
+      });
+    }
+
+    if (tutorialCloseButton) {
+      tutorialCloseButton.addEventListener("click", hideTutorialOverlay);
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && tutorialOverlay && !tutorialOverlay.classList.contains("is-hidden")) {
+        hideTutorialOverlay();
+      }
+    });
+
     const nameListId = "member-options";
     const nameDatalist = document.createElement("datalist");
     nameDatalist.id = nameListId;
