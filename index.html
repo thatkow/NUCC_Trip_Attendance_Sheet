@@ -13,10 +13,15 @@
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
+    @page {
+      size: A4 landscape;
+      margin: 12mm;
+    }
+
     .top-section {
       display: flex;
       justify-content: space-between;
-      align-items: stretch;
+      align-items: flex-start;
       gap: 1.5rem;
       margin-bottom: 1.5rem;
     }
@@ -31,37 +36,25 @@
       max-width: 25%;
       min-width: 0;
       display: flex;
-      align-items: stretch;
+      justify-content: flex-start;
     }
 
     .top-section-right-inner {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1.25rem;
+      align-items: flex-end;
+      justify-content: flex-start;
       height: 100%;
       width: 100%;
-    }
-
-    .miner-image {
-      display: block;
-      flex: 0 0 auto;
-      max-width: clamp(154px, 90%, 252px);
-      max-height: 100%;
-      height: auto;
-      width: auto;
-      object-fit: contain;
-      align-self: center;
     }
 
     .banking-info {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      align-items: flex-end;
+      justify-content: flex-start;
       gap: 0.85rem;
-      text-align: center;
+      text-align: right;
       width: 100%;
       flex: 1 1 auto;
       min-width: 0;
@@ -75,6 +68,36 @@
       .top-section-right {
         max-width: none;
         width: 100%;
+        justify-content: center;
+      }
+
+      .top-section-right-inner,
+      .banking-info {
+        align-items: center;
+        text-align: center;
+      }
+
+      .banking-logo {
+        margin: 0 auto;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        padding: 1cm;
+      }
+
+      .attendance-table {
+        break-before: page;
+        page-break-before: always;
+      }
+
+      table,
+      th,
+      td {
+        border-color: #000;
       }
     }
 
@@ -83,7 +106,7 @@
       width: 100%;
       height: auto;
       display: block;
-      margin: 0 auto;
+      margin: 0 0 0 auto;
     }
 
     .banking-details {
@@ -138,11 +161,12 @@
       border-collapse: collapse;
       margin-bottom: 1.5rem;
       background: #fff;
+      border: 1px solid #6d6d6d;
     }
 
     th,
     td {
-      border: 1px solid #ccc;
+      border: 1px solid #6d6d6d;
       padding: 0.4rem 0.5rem;
       text-align: left;
       vertical-align: top;
@@ -175,7 +199,7 @@
 
     .meta-table th,
     .meta-table td {
-      border-color: #999;
+      border-color: #6d6d6d;
     }
 
     .meta-table thead th {
@@ -779,11 +803,6 @@
           <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
           <div class="banking-details" id="banking-details" aria-live="polite"></div>
         </div>
-        <img
-          src="taxminer.png"
-          alt="Tax Miner graphic"
-          class="miner-image"
-        />
       </div>
     </div>
   </div>
