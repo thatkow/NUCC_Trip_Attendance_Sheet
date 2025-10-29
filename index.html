@@ -1438,22 +1438,11 @@
       return `<!DOCTYPE html>${summaryDocument.documentElement.outerHTML}`;
     }
 
-    function downloadAndOpenSummaryHtml() {
+    function openSummaryPdf() {
       const htmlContent = buildSummaryHtml();
-      const blob = new Blob([htmlContent], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-
-      const downloadLink = document.createElement("a");
-      downloadLink.href = url;
-      downloadLink.download = getFileBaseName("html");
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-
       const summaryWindow = window.open("", "_blank");
       if (!summaryWindow) {
         window.alert("Please allow pop-ups to view the summary.");
-        URL.revokeObjectURL(url);
         return;
       }
 
@@ -1461,9 +1450,50 @@
       summaryWindow.document.write(htmlContent);
       summaryWindow.document.close();
 
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 0);
+      const triggerPrint = () => {
+        summaryWindow.document.title = getFileBaseName("pdf");
+        summaryWindow.focus();
+        summaryWindow.print();
+      };
+
+      if (summaryWindow.document.readyState === "complete") {
+        triggerPrint();
+      } else {
+        const handleReadyStateChange = () => {
+          if (summaryWindow.document.readyState === "complete") {
+            summaryWindow.document.removeEventListener(
+              "readystatechange",
+              handleReadyStateChange
+            );
+            triggerPrint();
+          }
+        };
+
+        summaryWindow.document.addEventListener(
+          "readystatechange",
+          handleReadyStateChange
+        );
+
+        summaryWindow.addEventListener(
+          "load",
+          () => {
+            summaryWindow.document.removeEventListener(
+              "readystatechange",
+              handleReadyStateChange
+            );
+            triggerPrint();
+          },
+          { once: true }
+        );
+      }
+
+      summaryWindow.addEventListener(
+        "afterprint",
+        () => {
+          summaryWindow.close();
+        },
+        { once: true }
+      );
     }
 
     async function loadMemberOptions() {
@@ -2414,7 +2444,7 @@
     const summariseButton = document.getElementById("summarise-button");
     if (summariseButton) {
       summariseButton.addEventListener("click", () => {
-        downloadAndOpenSummaryHtml();
+        openSummaryPdf();
       });
     }
 
