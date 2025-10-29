@@ -17,38 +17,37 @@
       display: flex;
       justify-content: space-between;
       align-items: stretch;
-      flex-wrap: wrap;
       gap: 1.5rem;
       margin-bottom: 1.5rem;
     }
 
     .top-section-left {
-      flex: 3 1 75%;
-      min-width: 320px;
+      flex: 4 1 0;
+      min-width: 0;
     }
 
     .top-section-right {
-      flex: 1 1 25%;
+      flex: 1 1 0;
       max-width: 25%;
-      min-width: 240px;
+      min-width: 0;
       display: flex;
       align-items: stretch;
     }
 
     .top-section-right-inner {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 1.25rem;
       height: 100%;
       width: 100%;
-      flex-wrap: nowrap;
     }
 
     .miner-image {
       display: block;
-      flex: 2 1 0;
-      max-width: clamp(154px, 49%, 252px);
+      flex: 0 0 auto;
+      max-width: clamp(154px, 90%, 252px);
       max-height: 100%;
       height: auto;
       width: auto;
@@ -64,8 +63,19 @@
       gap: 0.85rem;
       text-align: center;
       width: 100%;
-      flex: 1 1 0;
+      flex: 1 1 auto;
       min-width: 0;
+    }
+
+    @media (max-width: 960px) {
+      .top-section {
+        flex-direction: column;
+      }
+
+      .top-section-right {
+        max-width: none;
+        width: 100%;
+      }
     }
 
     .banking-logo {
