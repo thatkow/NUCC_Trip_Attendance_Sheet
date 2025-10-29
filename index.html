@@ -40,15 +40,17 @@
       align-items: flex-start;
     }
 
-    .banking-info {
+    .top-section-stack {
       display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: flex-end;
       gap: 1rem;
-      text-align: left;
-      background: transparent;
-      max-width: 520px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .summary-only {
+      display: none;
     }
 
     @media (max-width: 960px) {
@@ -62,14 +64,9 @@
         justify-content: center;
       }
 
-      .banking-info {
-        flex-direction: column;
+      .top-section-stack {
         align-items: center;
         text-align: center;
-      }
-
-      .banking-logo {
-        margin: 0 auto;
       }
     }
 
@@ -92,12 +89,15 @@
       }
     }
 
+    body.summary-mode .summary-only {
+      display: block;
+    }
+
     .banking-logo {
       max-width: 160px;
       width: 100%;
       height: auto;
       display: block;
-      flex: 0 0 auto;
     }
 
     .banking-details {
@@ -112,6 +112,14 @@
       width: auto;
       flex: 1 1 220px;
       box-sizing: border-box;
+      align-self: stretch;
+    }
+
+    .miner-logo {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
     .banking-details .banking-label {
@@ -565,10 +573,11 @@
         justify-content: center;
       }
 
-      .banking-info {
+      .top-section-stack {
         align-items: center;
         justify-content: center;
         max-width: 100%;
+        text-align: center;
       }
 
       .banking-details {
@@ -778,9 +787,22 @@
       </div>
     </div>
     <div class="top-section-right">
-      <div class="banking-info">
-        <div class="banking-details" id="banking-details" aria-live="polite"></div>
-        <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
+      <div class="top-section-stack">
+        <img
+          src="banking_logo.png"
+          alt="Banking logo"
+          class="banking-logo summary-only"
+        />
+        <div
+          class="banking-details summary-only"
+          id="banking-details"
+          aria-live="polite"
+        ></div>
+        <img
+          src="taxminer.png"
+          alt="Miner mascot"
+          class="miner-logo"
+        />
       </div>
     </div>
   </div>
@@ -1427,6 +1449,8 @@
       extraStyle.textContent =
         ".summary-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
       summaryDocument.head.appendChild(extraStyle);
+
+      summaryDocument.body.classList.add("summary-mode");
 
       const main = summaryDocument.createElement("main");
       main.appendChild(buildSummaryPreview(summaryDocument));
