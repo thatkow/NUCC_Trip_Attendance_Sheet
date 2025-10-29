@@ -32,39 +32,18 @@
     }
 
     .top-section-right {
-      flex: 1 1 0;
-      max-width: 25%;
+      flex: 2 1 260px;
+      max-width: 360px;
       min-width: 0;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
-    }
-
-    .top-section-right-inner {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      height: 100%;
-      width: 100%;
-    }
-
-    .miner-image {
-      display: block;
-      max-width: clamp(160px, 100%, 260px);
-      height: auto;
-    }
-
-    .banking-panel {
-      display: flex;
       justify-content: flex-end;
-      margin: 0 0 1.25rem;
-      width: 100%;
+      align-items: flex-start;
     }
 
     .banking-info {
       display: flex;
       align-items: flex-start;
-      justify-content: flex-end;
+      justify-content: flex-start;
       flex-wrap: wrap;
       gap: 1rem;
       text-align: left;
@@ -80,14 +59,6 @@
       .top-section-right {
         max-width: none;
         width: 100%;
-        justify-content: center;
-      }
-
-      .top-section-right-inner {
-        justify-content: center;
-      }
-
-      .banking-panel {
         justify-content: center;
       }
 
@@ -594,23 +565,6 @@
         justify-content: center;
       }
 
-      .top-section-right-inner {
-        flex-direction: column;
-        align-items: center;
-        height: auto;
-        text-align: center;
-      }
-
-      .miner-image {
-        flex: 0 0 auto;
-        max-width: 240px;
-        height: auto;
-      }
-
-      .banking-panel {
-        justify-content: center;
-      }
-
       .banking-info {
         align-items: center;
         justify-content: center;
@@ -824,8 +778,9 @@
       </div>
     </div>
     <div class="top-section-right">
-      <div class="top-section-right-inner">
-        <img src="taxminer.png" alt="NUCC miner mascot" class="miner-image" />
+      <div class="banking-info">
+        <div class="banking-details" id="banking-details" aria-live="polite"></div>
+        <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
       </div>
     </div>
   </div>
@@ -837,13 +792,6 @@
     aria-live="polite"
     hidden
   ></p>
-
-  <div class="banking-panel">
-    <div class="banking-info">
-      <div class="banking-details" id="banking-details" aria-live="polite"></div>
-      <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
-    </div>
-  </div>
 
   <table class="attendance-table" id="attendance-table">
     <thead>
