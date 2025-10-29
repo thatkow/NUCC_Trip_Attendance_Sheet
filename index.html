@@ -1352,6 +1352,13 @@
       summaryDescription.appendChild(petrolParagraph);
       summaryDescription.appendChild(versionParagraph);
 
+      const summaryTextWrapper = targetDocument.createElement("div");
+      summaryTextWrapper.className = "summary-description-text";
+      while (summaryDescription.firstChild) {
+        summaryTextWrapper.appendChild(summaryDescription.firstChild);
+      }
+      summaryDescription.appendChild(summaryTextWrapper);
+
       const sections = [];
       const topSection = document.querySelector(".top-section");
       if (topSection) {
@@ -1383,6 +1390,10 @@
             metaTable.insertAdjacentElement("afterend", summaryDescription);
           } else {
             imported.insertBefore(summaryDescription, imported.firstChild);
+          }
+          const minerImage = imported.querySelector(".miner-image");
+          if (minerImage) {
+            summaryDescription.appendChild(minerImage);
           }
           descriptionInserted = true;
         }
@@ -1417,8 +1428,47 @@
       }
 
       const extraStyle = summaryDocument.createElement("style");
-      extraStyle.textContent =
-        ".summary-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
+      extraStyle.textContent = `
+        .summary-check {
+          display: inline-block;
+          min-width: 1.5rem;
+          text-align: center;
+          font-weight: 600;
+        }
+
+        .summary-preview .top-section-right {
+          flex: 0 0 15%;
+          max-width: 15%;
+          min-width: 0;
+        }
+
+        .summary-preview .top-section-right-inner {
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+        }
+
+        .summary-preview .banking-info {
+          width: 100%;
+        }
+
+        .summary-preview .summary-description {
+          display: flex;
+          align-items: flex-start;
+          gap: 1.5rem;
+        }
+
+        .summary-preview .summary-description-text {
+          flex: 1 1 0;
+        }
+
+        .summary-preview .summary-description .miner-image {
+          flex: 0 0 auto;
+          max-width: clamp(160px, 25%, 220px);
+          height: auto;
+        }
+      `;
       summaryDocument.head.appendChild(extraStyle);
 
       const main = summaryDocument.createElement("main");
