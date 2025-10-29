@@ -1330,6 +1330,28 @@
       summaryDescription.appendChild(reimburseParagraph);
       summaryDescription.appendChild(oweParagraph);
 
+      const sharedGearParagraph = targetDocument.createElement("p");
+      sharedGearParagraph.textContent =
+        "Shared gear refers to equipment that is used collectively by all members, which is common for vertical caving trips requiring SRT (Single Rope Technique) and for canyoning trips.";
+
+      const personalGearParagraph = targetDocument.createElement("p");
+      personalGearParagraph.textContent =
+        "Personal gear refers to equipment intended for individual use, which may include any of the following: a personal SRT kit, helmet, overalls, or headtorch.";
+
+      const petrolParagraph = targetDocument.createElement("p");
+      petrolParagraph.textContent =
+        "Petrol expenses are reported by the drivers after the trip. The total petrol costs are then pooled and divided equally among all participants to ensure fair sharing of travel expenses, regardless of who provided the vehicle.";
+
+      const versionParagraph = targetDocument.createElement("p");
+      versionParagraph.className = "summary-version";
+      versionParagraph.textContent =
+        "Version: In use from 28 Oct 2024 – 28 Oct 2025";
+
+      summaryDescription.appendChild(sharedGearParagraph);
+      summaryDescription.appendChild(personalGearParagraph);
+      summaryDescription.appendChild(petrolParagraph);
+      summaryDescription.appendChild(versionParagraph);
+
       const sections = [];
       const topSection = document.querySelector(".top-section");
       if (topSection) {
