@@ -1417,8 +1417,37 @@
       }
 
       const extraStyle = summaryDocument.createElement("style");
-      extraStyle.textContent =
-        ".summary-check { display: inline-block; min-width: 1.5rem; text-align: center; font-weight: 600; }";
+      extraStyle.textContent = `
+        .summary-check {
+          display: inline-block;
+          min-width: 1.5rem;
+          text-align: center;
+          font-weight: 600;
+        }
+
+        .summary-preview .top-section-right {
+          flex: 0 0 20%;
+          max-width: 20%;
+          min-width: 0;
+        }
+
+        .summary-preview .top-section-right-inner {
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 1rem;
+        }
+
+        .summary-preview .banking-info {
+          width: 100%;
+        }
+
+        .summary-preview .miner-image {
+          flex: 0 0 auto;
+          width: 100%;
+          max-width: 100%;
+        }
+      `;
       summaryDocument.head.appendChild(extraStyle);
 
       const main = summaryDocument.createElement("main");
