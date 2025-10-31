@@ -1867,7 +1867,7 @@
           }
           return `${expense.name}?`;
         }
-        return `${expense.name} ($)`;
+        return expense.name;
       }
 
       activeExpenses.forEach((expense) => {
@@ -1892,7 +1892,7 @@
       headerRow.appendChild(breakdownHeader);
 
       const feeHeader = document.createElement("th");
-      feeHeader.textContent = "Fee ($)";
+      feeHeader.textContent = "Fee";
       headerRow.appendChild(feeHeader);
 
       const reimbHeader = document.createElement("th");
