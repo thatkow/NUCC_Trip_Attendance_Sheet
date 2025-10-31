@@ -1242,7 +1242,20 @@
           );
         }
         display.className = classes.join(" ");
-        display.textContent = input.value || "";
+        let textContent = input.value || "";
+        if (input.type === "number") {
+          const { expenseId } = input.dataset || {};
+          if (expenseId) {
+            const expense = findExpenseById(expenseId);
+            if (expense?.key === "petrol") {
+              const numericValue = Number(input.value);
+              if (Number.isFinite(numericValue)) {
+                textContent = `$${formatCurrency(numericValue)}`;
+              }
+            }
+          }
+        }
+        display.textContent = textContent;
         input.replaceWith(display);
       });
 
