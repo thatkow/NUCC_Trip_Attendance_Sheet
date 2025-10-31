@@ -1554,9 +1554,8 @@
 
     function formatCurrency(value) {
       if (!Number.isFinite(value)) return "";
-      if (Math.abs(value) < 1e-9) return "0";
       const fixed = Number(value).toFixed(2);
-      return fixed.replace(/\.00$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+      return fixed === "-0.00" ? "0.00" : fixed;
     }
 
     function parseCsv(text) {
@@ -2235,7 +2234,7 @@
           );
           if (totalCell) {
             const totalText = formatCurrency(total);
-            totalCell.innerHTML = `Total: $${totalText || "0"}`;
+            totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
             const summary = document.createElement("div");
             summary.textContent = `Selected: ${consumerCount}`;
             totalCell.appendChild(summary);
@@ -2287,13 +2286,16 @@
         );
         if (totalCell) {
           const totalText = formatCurrency(total);
-          totalCell.textContent = `Total: $${totalText || "0"}`;
+          totalCell.textContent = `Total: $${totalText || "0.00"}`;
         }
         const consumersCell = document.querySelector(
           `.expense-consumers[data-expense-id="${expense.id}"]`
         );
         if (consumersCell) {
-          const shareText = consumerCount > 0 ? `Share: $${formatCurrency(share) || "0"}` : "Share: $0";
+          const shareText =
+            consumerCount > 0
+              ? `Share: $${formatCurrency(share) || "0.00"}`
+              : "Share: $0.00";
           consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
         }
       });
@@ -2327,7 +2329,7 @@
             const breakdown = participantFeeBreakdowns[personIndex];
             breakdownCell.textContent = breakdown.length
               ? breakdown
-                  .map((entry) => `${entry.name}: $${formatCurrency(entry.value) || "0"}`)
+                  .map((entry) => `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`)
                   .join("; ")
               : "";
           } else {
