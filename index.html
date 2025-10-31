@@ -1246,12 +1246,11 @@
         if (input.type === "number") {
           const { expenseId } = input.dataset || {};
           if (expenseId) {
-            const expense = findExpenseById(expenseId);
-            if (expense?.key === "petrol") {
-              const numericValue = Number(input.value);
-              if (Number.isFinite(numericValue)) {
-                textContent = `$${formatCurrency(numericValue)}`;
-              }
+            const numericValue = Number(input.value);
+            if (Number.isFinite(numericValue) && input.value !== "") {
+              textContent = `$${formatCurrency(numericValue)}`;
+            } else {
+              textContent = "";
             }
           }
         }
@@ -2117,7 +2116,7 @@
         const totalCell = document.createElement("td");
         totalCell.className = "expense-total";
         totalCell.dataset.expenseId = expense.id;
-        totalCell.textContent = "Total: $0";
+        totalCell.textContent = "Total: $0.00";
         if (isDirectChargeExpense(expense)) {
           totalCell.dataset.directCharge = "true";
           row.appendChild(totalCell);
