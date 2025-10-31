@@ -1420,9 +1420,8 @@
     }
 
     function buildSummaryHtml() {
-      const summaryDocument = document.implementation.createHTMLDocument(
-        "Summarise Trip"
-      );
+      const summaryDocument = document.implementation.createHTMLDocument("");
+      summaryDocument.title = getDateLocationTag();
 
       const metaCharset = summaryDocument.createElement("meta");
       metaCharset.setAttribute("charset", "utf-8");
