@@ -1419,9 +1419,10 @@
       return container;
     }
 
-    function buildSummaryHtml() {
+    function buildSummaryHtml(summaryTitle) {
       const summaryDocument = document.implementation.createHTMLDocument("");
-      summaryDocument.title = getDateLocationTag();
+      const resolvedTitle = summaryTitle || getDateLocationTag();
+      summaryDocument.title = resolvedTitle;
 
       const metaCharset = summaryDocument.createElement("meta");
       metaCharset.setAttribute("charset", "utf-8");
@@ -1490,13 +1491,14 @@
     }
 
     function downloadAndOpenSummaryHtml() {
-      const htmlContent = buildSummaryHtml();
+      const summaryTitle = getDateLocationTag();
+      const htmlContent = buildSummaryHtml(summaryTitle);
       const blob = new Blob([htmlContent], { type: "text/html" });
       const url = URL.createObjectURL(blob);
 
       const downloadLink = document.createElement("a");
       downloadLink.href = url;
-      downloadLink.download = getFileBaseName("html");
+      downloadLink.download = `${summaryTitle}.html`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -1511,6 +1513,22 @@
       summaryWindow.document.open();
       summaryWindow.document.write(htmlContent);
       summaryWindow.document.close();
+
+      const ensureSummaryWindowTitle = () => {
+        try {
+          summaryWindow.document.title = summaryTitle;
+        } catch (error) {
+          /* no-op */
+        }
+      };
+
+      ensureSummaryWindowTitle();
+
+      if (typeof summaryWindow.addEventListener === "function") {
+        summaryWindow.addEventListener("load", ensureSummaryWindowTitle, {
+          once: true
+        });
+      }
 
       setTimeout(() => {
         URL.revokeObjectURL(url);
