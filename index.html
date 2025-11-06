@@ -1259,8 +1259,17 @@
         display.className = classes.join(" ");
         let textContent = input.value || "";
         if (input.type === "number") {
-          const { expenseId } = input.dataset || {};
-          if (expenseId) {
+          const { expenseId, distanceField } = input.dataset || {};
+          if (distanceField === "true") {
+            if (input.value !== "") {
+              const numericValue = Number(input.value);
+              textContent = Number.isFinite(numericValue)
+                ? String(Math.round(numericValue))
+                : "";
+            } else {
+              textContent = "";
+            }
+          } else if (expenseId) {
             const numericValue = Number(input.value);
             if (Number.isFinite(numericValue) && input.value !== "") {
               textContent = `$${formatCurrency(numericValue)}`;
@@ -1371,8 +1380,7 @@
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
-      versionParagraph.textContent =
-        "Version: In use from 28 Oct 2024 – 28 Oct 2025";
+      versionParagraph.textContent = "Version: Nov 2025 – Current";
 
       summaryDescription.appendChild(srtKitParagraph);
       summaryDescription.appendChild(horizontalGearParagraph);
@@ -2165,6 +2173,7 @@
             distanceInput.placeholder = "0";
             distanceInput.dataset.expenseId = expense.id;
             distanceInput.dataset.personIndex = String(personIndex);
+            distanceInput.dataset.distanceField = "true";
             distanceInput.setAttribute(
               "aria-label",
               "Distance travelled in kilometres"
