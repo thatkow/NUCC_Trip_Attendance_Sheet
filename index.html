@@ -1367,7 +1367,7 @@
 
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
-        "Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $0.025 per kilometre can be added. The combined total is pooled and divided equally among all participants to ensure fair sharing of travel and upkeep costs.";
+        "Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $0.025 per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $0.025 per kilometre to return maintenance funds to those who supplied vehicles.";
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
@@ -2420,6 +2420,13 @@
         let fuelTotal = 0;
         let totalDistance = 0;
         const consumers = [];
+        let driverDistances = [];
+        let driverHasDistance = [];
+
+        if (expense.key === "petrol") {
+          driverDistances = new Array(participants.length).fill(0);
+          driverHasDistance = new Array(participants.length).fill(false);
+        }
 
         expense.amounts.forEach((amount, personIndex) => {
           const participant = participants[personIndex];
@@ -2438,6 +2445,10 @@
               const numericDistance = Number(distanceValue);
               if (Number.isFinite(numericDistance)) {
                 totalDistance += numericDistance;
+                if (expense.key === "petrol") {
+                  driverDistances[personIndex] = numericDistance;
+                  driverHasDistance[personIndex] = true;
+                }
               }
             }
           }
@@ -2469,6 +2480,22 @@
             });
           }
         });
+
+        if (expense.key === "petrol") {
+          driverDistances.forEach((distance, personIndex) => {
+            if (!driverHasDistance[personIndex]) {
+              return;
+            }
+            const maintenanceCredit = distance * maintenanceRate;
+            if (maintenanceCredit > 0) {
+              participantFeeTotals[personIndex] -= maintenanceCredit;
+              participantFeeBreakdowns[personIndex].push({
+                name: "Maintenance credit",
+                value: -maintenanceCredit
+              });
+            }
+          });
+        }
 
         const totalCell = document.querySelector(
           `.expense-total[data-expense-id="${expense.id}"]`
