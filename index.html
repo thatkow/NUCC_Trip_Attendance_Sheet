@@ -668,16 +668,16 @@
 
       <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
         <label
-          title="Check this if any members hired club gear for personal use (e.g. SRT kit, overalls, helmet, etc.)."
+          title="Check this if any members hired club horizontal gear (helmets, headtorches, etc.)."
         >
-          <input type="checkbox" data-expense-key="personal-gear" checked />
-          Personal Gear
+          <input type="checkbox" data-expense-key="horizontal-gear" checked />
+          Horizontal Gear
         </label>
         <label
-          title="Check this if any club gear was used collectively by the group (e.g. static ropes for rigging)."
+          title="Check this if the club's SRT kit was used on the trip."
         >
-          <input type="checkbox" data-expense-key="shared-gear" checked />
-          Shared Gear
+          <input type="checkbox" data-expense-key="srt-kit" checked />
+          SRT Kit
         </label>
         <label
           title="Check this if any members provided transport and fuel was consumed for the trip."
@@ -686,21 +686,21 @@
           Petrol
         </label>
         <label
-          title="A handy toggle to check or uncheck all fields in the Used Shared Gear? column at once."
+          title="A handy toggle to check or uncheck all fields in the Used SRT Kit? column at once."
         >
-          <input type="checkbox" id="shared-gear-master-toggle" />
-          Shared Gear (All)
+          <input type="checkbox" id="srt-kit-master-toggle" />
+          SRT Kit (All)
         </label>
       </div>
 
       <div class="base-expense-inputs">
-        <label for="personal-gear-rate">
-          Personal Gear per person ($)
-          <input type="number" id="personal-gear-rate" step="0.01" value="5" />
+        <label for="horizontal-gear-rate">
+          Horizontal Gear per person ($)
+          <input type="number" id="horizontal-gear-rate" step="0.01" value="5" />
         </label>
-        <label for="shared-gear-rate">
-          Shared Gear per person ($)
-          <input type="number" id="shared-gear-rate" step="0.01" value="5" />
+        <label for="srt-kit-rate">
+          SRT Kit per person ($)
+          <input type="number" id="srt-kit-rate" step="0.01" value="5" />
         </label>
       </div>
 
@@ -882,9 +882,21 @@
     let bankingDetailsData = null;
 
     const baseExpenseRates = {
-      "personal-gear": 5,
-      "shared-gear": 5
+      "horizontal-gear": 5,
+      "srt-kit": 5
     };
+
+    const legacyExpenseKeyMap = {
+      "personal-gear": "horizontal-gear",
+      "shared-gear": "srt-kit"
+    };
+
+    function normalizeExpenseKey(key) {
+      if (typeof key !== "string") {
+        return key;
+      }
+      return legacyExpenseKeyMap[key] || key;
+    }
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
@@ -896,23 +908,21 @@
 
     const baseExpenseDefinitions = [
       {
-        key: "personal-gear",
-        name: "Personal Gear",
+        key: "horizontal-gear",
+        name: "Horizontal Gear",
         enabled: true,
         defaultConsumerState: false
       },
       {
-        key: "shared-gear",
-        name: "Shared Gear",
+        key: "srt-kit",
+        name: "SRT Kit",
         enabled: true,
         defaultConsumerState: false
       },
       { key: "petrol", name: "Petrol", enabled: true, defaultConsumerState: true }
     ];
 
-    const sharedGearMasterToggle = document.getElementById(
-      "shared-gear-master-toggle"
-    );
+    const srtKitMasterToggle = document.getElementById("srt-kit-master-toggle");
 
     let customExpenseCounter = 0;
 
@@ -940,6 +950,11 @@
       createExpense({ ...definition, type: "base" })
     );
 
+    const petrolExpense = baseExpenses.find((expense) => expense.key === "petrol");
+    if (petrolExpense) {
+      petrolExpense.distances = participants.map(() => "");
+    }
+
     const customExpenses = [];
 
     if (tripDateInput && !tripDateInput.value) {
@@ -949,8 +964,8 @@
     }
 
     const baseExpenseRateInputs = {
-      "personal-gear": document.getElementById("personal-gear-rate"),
-      "shared-gear": document.getElementById("shared-gear-rate")
+      "horizontal-gear": document.getElementById("horizontal-gear-rate"),
+      "srt-kit": document.getElementById("srt-kit-rate")
     };
 
     baseExpenseKeys.forEach((key) => {
@@ -968,7 +983,7 @@
       if (!expense) {
         return false;
       }
-      return expense.key === "personal-gear" || expense.key === "shared-gear";
+      return expense.key === "horizontal-gear" || expense.key === "srt-kit";
     }
 
     function applyBaseExpenseRateToExpense(key) {
@@ -1084,8 +1099,8 @@
       ];
     }
 
-    function getSharedGearExpense() {
-      return baseExpenses.find((expense) => expense.key === "shared-gear");
+    function getSrtKitExpense() {
+      return baseExpenses.find((expense) => expense.key === "srt-kit");
     }
 
     function findExpenseById(id) {
@@ -1342,25 +1357,25 @@
       summaryDescription.appendChild(reimburseParagraph);
       summaryDescription.appendChild(oweParagraph);
 
-      const sharedGearParagraph = targetDocument.createElement("p");
-      sharedGearParagraph.textContent =
-        "Shared gear refers to equipment that is used collectively by all members, which is common for vertical caving trips requiring SRT (Single Rope Technique) and for canyoning trips.";
+      const srtKitParagraph = targetDocument.createElement("p");
+      srtKitParagraph.textContent =
+        "SRT kit refers to club-issued Single Rope Technique gear used on vertical trips. Ropes, rigging equipment, canyon packs, and other shared tools are maintained by the club and are not charged per use.";
 
-      const personalGearParagraph = targetDocument.createElement("p");
-      personalGearParagraph.textContent =
-        "Personal gear refers to equipment intended for individual use, which may include any of the following: a personal SRT kit, helmet, overalls, or headtorch.";
+      const horizontalGearParagraph = targetDocument.createElement("p");
+      horizontalGearParagraph.textContent =
+        "Horizontal gear covers helmets, headtorches, and similar equipment issued to individuals. A standard $5 charge applies when this option is selected.";
 
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
-        "Petrol expenses are reported by the drivers after the trip. The total petrol costs are then pooled and divided equally among all participants to ensure fair sharing of travel expenses, regardless of who provided the vehicle.";
+        "Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $0.025 per kilometre can be added. The combined total is pooled and divided equally among all participants to ensure fair sharing of travel and upkeep costs.";
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
       versionParagraph.textContent =
         "Version: In use from 28 Oct 2024 – 28 Oct 2025";
 
-      summaryDescription.appendChild(sharedGearParagraph);
-      summaryDescription.appendChild(personalGearParagraph);
+      summaryDescription.appendChild(srtKitParagraph);
+      summaryDescription.appendChild(horizontalGearParagraph);
       summaryDescription.appendChild(petrolParagraph);
       summaryDescription.appendChild(versionParagraph);
 
@@ -1670,13 +1685,27 @@
           clerk: clerkInput ? clerkInput.value : ""
         },
         baseExpenseRates: { ...baseExpenseRates },
-        baseExpenses: baseExpenses.map((expense) => ({
-          key: expense.key,
-          name: expense.name,
-          enabled: expense.enabled,
-          amounts: [...expense.amounts],
-          consumers: [...expense.consumers]
-        })),
+        baseExpenses: baseExpenses.map((expense) => {
+          const snapshot = {
+            key: expense.key,
+            name: expense.name,
+            enabled: expense.enabled,
+            amounts: [...expense.amounts],
+            consumers: [...expense.consumers]
+          };
+          if (expense.key === "petrol") {
+            snapshot.distances = Array.isArray(expense.distances)
+              ? expense.distances.map((value) => {
+                  if (value === "" || value === null) {
+                    return "";
+                  }
+                  const numeric = Number(value);
+                  return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : "";
+                })
+              : [];
+          }
+          return snapshot;
+        }),
         customExpenses: customExpenses.map((expense) => ({
           name: expense.name,
           enabled: expense.enabled,
@@ -1688,8 +1717,8 @@
           bold: participant.bold,
           notes: participant.notes
         })),
-        sharedGearAllSelected: Boolean(
-          sharedGearMasterToggle && sharedGearMasterToggle.checked
+        srtKitAllSelected: Boolean(
+          srtKitMasterToggle && srtKitMasterToggle.checked
         )
       };
 
@@ -1739,6 +1768,23 @@
           ? expense.defaultConsumerState
           : true;
       });
+
+      if (expense.key === "petrol") {
+        const distances = Array.isArray(snapshotEntry?.distances)
+          ? snapshotEntry.distances
+          : [];
+        expense.distances = Array.from({ length: participantCount }, (_, index) => {
+          if (index < distances.length) {
+            const value = distances[index];
+            if (value === "" || value === null) {
+              return "";
+            }
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : "";
+          }
+          return "";
+        });
+      }
     }
 
     function applyApplicationState(state) {
@@ -1747,7 +1793,15 @@
         return;
       }
 
-      const { trip, participants: participantData, baseExpenses: baseData, customExpenses: customData, baseExpenseRates: rateData, sharedGearAllSelected } = state;
+      const {
+        trip,
+        participants: participantData,
+        baseExpenses: baseData,
+        customExpenses: customData,
+        baseExpenseRates: rateData,
+        srtKitAllSelected,
+        sharedGearAllSelected
+      } = state;
 
       if (tripDateInput) {
         tripDateInput.value = trip?.date || "";
@@ -1776,20 +1830,27 @@
       }
 
       if (rateData && typeof rateData === "object") {
-        Object.keys(baseExpenseRates).forEach((key) => {
-          const raw = rateData[key];
-          if (raw === "" || raw === null) {
+        Object.entries(rateData).forEach(([rawKey, rawValue]) => {
+          const key = normalizeExpenseKey(rawKey);
+          if (!Object.prototype.hasOwnProperty.call(baseExpenseRates, key)) {
+            return;
+          }
+          if (rawValue === "" || rawValue === null) {
             baseExpenseRates[key] = "";
             return;
           }
-          const numeric = Number(raw);
-          baseExpenseRates[key] = Number.isFinite(numeric) ? numeric : baseExpenseRates[key];
+          const numeric = Number(rawValue);
+          baseExpenseRates[key] = Number.isFinite(numeric)
+            ? numeric
+            : baseExpenseRates[key];
         });
       }
 
       baseExpenses.forEach((expense) => {
         const snapshotEntry = Array.isArray(baseData)
-          ? baseData.find((item) => item && item.key === expense.key)
+          ? baseData.find(
+              (item) => item && normalizeExpenseKey(item.key) === expense.key
+            )
           : null;
         applyExpenseSnapshot(expense, snapshotEntry);
       });
@@ -1822,9 +1883,13 @@
       syncExpenseToggleStates();
       renderTable();
 
-      if (sharedGearMasterToggle) {
-        sharedGearMasterToggle.checked = Boolean(sharedGearAllSelected);
-        syncSharedGearMasterToggleState();
+      if (srtKitMasterToggle) {
+        const desiredSelection =
+          srtKitAllSelected !== undefined
+            ? srtKitAllSelected
+            : sharedGearAllSelected;
+        srtKitMasterToggle.checked = Boolean(desiredSelection);
+        syncSrtKitMasterToggleState();
       }
 
       renderBankingDetails();
@@ -1866,6 +1931,17 @@
       while (expense.consumers.length > needed) {
         expense.consumers.pop();
       }
+      if (expense.key === "petrol") {
+        if (!Array.isArray(expense.distances)) {
+          expense.distances = [];
+        }
+        while (expense.distances.length < needed) {
+          expense.distances.push("");
+        }
+        while (expense.distances.length > needed) {
+          expense.distances.pop();
+        }
+      }
     }
 
     function syncAllExpenseSizes() {
@@ -1887,11 +1963,11 @@
           return "";
         }
         if (isDirectChargeExpense(expense)) {
-          if (expense.key === "personal-gear") {
-            return "Hired Personal Gear?";
+          if (expense.key === "horizontal-gear") {
+            return "Hired Horizontal Gear?";
           }
-          if (expense.key === "shared-gear") {
-            return "Used Shared Gear?";
+          if (expense.key === "srt-kit") {
+            return "Used SRT Kit?";
           }
           return `${expense.name}?`;
         }
@@ -1905,6 +1981,13 @@
         amountHeader.dataset.expenseId = expense.id;
         amountHeader.dataset.directCharge = directCharge ? "true" : "false";
         headerRow.appendChild(amountHeader);
+
+        if (expense.key === "petrol") {
+          const distanceHeader = document.createElement("th");
+          distanceHeader.dataset.expenseId = expense.id;
+          distanceHeader.textContent = "Distance (km)";
+          headerRow.appendChild(distanceHeader);
+        }
 
         if (!directCharge) {
           const consumeHeader = document.createElement("th");
@@ -2067,6 +2150,53 @@
           amountCell.appendChild(amountInput);
           row.appendChild(amountCell);
 
+          if (expense.key === "petrol") {
+            if (!Array.isArray(expense.distances)) {
+              expense.distances = participants.map(() => "");
+            }
+            const distanceCell = document.createElement("td");
+            const distanceInput = document.createElement("input");
+            distanceInput.type = "number";
+            distanceInput.step = "1";
+            distanceInput.min = "0";
+            distanceInput.inputMode = "numeric";
+            const storedDistance = expense.distances[personIndex];
+            distanceInput.value = storedDistance !== "" ? storedDistance : "";
+            distanceInput.placeholder = "0";
+            distanceInput.dataset.expenseId = expense.id;
+            distanceInput.dataset.personIndex = String(personIndex);
+            distanceInput.setAttribute(
+              "aria-label",
+              "Distance travelled in kilometres"
+            );
+            distanceInput.addEventListener("input", (event) => {
+              const targetExpense = findExpenseById(event.target.dataset.expenseId);
+              if (!targetExpense) {
+                return;
+              }
+              if (!Array.isArray(targetExpense.distances)) {
+                targetExpense.distances = [];
+              }
+              const index = Number(event.target.dataset.personIndex);
+              const rawValue = event.target.value.trim();
+              if (rawValue === "") {
+                targetExpense.distances[index] = "";
+              } else {
+                const numericValue = Number(rawValue);
+                if (Number.isFinite(numericValue)) {
+                  const sanitizedValue = Math.max(0, Math.round(numericValue));
+                  targetExpense.distances[index] = sanitizedValue;
+                  event.target.value = String(sanitizedValue);
+                } else {
+                  targetExpense.distances[index] = "";
+                }
+              }
+              recalculate();
+            });
+            distanceCell.appendChild(distanceInput);
+            row.appendChild(distanceCell);
+          }
+
           const consumeCell = document.createElement("td");
           consumeCell.className = "consume-cell";
           const consumeInput = document.createElement("input");
@@ -2140,6 +2270,14 @@
         } else {
           row.appendChild(totalCell);
 
+          if (expense.key === "petrol") {
+            const distanceCell = document.createElement("td");
+            distanceCell.className = "expense-distance-summary";
+            distanceCell.dataset.expenseId = expense.id;
+            distanceCell.textContent = "Distance: 0 km";
+            row.appendChild(distanceCell);
+          }
+
           const consumersCell = document.createElement("td");
           consumersCell.className = "expense-consumers";
           consumersCell.dataset.expenseId = expense.id;
@@ -2167,28 +2305,28 @@
       tfoot.appendChild(row);
     }
 
-    function syncSharedGearMasterToggleState() {
-      if (!sharedGearMasterToggle) {
+    function syncSrtKitMasterToggleState() {
+      if (!srtKitMasterToggle) {
         return;
       }
 
-      const sharedGearExpense = getSharedGearExpense();
-      if (!sharedGearExpense) {
-        sharedGearMasterToggle.checked = false;
-        sharedGearMasterToggle.indeterminate = false;
-        sharedGearMasterToggle.disabled = true;
+      const srtKitExpense = getSrtKitExpense();
+      if (!srtKitExpense) {
+        srtKitMasterToggle.checked = false;
+        srtKitMasterToggle.indeterminate = false;
+        srtKitMasterToggle.disabled = true;
         return;
       }
 
-      if (!sharedGearExpense.enabled) {
-        sharedGearMasterToggle.checked = false;
-        sharedGearMasterToggle.indeterminate = false;
-        sharedGearMasterToggle.disabled = true;
+      if (!srtKitExpense.enabled) {
+        srtKitMasterToggle.checked = false;
+        srtKitMasterToggle.indeterminate = false;
+        srtKitMasterToggle.disabled = true;
         return;
       }
 
-      sharedGearMasterToggle.disabled = false;
-      ensureExpenseSize(sharedGearExpense);
+      srtKitMasterToggle.disabled = false;
+      ensureExpenseSize(srtKitExpense);
 
       let relevantIndexes = participants
         .map((participant, index) => ({
@@ -2204,20 +2342,20 @@
       const total = relevantIndexes.length;
       let checkedCount = 0;
       relevantIndexes.forEach(({ index }) => {
-        if (sharedGearExpense.consumers[index]) {
+        if (srtKitExpense.consumers[index]) {
           checkedCount += 1;
         }
       });
 
       if (total === 0) {
-        sharedGearMasterToggle.checked = false;
-        sharedGearMasterToggle.indeterminate = false;
+        srtKitMasterToggle.checked = false;
+        srtKitMasterToggle.indeterminate = false;
         return;
       }
 
-      sharedGearMasterToggle.indeterminate =
+      srtKitMasterToggle.indeterminate =
         checkedCount > 0 && checkedCount < total;
-      sharedGearMasterToggle.checked = checkedCount === total;
+      srtKitMasterToggle.checked = checkedCount === total;
     }
 
     function recalculate() {
@@ -2279,34 +2417,56 @@
           return;
         }
 
-        let total = 0;
+        let fuelTotal = 0;
+        let totalDistance = 0;
         const consumers = [];
 
         expense.amounts.forEach((amount, personIndex) => {
           const participant = participants[personIndex];
           const hasName = Boolean(participant.name && participant.name.trim());
           if (hasName && amount !== "" && Number.isFinite(Number(amount))) {
-            total += Number(amount);
-            participantContributions[personIndex] += Number(amount);
+            const numericAmount = Number(amount);
+            fuelTotal += numericAmount;
+            participantContributions[personIndex] += numericAmount;
+          }
+          if (expense.key === "petrol" && hasName) {
+            if (!Array.isArray(expense.distances)) {
+              expense.distances = participants.map(() => "");
+            }
+            const distanceValue = expense.distances[personIndex];
+            if (distanceValue !== "") {
+              const numericDistance = Number(distanceValue);
+              if (Number.isFinite(numericDistance)) {
+                totalDistance += numericDistance;
+              }
+            }
           }
           if (hasName && expense.consumers[personIndex]) {
             consumers.push(personIndex);
           }
         });
 
+        const maintenanceRate = 0.025;
+        const maintenanceTotal = expense.key === "petrol" ? totalDistance * maintenanceRate : 0;
+        const combinedTotal = fuelTotal + maintenanceTotal;
         const consumerCount = consumers.length;
-        const share = consumerCount > 0 ? total / consumerCount : 0;
+        const combinedShare = consumerCount > 0 ? combinedTotal / consumerCount : 0;
+        const fuelShare = consumerCount > 0 ? fuelTotal / consumerCount : 0;
+        const maintenanceShare = consumerCount > 0 ? maintenanceTotal / consumerCount : 0;
 
         consumers.forEach((personIndex) => {
-          participantFeeTotals[personIndex] += share;
-          if (share > 0) {
+          participantFeeTotals[personIndex] += combinedShare;
+          if (fuelShare > 0) {
             participantFeeBreakdowns[personIndex].push({
               name: expense.name,
-              value: share
+              value: fuelShare
             });
           }
-          if (expense.key === "personal-gear" || expense.key === "shared-gear") {
-            clubIncome += share;
+          if (maintenanceShare > 0) {
+            participantFeeBreakdowns[personIndex].push({
+              name: "Maintenance",
+              value: maintenanceShare
+            });
           }
         });
 
@@ -2314,8 +2474,27 @@
           `.expense-total[data-expense-id="${expense.id}"]`
         );
         if (totalCell) {
-          const totalText = formatCurrency(total);
-          totalCell.textContent = `Total: $${totalText || "0.00"}`;
+          const totalText = formatCurrency(combinedTotal);
+          totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
+          if (expense.key === "petrol") {
+            const fuelLine = document.createElement("div");
+            fuelLine.textContent = `Fuel: $${formatCurrency(fuelTotal) || "0.00"}`;
+            const maintenanceLine = document.createElement("div");
+            const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
+            const distanceText = `${Math.round(totalDistance) || 0} km`;
+            maintenanceLine.textContent = `Maintenance ($0.025/km): $${maintenanceAmount} (${distanceText})`;
+            totalCell.appendChild(fuelLine);
+            totalCell.appendChild(maintenanceLine);
+          }
+        }
+        if (expense.key === "petrol") {
+          const distanceSummaryCell = document.querySelector(
+            `.expense-distance-summary[data-expense-id="${expense.id}"]`
+          );
+          if (distanceSummaryCell) {
+            const roundedDistance = Math.round(totalDistance) || 0;
+            distanceSummaryCell.textContent = `Distance: ${roundedDistance} km`;
+          }
         }
         const consumersCell = document.querySelector(
           `.expense-consumers[data-expense-id="${expense.id}"]`
@@ -2323,7 +2502,7 @@
         if (consumersCell) {
           const shareText =
             consumerCount > 0
-              ? `Share: $${formatCurrency(share) || "0.00"}`
+              ? `Share: $${formatCurrency(combinedShare) || "0.00"}`
               : "Share: $0.00";
           consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
         }
@@ -2412,7 +2591,7 @@
         clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
       }
 
-      syncSharedGearMasterToggleState();
+      syncSrtKitMasterToggleState();
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
@@ -2491,11 +2670,11 @@
 
     document.getElementById("add-row").addEventListener("click", () => {
       participants.push({ name: "", bold: false, notes: "" });
-      if (sharedGearMasterToggle && sharedGearMasterToggle.checked) {
-        const sharedGearExpense = getSharedGearExpense();
-        if (sharedGearExpense && sharedGearExpense.enabled) {
-          ensureExpenseSize(sharedGearExpense);
-          sharedGearExpense.consumers[participants.length - 1] = true;
+      if (srtKitMasterToggle && srtKitMasterToggle.checked) {
+        const srtKitExpense = getSrtKitExpense();
+        if (srtKitExpense && srtKitExpense.enabled) {
+          ensureExpenseSize(srtKitExpense);
+          srtKitExpense.consumers[participants.length - 1] = true;
         }
       }
       renderTable();
@@ -2529,30 +2708,30 @@
         });
       });
 
-    if (sharedGearMasterToggle) {
-      sharedGearMasterToggle.addEventListener("change", (event) => {
-        const sharedGearExpense = getSharedGearExpense();
-        if (!sharedGearExpense || !sharedGearExpense.enabled) {
-          sharedGearMasterToggle.checked = false;
-          sharedGearMasterToggle.indeterminate = false;
+    if (srtKitMasterToggle) {
+      srtKitMasterToggle.addEventListener("change", (event) => {
+        const srtKitExpense = getSrtKitExpense();
+        if (!srtKitExpense || !srtKitExpense.enabled) {
+          srtKitMasterToggle.checked = false;
+          srtKitMasterToggle.indeterminate = false;
           return;
         }
 
-        ensureExpenseSize(sharedGearExpense);
+        ensureExpenseSize(srtKitExpense);
         const desired = event.target.checked;
-        for (let index = 0; index < sharedGearExpense.consumers.length; index += 1) {
-          sharedGearExpense.consumers[index] = desired;
+        for (let index = 0; index < srtKitExpense.consumers.length; index += 1) {
+          srtKitExpense.consumers[index] = desired;
         }
 
         document
           .querySelectorAll(
-            `input[type="checkbox"][data-expense-id="${sharedGearExpense.id}"]`
+            `input[type="checkbox"][data-expense-id="${srtKitExpense.id}"]`
           )
           .forEach((checkbox) => {
             checkbox.checked = desired;
           });
 
-        sharedGearMasterToggle.indeterminate = false;
+        srtKitMasterToggle.indeterminate = false;
         recalculate();
       });
     }
