@@ -132,10 +132,41 @@
       margin-bottom: 1rem;
     }
 
+    .header-logo-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+    }
+
     .header-row img {
       height: 72px;
       width: auto;
       display: block;
+    }
+
+    .miner-image-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .image-upload-button {
+      padding: 0.3rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.4rem;
+      border: 1px solid #006064;
+      background: #00796b;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .image-upload-button:hover,
+    .image-upload-button:focus {
+      background: #00897b;
     }
 
     h1 {
@@ -714,15 +745,30 @@
     </div>
   </div>
 
-  <div class="top-section">
-    <div class="top-section-left">
-      <div class="header-row">
-        <img src="banner.png" alt="NUCC banner" />
-        <h1>Trip Attendance Sheet</h1>
-      </div>
+    <div class="top-section">
+      <div class="top-section-left">
+        <div class="header-row">
+          <div class="header-logo-block">
+            <img id="banner-image" src="banner.png" alt="NUCC banner" />
+            <button
+              type="button"
+              class="image-upload-button"
+              id="replace-banner-button"
+            >
+              Replace banner
+            </button>
+            <input
+              type="file"
+              id="banner-image-input"
+              accept="image/*"
+              hidden
+            />
+          </div>
+          <h1>Trip Attendance Sheet</h1>
+        </div>
 
-      <table class="meta-table">
-        <tbody>
+        <table class="meta-table">
+          <tbody>
           <tr>
             <th scope="row">Date</th>
             <td>
@@ -886,11 +932,27 @@
             </button>
           </div>
         </div>
-        <img
-          src="taxminer.png"
-          alt="Tax Miner graphic"
-          class="miner-image"
-        />
+        <div class="miner-image-container">
+          <img
+            src="taxminer.png"
+            alt="Tax Miner graphic"
+            class="miner-image"
+            id="miner-image"
+          />
+          <button
+            type="button"
+            class="image-upload-button"
+            id="replace-miner-button"
+          >
+            Replace miner image
+          </button>
+          <input
+            type="file"
+            id="miner-image-input"
+            accept="image/*"
+            hidden
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -1008,6 +1070,12 @@
     const bankingBsbInput = document.getElementById("banking-bsb");
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
+    const bannerImageElement = document.getElementById("banner-image");
+    const minerImageElement = document.getElementById("miner-image");
+    const replaceBannerButton = document.getElementById("replace-banner-button");
+    const replaceMinerButton = document.getElementById("replace-miner-button");
+    const bannerImageInput = document.getElementById("banner-image-input");
+    const minerImageInput = document.getElementById("miner-image-input");
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
@@ -1032,6 +1100,12 @@
     let memberNames = [];
     let bankingDetailsData = null;
     let bankingDetailsEdited = false;
+    const defaultBannerSource =
+      bannerImageElement?.getAttribute("src") || "banner.png";
+    const defaultMinerSource =
+      minerImageElement?.getAttribute("src") || "taxminer.png";
+    let bannerImageSource = defaultBannerSource;
+    let minerImageSource = defaultMinerSource;
 
     const baseExpenseRates = {
       "horizontal-gear": 5,
@@ -1123,6 +1197,54 @@
     };
 
     const maintenanceRateInput = document.getElementById("maintenance-rate");
+
+    function normalizeImageSource(source, fallback) {
+      if (typeof source === "string" && source.trim()) {
+        return source;
+      }
+      return fallback;
+    }
+
+    function syncImageElementSource(element, source, fallback) {
+      if (!element) {
+        return;
+      }
+      const resolved = normalizeImageSource(source, fallback);
+      element.setAttribute("src", resolved);
+    }
+
+    function syncImageSources() {
+      syncImageElementSource(bannerImageElement, bannerImageSource, defaultBannerSource);
+      syncImageElementSource(minerImageElement, minerImageSource, defaultMinerSource);
+    }
+
+    function setupImageReplacement(button, input, applySource) {
+      if (button && input) {
+        button.addEventListener("click", () => {
+          input.value = "";
+          input.click();
+        });
+      }
+
+      if (!input) {
+        return;
+      }
+
+      input.addEventListener("change", () => {
+        const [file] = input.files;
+        if (!file) {
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            applySource(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
 
     baseExpenseKeys.forEach((key) => {
       applyBaseExpenseRateToExpense(key);
@@ -1373,7 +1495,7 @@
     function sanitizeSummaryClone(node) {
       node
         .querySelectorAll(
-          ".expense-toggle-group, .base-expense-inputs, .controls, button"
+          ".expense-toggle-group, .base-expense-inputs, .controls, button, input[type=\"file\"]"
         )
         .forEach((element) => element.remove());
 
@@ -1934,6 +2056,10 @@
           bold: participant.bold,
           notes: participant.notes
         })),
+        images: {
+          banner: bannerImageSource,
+          miner: minerImageSource
+        },
         srtKitAllSelected: Boolean(
           srtKitMasterToggle && srtKitMasterToggle.checked
         )
@@ -2019,7 +2145,8 @@
         maintenanceRate: maintenanceRateData,
         bankingDetails,
         srtKitAllSelected,
-        sharedGearAllSelected
+        sharedGearAllSelected,
+        images
       } = state;
 
       if (tripDateInput) {
@@ -2074,6 +2201,22 @@
         const numeric = Number(maintenanceRateData);
         maintenanceRate = Number.isFinite(numeric) && numeric >= 0 ? numeric : maintenanceRate;
       }
+
+      if (images && typeof images === "object") {
+        bannerImageSource = normalizeImageSource(
+          images.banner,
+          defaultBannerSource
+        );
+        minerImageSource = normalizeImageSource(
+          images.miner,
+          defaultMinerSource
+        );
+      } else {
+        bannerImageSource = defaultBannerSource;
+        minerImageSource = defaultMinerSource;
+      }
+
+      syncImageSources();
 
       baseExpenses.forEach((expense) => {
         const snapshotEntry = Array.isArray(baseData)
@@ -3133,6 +3276,20 @@
       }
     }
 
+    function setupImageReplacements() {
+      setupImageReplacement(replaceBannerButton, bannerImageInput, (source) => {
+        bannerImageSource = source;
+        syncImageSources();
+      });
+
+      setupImageReplacement(replaceMinerButton, minerImageInput, (source) => {
+        minerImageSource = source;
+        syncImageSources();
+      });
+
+      syncImageSources();
+    }
+
     async function loadBankingDetails() {
       if (bankingDetailsEdited) {
         return;
@@ -3181,6 +3338,7 @@
 
     syncBaseExpenseInputsFromRates();
     loadMemberOptions();
+    setupImageReplacements();
     setupBankingEditor();
     renderTable();
     renderBankingDetails();
