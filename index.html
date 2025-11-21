@@ -702,6 +702,16 @@
           SRT Kit per person ($)
           <input type="number" id="srt-kit-rate" step="0.01" value="5" />
         </label>
+        <label for="maintenance-rate">
+          Maintenance rate ($/km)
+          <input
+            type="number"
+            id="maintenance-rate"
+            step="0.001"
+            value="0.025"
+            min="0"
+          />
+        </label>
       </div>
 
       <div class="controls">
@@ -886,6 +896,8 @@
       "srt-kit": 5
     };
 
+    let maintenanceRate = 0.025;
+
     const legacyExpenseKeyMap = {
       "personal-gear": "horizontal-gear",
       "shared-gear": "srt-kit"
@@ -968,6 +980,8 @@
       "srt-kit": document.getElementById("srt-kit-rate")
     };
 
+    const maintenanceRateInput = document.getElementById("maintenance-rate");
+
     baseExpenseKeys.forEach((key) => {
       applyBaseExpenseRateToExpense(key);
     });
@@ -1007,6 +1021,15 @@
         const value = baseExpenseRates[key];
         input.value = value === "" ? "" : String(value);
       });
+    }
+
+    function syncMaintenanceRateInput() {
+      if (!maintenanceRateInput) {
+        return;
+      }
+      maintenanceRateInput.value = Number.isFinite(maintenanceRate)
+        ? String(maintenanceRate)
+        : "";
     }
 
     function updateDuplicateNameWarnings() {
@@ -1087,6 +1110,26 @@
         syncBaseExpenseInputsFromRates();
       });
     });
+
+    if (maintenanceRateInput) {
+      syncMaintenanceRateInput();
+      maintenanceRateInput.addEventListener("input", (event) => {
+        const rawValue = event.target.value;
+        if (rawValue === "") {
+          maintenanceRate = 0;
+          renderTable();
+          syncMaintenanceRateInput();
+          return;
+        }
+        const numericValue = Number(rawValue);
+        if (!Number.isFinite(numericValue) || numericValue < 0) {
+          return;
+        }
+        maintenanceRate = numericValue;
+        renderTable();
+        syncMaintenanceRateInput();
+      });
+    }
 
     function getAllExpenses() {
       return [...baseExpenses, ...customExpenses];
@@ -1326,6 +1369,10 @@
       const summaryDescription = targetDocument.createElement("div");
       summaryDescription.className = "summary-description";
 
+      const maintenanceRateText = formatMaintenanceRateDisplay(
+        getEffectiveMaintenanceRate()
+      );
+
       const tripLocationValue = (tripLocationInput?.value || "").trim();
       const tripLeaderValue = (tripLeaderInput?.value || "").trim();
       const formattedDate = formatSummaryDate(tripDateInput?.value || "");
@@ -1376,7 +1423,7 @@
 
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
-        "Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $0.025 per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $0.025 per kilometre to return maintenance funds to those who supplied vehicles.";
+        `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
@@ -1610,6 +1657,20 @@
       return fixed === "-0.00" ? "0.00" : fixed;
     }
 
+    function formatMaintenanceRateDisplay(value) {
+      if (!Number.isFinite(value)) {
+        return "";
+      }
+      const fixed = value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+      return fixed || "0";
+    }
+
+    function getEffectiveMaintenanceRate() {
+      return Number.isFinite(maintenanceRate) && maintenanceRate >= 0
+        ? maintenanceRate
+        : 0;
+    }
+
     function parseCsv(text) {
       const rows = [];
       let currentRow = [];
@@ -1693,6 +1754,7 @@
           clerk: clerkInput ? clerkInput.value : ""
         },
         baseExpenseRates: { ...baseExpenseRates },
+        maintenanceRate,
         baseExpenses: baseExpenses.map((expense) => {
           const snapshot = {
             key: expense.key,
@@ -1807,6 +1869,7 @@
         baseExpenses: baseData,
         customExpenses: customData,
         baseExpenseRates: rateData,
+        maintenanceRate: maintenanceRateData,
         srtKitAllSelected,
         sharedGearAllSelected
       } = state;
@@ -1854,6 +1917,11 @@
         });
       }
 
+      if (maintenanceRateData !== undefined) {
+        const numeric = Number(maintenanceRateData);
+        maintenanceRate = Number.isFinite(numeric) && numeric >= 0 ? numeric : maintenanceRate;
+      }
+
       baseExpenses.forEach((expense) => {
         const snapshotEntry = Array.isArray(baseData)
           ? baseData.find(
@@ -1888,6 +1956,7 @@
       }
 
       syncBaseExpenseInputsFromRates();
+      syncMaintenanceRateInput();
       syncExpenseToggleStates();
       renderTable();
 
@@ -2466,8 +2535,12 @@
           }
         });
 
-        const maintenanceRate = 0.025;
-        const maintenanceTotal = expense.key === "petrol" ? totalDistance * maintenanceRate : 0;
+        const effectiveMaintenanceRate = getEffectiveMaintenanceRate();
+        const maintenanceRateText = formatMaintenanceRateDisplay(
+          effectiveMaintenanceRate
+        );
+        const maintenanceTotal =
+          expense.key === "petrol" ? totalDistance * effectiveMaintenanceRate : 0;
         const combinedTotal = fuelTotal + maintenanceTotal;
         const consumerCount = consumers.length;
         const combinedShare = consumerCount > 0 ? combinedTotal / consumerCount : 0;
@@ -2495,7 +2568,7 @@
             if (!driverHasDistance[personIndex]) {
               return;
             }
-            const maintenanceCredit = distance * maintenanceRate;
+            const maintenanceCredit = distance * effectiveMaintenanceRate;
             if (maintenanceCredit > 0) {
               participantFeeTotals[personIndex] -= maintenanceCredit;
               participantFeeBreakdowns[personIndex].push({
@@ -2518,7 +2591,7 @@
             const maintenanceLine = document.createElement("div");
             const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
             const distanceText = `${Math.round(totalDistance) || 0} km`;
-            maintenanceLine.textContent = `Maintenance ($0.025/km): $${maintenanceAmount} (${distanceText})`;
+            maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
             totalCell.appendChild(fuelLine);
             totalCell.appendChild(maintenanceLine);
           }
