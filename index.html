@@ -1452,6 +1452,9 @@
             } else {
               cloneInput.removeAttribute("checked");
             }
+          } else if (input.type === "file") {
+            cloneInput.value = "";
+            cloneInput.removeAttribute("value");
           } else {
             cloneInput.value = input.value;
             if (input.value === "") {
