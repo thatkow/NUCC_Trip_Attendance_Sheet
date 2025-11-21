@@ -16,7 +16,7 @@
     .top-section {
       display: flex;
       justify-content: space-between;
-      align-items: stretch;
+      align-items: flex-start;
       flex-wrap: wrap;
       gap: 1.5rem;
       margin-bottom: 1.5rem;
@@ -28,21 +28,21 @@
     }
 
     .top-section-right {
-      flex: 1 1 40%;
-      max-width: 40%;
-      min-width: 260px;
+      flex: 1 1 420px;
+      max-width: 520px;
+      min-width: 320px;
       display: flex;
       align-items: stretch;
     }
 
     .top-section-right-inner {
-      display: flex;
-      align-items: center;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
       justify-content: center;
       gap: 1.25rem;
       height: 100%;
       width: 100%;
-      flex-wrap: nowrap;
     }
 
     .miner-image {
@@ -68,6 +68,14 @@
       min-width: 0;
     }
 
+    .banking-logo-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+    }
+
     .banking-logo {
       max-width: 180px;
       width: 100%;
@@ -87,6 +95,28 @@
       min-width: 200px;
       width: 100%;
       box-sizing: border-box;
+    }
+
+    .banking-actions {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .banking-edit-button {
+      padding: 0.4rem 0.9rem;
+      border-radius: 0.5rem;
+      border: 1px solid #006064;
+      background: #00838f;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+
+    .banking-edit-button:hover,
+    .banking-edit-button:focus {
+      background: #0097a7;
     }
 
     .banking-details .banking-label {
@@ -110,10 +140,41 @@
       margin-bottom: 1rem;
     }
 
+    .header-logo-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+    }
+
     .header-row img {
       height: 72px;
       width: auto;
       display: block;
+    }
+
+    .miner-image-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .image-upload-button {
+      padding: 0.3rem 0.75rem;
+      font-size: 0.9rem;
+      border-radius: 0.4rem;
+      border: 1px solid #006064;
+      background: #00796b;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .image-upload-button:hover,
+    .image-upload-button:focus {
+      background: #00897b;
     }
 
     h1 {
@@ -515,6 +576,82 @@
       max-height: 60vh;
     }
 
+    .banking-dialog {
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0;
+      max-width: 480px;
+      width: min(90vw, 480px);
+      box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.2);
+    }
+
+    .banking-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .banking-dialog form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      padding: 1.25rem 1.5rem 1.5rem;
+    }
+
+    .banking-dialog h3 {
+      margin: 0 0 0.25rem;
+      font-size: 1.15rem;
+    }
+
+    .banking-dialog label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-weight: 600;
+    }
+
+    .banking-dialog input[type="text"] {
+      padding: 0.55rem 0.65rem;
+      border: 1px solid #b0bec5;
+      border-radius: 0.4rem;
+      font: inherit;
+    }
+
+    .banking-dialog .banking-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .banking-dialog button[type="submit"] {
+      background: #00695c;
+      color: #fff;
+      border: 1px solid #00695c;
+      padding: 0.55rem 1rem;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .banking-dialog button[type="submit"]:hover,
+    .banking-dialog button[type="submit"]:focus {
+      background: #00897b;
+    }
+
+    .banking-dialog .banking-dialog-cancel {
+      background: transparent;
+      color: #00695c;
+      border: 1px solid #00695c;
+      padding: 0.55rem 1rem;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .banking-dialog .banking-dialog-cancel:hover,
+    .banking-dialog .banking-dialog-cancel:focus {
+      background: #e0f2f1;
+    }
+
     @media (max-width: 1100px) {
       body {
         padding: 1rem;
@@ -540,7 +677,7 @@
       }
 
       .top-section-right-inner {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         align-items: center;
         height: auto;
         text-align: center;
@@ -616,15 +753,30 @@
     </div>
   </div>
 
-  <div class="top-section">
-    <div class="top-section-left">
-      <div class="header-row">
-        <img src="banner.png" alt="NUCC banner" />
-        <h1>Trip Attendance Sheet</h1>
-      </div>
+    <div class="top-section">
+      <div class="top-section-left">
+        <div class="header-row">
+          <div class="header-logo-block">
+            <img id="banner-image" src="banner.png" alt="NUCC banner" />
+            <button
+              type="button"
+              class="image-upload-button"
+              id="replace-banner-button"
+            >
+              Replace banner
+            </button>
+            <input
+              type="file"
+              id="banner-image-input"
+              accept="image/*"
+              hidden
+            />
+          </div>
+          <h1>Trip Attendance Sheet</h1>
+        </div>
 
-      <table class="meta-table">
-        <tbody>
+        <table class="meta-table">
+          <tbody>
           <tr>
             <th scope="row">Date</th>
             <td>
@@ -702,6 +854,16 @@
           SRT Kit per person ($)
           <input type="number" id="srt-kit-rate" step="0.01" value="5" />
         </label>
+        <label for="maintenance-rate">
+          Maintenance rate ($/km)
+          <input
+            type="number"
+            id="maintenance-rate"
+            step="0.001"
+            value="0.025"
+            min="0"
+          />
+        </label>
       </div>
 
       <div class="controls">
@@ -766,14 +928,59 @@
     <div class="top-section-right">
       <div class="top-section-right-inner">
         <div class="banking-info">
-          <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
+          <div class="banking-logo-wrapper">
+            <img
+              src="banking_logo.png"
+              alt="Banking logo"
+              class="banking-logo"
+              id="banking-logo"
+            />
+            <button
+              type="button"
+              class="image-upload-button"
+              id="replace-banking-logo-button"
+            >
+              Replace banking logo
+            </button>
+            <input
+              type="file"
+              id="banking-logo-input"
+              accept="image/*"
+              hidden
+            />
+          </div>
           <div class="banking-details" id="banking-details" aria-live="polite"></div>
+          <div class="banking-actions">
+            <button
+              type="button"
+              class="banking-edit-button"
+              id="edit-banking-details"
+            >
+              Edit banking details
+            </button>
+          </div>
         </div>
-        <img
-          src="taxminer.png"
-          alt="Tax Miner graphic"
-          class="miner-image"
-        />
+        <div class="miner-image-container">
+          <img
+            src="taxminer.png"
+            alt="Tax Miner graphic"
+            class="miner-image"
+            id="miner-image"
+          />
+          <button
+            type="button"
+            class="image-upload-button"
+            id="replace-miner-button"
+          >
+            Replace miner image
+          </button>
+          <input
+            type="file"
+            id="miner-image-input"
+            accept="image/*"
+            hidden
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -803,6 +1010,33 @@
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
+
+  <dialog class="banking-dialog" id="banking-dialog">
+    <form id="banking-form" method="dialog">
+      <h3>Edit banking details</h3>
+      <p style="margin: 0; color: #444; font-size: 0.95rem; line-height: 1.4;">
+        Update the account information shown on the right. Leave a field blank to keep the current value.
+      </p>
+      <label for="banking-name">
+        Account name
+        <input type="text" id="banking-name" name="banking-name" />
+      </label>
+      <label for="banking-bsb">
+        BSB
+        <input type="text" id="banking-bsb" name="banking-bsb" />
+      </label>
+      <label for="banking-account">
+        Account number
+        <input type="text" id="banking-account" name="banking-account" />
+      </label>
+      <div class="banking-dialog-actions">
+        <button type="button" class="banking-dialog-cancel" id="banking-cancel">
+          Cancel
+        </button>
+        <button type="submit">Save banking details</button>
+      </div>
+    </form>
+  </dialog>
 
   <script>
     const tutorialOverlay = document.getElementById("tutorial-overlay");
@@ -857,6 +1091,24 @@
     const clerkInput = document.getElementById("clerk");
     const tripDateInput = document.getElementById("trip-date");
     const tripLocationInput = document.getElementById("trip-location");
+    const editBankingButton = document.getElementById("edit-banking-details");
+    const bankingDialog = document.getElementById("banking-dialog");
+    const bankingForm = document.getElementById("banking-form");
+    const bankingNameInput = document.getElementById("banking-name");
+    const bankingBsbInput = document.getElementById("banking-bsb");
+    const bankingAccountInput = document.getElementById("banking-account");
+    const bankingCancelButton = document.getElementById("banking-cancel");
+    const bannerImageElement = document.getElementById("banner-image");
+    const minerImageElement = document.getElementById("miner-image");
+    const bankingLogoElement = document.getElementById("banking-logo");
+    const replaceBannerButton = document.getElementById("replace-banner-button");
+    const replaceMinerButton = document.getElementById("replace-miner-button");
+    const replaceBankingLogoButton = document.getElementById(
+      "replace-banking-logo-button"
+    );
+    const bannerImageInput = document.getElementById("banner-image-input");
+    const minerImageInput = document.getElementById("miner-image-input");
+    const bankingLogoInput = document.getElementById("banking-logo-input");
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
@@ -880,11 +1132,23 @@
 
     let memberNames = [];
     let bankingDetailsData = null;
+    let bankingDetailsEdited = false;
+    const defaultBannerSource =
+      bannerImageElement?.getAttribute("src") || "banner.png";
+    const defaultMinerSource =
+      minerImageElement?.getAttribute("src") || "taxminer.png";
+    const defaultBankingLogoSource =
+      bankingLogoElement?.getAttribute("src") || "banking_logo.png";
+    let bannerImageSource = defaultBannerSource;
+    let minerImageSource = defaultMinerSource;
+    let bankingLogoSource = defaultBankingLogoSource;
 
     const baseExpenseRates = {
       "horizontal-gear": 5,
       "srt-kit": 5
     };
+
+    let maintenanceRate = 0.025;
 
     const legacyExpenseKeyMap = {
       "personal-gear": "horizontal-gear",
@@ -968,6 +1232,61 @@
       "srt-kit": document.getElementById("srt-kit-rate")
     };
 
+    const maintenanceRateInput = document.getElementById("maintenance-rate");
+
+    function normalizeImageSource(source, fallback) {
+      if (typeof source === "string" && source.trim()) {
+        return source;
+      }
+      return fallback;
+    }
+
+    function syncImageElementSource(element, source, fallback) {
+      if (!element) {
+        return;
+      }
+      const resolved = normalizeImageSource(source, fallback);
+      element.setAttribute("src", resolved);
+    }
+
+    function syncImageSources() {
+      syncImageElementSource(bannerImageElement, bannerImageSource, defaultBannerSource);
+      syncImageElementSource(minerImageElement, minerImageSource, defaultMinerSource);
+      syncImageElementSource(
+        bankingLogoElement,
+        bankingLogoSource,
+        defaultBankingLogoSource
+      );
+    }
+
+    function setupImageReplacement(button, input, applySource) {
+      if (button && input) {
+        button.addEventListener("click", () => {
+          input.value = "";
+          input.click();
+        });
+      }
+
+      if (!input) {
+        return;
+      }
+
+      input.addEventListener("change", () => {
+        const [file] = input.files;
+        if (!file) {
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            applySource(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     baseExpenseKeys.forEach((key) => {
       applyBaseExpenseRateToExpense(key);
     });
@@ -1007,6 +1326,15 @@
         const value = baseExpenseRates[key];
         input.value = value === "" ? "" : String(value);
       });
+    }
+
+    function syncMaintenanceRateInput() {
+      if (!maintenanceRateInput) {
+        return;
+      }
+      maintenanceRateInput.value = Number.isFinite(maintenanceRate)
+        ? String(maintenanceRate)
+        : "";
     }
 
     function updateDuplicateNameWarnings() {
@@ -1088,6 +1416,26 @@
       });
     });
 
+    if (maintenanceRateInput) {
+      syncMaintenanceRateInput();
+      maintenanceRateInput.addEventListener("input", (event) => {
+        const rawValue = event.target.value;
+        if (rawValue === "") {
+          maintenanceRate = 0;
+          renderTable();
+          syncMaintenanceRateInput();
+          return;
+        }
+        const numericValue = Number(rawValue);
+        if (!Number.isFinite(numericValue) || numericValue < 0) {
+          return;
+        }
+        maintenanceRate = numericValue;
+        renderTable();
+        syncMaintenanceRateInput();
+      });
+    }
+
     function getAllExpenses() {
       return [...baseExpenses, ...customExpenses];
     }
@@ -1145,6 +1493,9 @@
             } else {
               cloneInput.removeAttribute("checked");
             }
+          } else if (input.type === "file") {
+            cloneInput.value = "";
+            cloneInput.removeAttribute("value");
           } else {
             cloneInput.value = input.value;
             if (input.value === "") {
@@ -1188,7 +1539,7 @@
     function sanitizeSummaryClone(node) {
       node
         .querySelectorAll(
-          ".expense-toggle-group, .base-expense-inputs, .controls, button"
+          ".expense-toggle-group, .base-expense-inputs, .controls, button, input[type=\"file\"]"
         )
         .forEach((element) => element.remove());
 
@@ -1326,6 +1677,10 @@
       const summaryDescription = targetDocument.createElement("div");
       summaryDescription.className = "summary-description";
 
+      const maintenanceRateText = formatMaintenanceRateDisplay(
+        getEffectiveMaintenanceRate()
+      );
+
       const tripLocationValue = (tripLocationInput?.value || "").trim();
       const tripLeaderValue = (tripLeaderInput?.value || "").trim();
       const formattedDate = formatSummaryDate(tripDateInput?.value || "");
@@ -1376,7 +1731,7 @@
 
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
-        "Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $0.025 per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $0.025 per kilometre to return maintenance funds to those who supplied vehicles.";
+        `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
@@ -1478,6 +1833,7 @@
         }
 
         .summary-preview .top-section-right-inner {
+          display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
@@ -1486,6 +1842,10 @@
 
         .summary-preview .banking-info {
           width: 100%;
+        }
+
+        .summary-preview .banking-actions {
+          display: none;
         }
 
         .summary-preview .summary-description {
@@ -1610,6 +1970,20 @@
       return fixed === "-0.00" ? "0.00" : fixed;
     }
 
+    function formatMaintenanceRateDisplay(value) {
+      if (!Number.isFinite(value)) {
+        return "";
+      }
+      const fixed = value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+      return fixed || "0";
+    }
+
+    function getEffectiveMaintenanceRate() {
+      return Number.isFinite(maintenanceRate) && maintenanceRate >= 0
+        ? maintenanceRate
+        : 0;
+    }
+
     function parseCsv(text) {
       const rows = [];
       let currentRow = [];
@@ -1692,7 +2066,9 @@
           leader: tripLeaderInput ? tripLeaderInput.value : "",
           clerk: clerkInput ? clerkInput.value : ""
         },
+        bankingDetails: getCurrentBankingDetails(),
         baseExpenseRates: { ...baseExpenseRates },
+        maintenanceRate,
         baseExpenses: baseExpenses.map((expense) => {
           const snapshot = {
             key: expense.key,
@@ -1725,6 +2101,11 @@
           bold: participant.bold,
           notes: participant.notes
         })),
+        images: {
+          banner: bannerImageSource,
+          miner: minerImageSource,
+          banking: bankingLogoSource
+        },
         srtKitAllSelected: Boolean(
           srtKitMasterToggle && srtKitMasterToggle.checked
         )
@@ -1807,8 +2188,11 @@
         baseExpenses: baseData,
         customExpenses: customData,
         baseExpenseRates: rateData,
+        maintenanceRate: maintenanceRateData,
+        bankingDetails,
         srtKitAllSelected,
-        sharedGearAllSelected
+        sharedGearAllSelected,
+        images
       } = state;
 
       if (tripDateInput) {
@@ -1822,6 +2206,11 @@
       }
       if (clerkInput) {
         clerkInput.value = trip?.clerk || "";
+      }
+
+      if (Object.prototype.hasOwnProperty.call(state, "bankingDetails")) {
+        bankingDetailsData = normalizeBankingDetails(bankingDetails || {});
+        bankingDetailsEdited = true;
       }
 
       participants.length = 0;
@@ -1853,6 +2242,32 @@
             : baseExpenseRates[key];
         });
       }
+
+      if (maintenanceRateData !== undefined) {
+        const numeric = Number(maintenanceRateData);
+        maintenanceRate = Number.isFinite(numeric) && numeric >= 0 ? numeric : maintenanceRate;
+      }
+
+      if (images && typeof images === "object") {
+        bannerImageSource = normalizeImageSource(
+          images.banner,
+          defaultBannerSource
+        );
+        minerImageSource = normalizeImageSource(
+          images.miner,
+          defaultMinerSource
+        );
+        bankingLogoSource = normalizeImageSource(
+          images.banking,
+          defaultBankingLogoSource
+        );
+      } else {
+        bannerImageSource = defaultBannerSource;
+        minerImageSource = defaultMinerSource;
+        bankingLogoSource = defaultBankingLogoSource;
+      }
+
+      syncImageSources();
 
       baseExpenses.forEach((expense) => {
         const snapshotEntry = Array.isArray(baseData)
@@ -1888,6 +2303,7 @@
       }
 
       syncBaseExpenseInputsFromRates();
+      syncMaintenanceRateInput();
       syncExpenseToggleStates();
       renderTable();
 
@@ -2466,8 +2882,12 @@
           }
         });
 
-        const maintenanceRate = 0.025;
-        const maintenanceTotal = expense.key === "petrol" ? totalDistance * maintenanceRate : 0;
+        const effectiveMaintenanceRate = getEffectiveMaintenanceRate();
+        const maintenanceRateText = formatMaintenanceRateDisplay(
+          effectiveMaintenanceRate
+        );
+        const maintenanceTotal =
+          expense.key === "petrol" ? totalDistance * effectiveMaintenanceRate : 0;
         const combinedTotal = fuelTotal + maintenanceTotal;
         const consumerCount = consumers.length;
         const combinedShare = consumerCount > 0 ? combinedTotal / consumerCount : 0;
@@ -2495,7 +2915,7 @@
             if (!driverHasDistance[personIndex]) {
               return;
             }
-            const maintenanceCredit = distance * maintenanceRate;
+            const maintenanceCredit = distance * effectiveMaintenanceRate;
             if (maintenanceCredit > 0) {
               participantFeeTotals[personIndex] -= maintenanceCredit;
               participantFeeBreakdowns[personIndex].push({
@@ -2518,7 +2938,7 @@
             const maintenanceLine = document.createElement("div");
             const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
             const distanceText = `${Math.round(totalDistance) || 0} km`;
-            maintenanceLine.textContent = `Maintenance ($0.025/km): $${maintenanceAmount} (${distanceText})`;
+            maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
             totalCell.appendChild(fuelLine);
             totalCell.appendChild(maintenanceLine);
           }
@@ -2772,6 +3192,57 @@
       });
     }
 
+    function normalizeBankingDetails(details) {
+      if (!details || typeof details !== "object") {
+        return { name: "", bsb: "", account: "" };
+      }
+
+      const name =
+        details.Name !== undefined ? details.Name : details.name !== undefined ? details.name : "";
+      const bsb =
+        details.BSB !== undefined ? details.BSB : details.bsb !== undefined ? details.bsb : "";
+      const account =
+        details.Account !== undefined
+          ? details.Account
+          : details.account !== undefined
+            ? details.account
+            : "";
+
+      return {
+        name: typeof name === "string" || typeof name === "number" ? String(name).trim() : "",
+        bsb: typeof bsb === "string" || typeof bsb === "number" ? String(bsb).trim() : "",
+        account:
+          typeof account === "string" || typeof account === "number" ? String(account).trim() : ""
+      };
+    }
+
+    function getCurrentBankingDetails() {
+      return normalizeBankingDetails(bankingDetailsData);
+    }
+
+    function populateBankingFormFields() {
+      if (!bankingForm) {
+        return;
+      }
+
+      const current = getCurrentBankingDetails();
+
+      if (bankingNameInput) {
+        bankingNameInput.placeholder = current.name || "Account name";
+        bankingNameInput.value = current.name;
+      }
+
+      if (bankingBsbInput) {
+        bankingBsbInput.placeholder = current.bsb || "BSB";
+        bankingBsbInput.value = current.bsb;
+      }
+
+      if (bankingAccountInput) {
+        bankingAccountInput.placeholder = current.account || "Account number";
+        bankingAccountInput.value = current.account;
+      }
+    }
+
     function renderBankingDetails() {
       const container = document.getElementById("banking-details");
       if (!container) {
@@ -2779,39 +3250,15 @@
       }
 
       const lines = [];
+      const { name, bsb, account } = getCurrentBankingDetails();
 
-      if (bankingDetailsData && typeof bankingDetailsData === "object") {
-        const baseLines = [
-          {
-            label: "Name",
-            value:
-              bankingDetailsData.Name !== undefined
-                ? bankingDetailsData.Name
-                : bankingDetailsData.name
-          },
-          {
-            label: "BSB",
-            value:
-              bankingDetailsData.BSB !== undefined
-                ? bankingDetailsData.BSB
-                : bankingDetailsData.bsb
-          },
-          {
-            label: "Account",
-            value:
-              bankingDetailsData.Account !== undefined
-                ? bankingDetailsData.Account
-                : bankingDetailsData.account
-          }
-        ].filter((item) => {
-          if (item.value === undefined || item.value === null) {
-            return false;
-          }
-          return String(item.value).trim() !== "";
-        });
+      const baseLines = [
+        { label: "Name", value: name },
+        { label: "BSB", value: bsb },
+        { label: "Account", value: account }
+      ].filter((item) => item.value && String(item.value).trim() !== "");
 
-        lines.push(...baseLines);
-      }
+      lines.push(...baseLines);
 
       const bankingTag = getDateLocationTag();
       if (bankingTag) {
@@ -2837,7 +3284,77 @@
       });
     }
 
+    function applyBankingFormChanges(event) {
+      event.preventDefault();
+
+      const current = getCurrentBankingDetails();
+      const next = {
+        name: (bankingNameInput?.value || "").trim() || current.name,
+        bsb: (bankingBsbInput?.value || "").trim() || current.bsb,
+        account: (bankingAccountInput?.value || "").trim() || current.account
+      };
+
+      bankingDetailsData = next;
+      bankingDetailsEdited = true;
+      renderBankingDetails();
+
+      if (bankingDialog?.open) {
+        bankingDialog.close();
+      }
+    }
+
+    function setupBankingEditor() {
+      if (editBankingButton && bankingDialog && typeof bankingDialog.showModal === "function") {
+        editBankingButton.addEventListener("click", () => {
+          populateBankingFormFields();
+          bankingDialog.showModal();
+          if (bankingNameInput) {
+            bankingNameInput.focus();
+          }
+        });
+      }
+
+      if (bankingForm) {
+        bankingForm.addEventListener("submit", applyBankingFormChanges);
+      }
+
+      if (bankingCancelButton) {
+        bankingCancelButton.addEventListener("click", () => {
+          if (bankingDialog?.open) {
+            bankingDialog.close();
+          }
+        });
+      }
+    }
+
+    function setupImageReplacements() {
+      setupImageReplacement(replaceBannerButton, bannerImageInput, (source) => {
+        bannerImageSource = source;
+        syncImageSources();
+      });
+
+      setupImageReplacement(replaceMinerButton, minerImageInput, (source) => {
+        minerImageSource = source;
+        syncImageSources();
+      });
+
+      setupImageReplacement(
+        replaceBankingLogoButton,
+        bankingLogoInput,
+        (source) => {
+          bankingLogoSource = source;
+          syncImageSources();
+        }
+      );
+
+      syncImageSources();
+    }
+
     async function loadBankingDetails() {
+      if (bankingDetailsEdited) {
+        return;
+      }
+
       try {
         const response = await fetch("banking.json");
         if (!response.ok) {
@@ -2846,11 +3363,18 @@
           return;
         }
         const data = await response.json();
-        bankingDetailsData =
-          data && typeof data === "object" ? data : null;
+        const normalized = normalizeBankingDetails(
+          data && typeof data === "object" ? data : null
+        );
+        if (bankingDetailsEdited) {
+          return;
+        }
+        bankingDetailsData = normalized;
       } catch (error) {
         console.warn("Could not load banking details", error);
-        bankingDetailsData = null;
+        if (!bankingDetailsEdited) {
+          bankingDetailsData = null;
+        }
       }
 
       renderBankingDetails();
@@ -2874,6 +3398,8 @@
 
     syncBaseExpenseInputsFromRates();
     loadMemberOptions();
+    setupImageReplacements();
+    setupBankingEditor();
     renderTable();
     renderBankingDetails();
     loadBankingDetails();
