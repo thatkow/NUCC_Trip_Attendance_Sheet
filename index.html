@@ -16,7 +16,7 @@
     .top-section {
       display: flex;
       justify-content: space-between;
-      align-items: stretch;
+      align-items: flex-start;
       flex-wrap: wrap;
       gap: 1.5rem;
       margin-bottom: 1.5rem;
@@ -28,21 +28,21 @@
     }
 
     .top-section-right {
-      flex: 1 1 40%;
-      max-width: 40%;
-      min-width: 260px;
+      flex: 1 1 420px;
+      max-width: 520px;
+      min-width: 320px;
       display: flex;
       align-items: stretch;
     }
 
     .top-section-right-inner {
-      display: flex;
-      align-items: center;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
       justify-content: center;
       gap: 1.25rem;
       height: 100%;
       width: 100%;
-      flex-wrap: nowrap;
     }
 
     .miner-image {
@@ -66,6 +66,14 @@
       width: 100%;
       flex: 1 1 0;
       min-width: 0;
+    }
+
+    .banking-logo-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
     }
 
     .banking-logo {
@@ -669,7 +677,7 @@
       }
 
       .top-section-right-inner {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         align-items: center;
         height: auto;
         text-align: center;
@@ -920,7 +928,27 @@
     <div class="top-section-right">
       <div class="top-section-right-inner">
         <div class="banking-info">
-          <img src="banking_logo.png" alt="Banking logo" class="banking-logo" />
+          <div class="banking-logo-wrapper">
+            <img
+              src="banking_logo.png"
+              alt="Banking logo"
+              class="banking-logo"
+              id="banking-logo"
+            />
+            <button
+              type="button"
+              class="image-upload-button"
+              id="replace-banking-logo-button"
+            >
+              Replace banking logo
+            </button>
+            <input
+              type="file"
+              id="banking-logo-input"
+              accept="image/*"
+              hidden
+            />
+          </div>
           <div class="banking-details" id="banking-details" aria-live="polite"></div>
           <div class="banking-actions">
             <button
@@ -1072,10 +1100,15 @@
     const bankingCancelButton = document.getElementById("banking-cancel");
     const bannerImageElement = document.getElementById("banner-image");
     const minerImageElement = document.getElementById("miner-image");
+    const bankingLogoElement = document.getElementById("banking-logo");
     const replaceBannerButton = document.getElementById("replace-banner-button");
     const replaceMinerButton = document.getElementById("replace-miner-button");
+    const replaceBankingLogoButton = document.getElementById(
+      "replace-banking-logo-button"
+    );
     const bannerImageInput = document.getElementById("banner-image-input");
     const minerImageInput = document.getElementById("miner-image-input");
+    const bankingLogoInput = document.getElementById("banking-logo-input");
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
@@ -1104,8 +1137,11 @@
       bannerImageElement?.getAttribute("src") || "banner.png";
     const defaultMinerSource =
       minerImageElement?.getAttribute("src") || "taxminer.png";
+    const defaultBankingLogoSource =
+      bankingLogoElement?.getAttribute("src") || "banking_logo.png";
     let bannerImageSource = defaultBannerSource;
     let minerImageSource = defaultMinerSource;
+    let bankingLogoSource = defaultBankingLogoSource;
 
     const baseExpenseRates = {
       "horizontal-gear": 5,
@@ -1216,6 +1252,11 @@
     function syncImageSources() {
       syncImageElementSource(bannerImageElement, bannerImageSource, defaultBannerSource);
       syncImageElementSource(minerImageElement, minerImageSource, defaultMinerSource);
+      syncImageElementSource(
+        bankingLogoElement,
+        bankingLogoSource,
+        defaultBankingLogoSource
+      );
     }
 
     function setupImageReplacement(button, input, applySource) {
@@ -2061,7 +2102,8 @@
         })),
         images: {
           banner: bannerImageSource,
-          miner: minerImageSource
+          miner: minerImageSource,
+          banking: bankingLogoSource
         },
         srtKitAllSelected: Boolean(
           srtKitMasterToggle && srtKitMasterToggle.checked
@@ -2214,9 +2256,14 @@
           images.miner,
           defaultMinerSource
         );
+        bankingLogoSource = normalizeImageSource(
+          images.banking,
+          defaultBankingLogoSource
+        );
       } else {
         bannerImageSource = defaultBannerSource;
         minerImageSource = defaultMinerSource;
+        bankingLogoSource = defaultBankingLogoSource;
       }
 
       syncImageSources();
@@ -3289,6 +3336,15 @@
         minerImageSource = source;
         syncImageSources();
       });
+
+      setupImageReplacement(
+        replaceBankingLogoButton,
+        bankingLogoInput,
+        (source) => {
+          bankingLogoSource = source;
+          syncImageSources();
+        }
+      );
 
       syncImageSources();
     }
