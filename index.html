@@ -1289,8 +1289,13 @@
     }
 
     let memberNames = [];
+    const bakedBankingDefaults = {
+      Name: "Society Cheque Acct",
+      BSB: "062903",
+      Account: "10320366"
+    };
     let bankingDetailsData = null;
-    let defaultBankingDetails = null;
+    let defaultBankingDetails = normalizeBankingDetails(bakedBankingDefaults);
     let bankingDetailsEdited = false;
     const defaultBannerSource =
       bannerImageElement?.getAttribute("src") || "banner.png";
