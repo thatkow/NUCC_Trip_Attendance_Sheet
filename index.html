@@ -303,31 +303,6 @@
 
     .mobile-tab-list {
       display: none;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 0 0 0.75rem;
-      padding: 0;
-      list-style: none;
-      overflow-x: auto;
-    }
-
-    .mobile-tab-button {
-      padding: 0.5rem 0.85rem;
-      border-radius: 0.5rem;
-      border: 1px solid #0077b6;
-      background: #e1f5fe;
-      color: #01579b;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-
-    .mobile-tab-button.is-active {
-      background: #0096c7;
-      color: #fff;
-      border-color: #0077b6;
-      box-shadow: 0 0 0 3px rgba(0, 150, 199, 0.2);
     }
 
     .mobile-tab-panel {
@@ -335,7 +310,7 @@
     }
 
     .mobile-person-panel {
-      display: none;
+      display: block;
     }
 
     .mobile-person-panel .person-panel-grid {
@@ -379,6 +354,10 @@
     .mobile-summary-line {
       margin-top: 0.25rem;
       font-weight: 600;
+    }
+
+    .mobile-add-person {
+      display: none;
     }
 
     .name-input.duplicate-name {
@@ -799,20 +778,54 @@
         max-height: 40vh;
       }
 
-      .mobile-tab-list {
-        display: flex;
+      .header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
       }
 
-      .mobile-tab-panel {
-        display: none;
+      .header-row h1 {
+        width: 100%;
+        margin-top: 0.25rem;
       }
 
-      .mobile-tab-panel.is-active {
+      .meta-table,
+      .meta-table tbody,
+      .meta-table tr,
+      .meta-table th,
+      .meta-table td {
         display: block;
+        width: 100%;
       }
 
-      .mobile-person-panel {
+      .meta-table tr {
+        margin-bottom: 0.75rem;
+      }
+
+      .meta-table th {
+        margin-bottom: 0.35rem;
+      }
+
+      .expense-toggle-group {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .base-expense-inputs {
+        flex-direction: column;
+      }
+
+      .mobile-person-panel .person-panel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-add-person {
         display: block;
+        margin-top: 1rem;
+      }
+
+      .mobile-add-person .control-button {
+        width: 100%;
       }
 
       #attendance-table {
@@ -1100,6 +1113,11 @@
         </div>
       </div>
     </div>
+    <div class="mobile-add-person">
+      <button type="button" class="control-button" id="add-person-mobile">
+        Add Person
+      </button>
+    </div>
   </div>
 
   <p
@@ -1230,8 +1248,8 @@
     const bannerImageInput = document.getElementById("banner-image-input");
     const minerImageInput = document.getElementById("miner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
-    const mobileTabList = document.getElementById("mobile-tab-list");
     const mobileTabPanels = document.getElementById("mobile-tab-panels");
+    const mobileAddPersonButton = document.getElementById("add-person-mobile");
     const generalPanel = document.getElementById("general-panel");
 
     if (tripLeaderInput) {
@@ -1295,36 +1313,33 @@
       return name || `Person ${index + 1}`;
     }
 
-    function setActiveMobileTab(tabId) {
-      activeMobileTabId = tabId;
-      const panels = document.querySelectorAll(".mobile-tab-panel");
-      panels.forEach((panel) => {
-        const isMatch = panel.dataset.tabId === tabId;
-        panel.classList.toggle("is-active", isMatch);
-      });
-      const buttons = document.querySelectorAll(".mobile-tab-button");
-      buttons.forEach((button) => {
-        const isMatch = button.dataset.tabId === tabId;
-        button.classList.toggle("is-active", isMatch);
-        button.setAttribute("aria-selected", isMatch ? "true" : "false");
-        button.tabIndex = isMatch ? 0 : -1;
-      });
-    }
-
     function refreshMobileTabLabels() {
-      document.querySelectorAll(".mobile-tab-button").forEach((button) => {
-        const tabId = button.dataset.tabId;
-        if (!tabId || tabId === "general") {
-          return;
-        }
-        const [, indexPart] = tabId.split("-");
-        const personIndex = Number(indexPart);
+      document.querySelectorAll(".mobile-person-panel").forEach((panel) => {
+        const personIndex = Number(panel.dataset.personIndex);
         if (!Number.isInteger(personIndex)) {
           return;
         }
         const participant = participants[personIndex];
-        button.textContent = getPersonLabel(participant, personIndex);
+        const heading = panel.querySelector("h2");
+        if (heading) {
+          heading.textContent = getPersonLabel(participant, personIndex);
+        }
       });
+    }
+
+    function focusMobilePerson(personIndex) {
+      const mobilePanel = document.querySelector(
+        `.mobile-person-panel[data-person-index="${personIndex}"]`
+      );
+      const mobileNameInput = document.querySelector(
+        `.mobile-name-input[data-person-index="${personIndex}"]`
+      );
+      if (mobilePanel) {
+        mobilePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (mobileNameInput) {
+        mobileNameInput.focus();
+      }
     }
 
     function syncInputValueIfInactive(input, value, isCheckbox = false) {
@@ -1345,8 +1360,6 @@
       bold: false,
       notes: ""
     }));
-    let activeMobileTabId = "general";
-
     const baseExpenseDefinitions = [
       {
         key: "horizontal-gear",
@@ -2802,39 +2815,9 @@
     }
 
     function renderMobileTabs(activeExpenses) {
-      if (!mobileTabList || !mobileTabPanels || !generalPanel) {
+      if (!mobileTabPanels || !generalPanel) {
         return;
       }
-
-      mobileTabList.innerHTML = "";
-      const tabs = [
-        {
-          id: "general",
-          label: "General"
-        }
-      ];
-
-      participants.forEach((participant, personIndex) => {
-        tabs.push({
-          id: getPersonTabId(personIndex),
-          label: getPersonLabel(participant, personIndex)
-        });
-      });
-
-      tabs.forEach((tab, index) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "mobile-tab-button";
-        button.dataset.tabId = tab.id;
-        button.setAttribute("role", "tab");
-        button.setAttribute("aria-controls", tab.id === "general" ? "general-panel" : tab.id);
-        button.textContent = tab.label;
-        button.tabIndex = index === 0 ? 0 : -1;
-        button.addEventListener("click", () => {
-          setActiveMobileTab(tab.id);
-        });
-        mobileTabList.appendChild(button);
-      });
 
       mobileTabPanels
         .querySelectorAll(".mobile-person-panel")
@@ -2849,12 +2832,6 @@
         panel.id = getPersonTabId(personIndex);
         mobileTabPanels.appendChild(panel);
       });
-
-      const validTabIds = tabs.map((tab) => tab.id);
-      if (!validTabIds.includes(activeMobileTabId)) {
-        activeMobileTabId = "general";
-      }
-      setActiveMobileTab(activeMobileTabId);
     }
 
     function renderTable() {
@@ -3733,7 +3710,7 @@
       });
     }
 
-    document.getElementById("add-row").addEventListener("click", () => {
+    function addParticipantRow() {
       participants.push({ name: "", bold: false, notes: "" });
       if (srtKitMasterToggle && srtKitMasterToggle.checked) {
         const srtKitExpense = getSrtKitExpense();
@@ -3743,7 +3720,19 @@
         }
       }
       renderTable();
-    });
+      window.requestAnimationFrame(() => {
+        focusMobilePerson(participants.length - 1);
+      });
+    }
+
+    const addRowButton = document.getElementById("add-row");
+    if (addRowButton) {
+      addRowButton.addEventListener("click", addParticipantRow);
+    }
+
+    if (mobileAddPersonButton) {
+      mobileAddPersonButton.addEventListener("click", addParticipantRow);
+    }
 
     document.getElementById("remove-row").addEventListener("click", () => {
       if (participants.length === 0) {
