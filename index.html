@@ -287,6 +287,10 @@
       cursor: pointer;
     }
 
+    .control-button.hide-on-mobile {
+      display: inline-flex;
+    }
+
     .control-button:hover {
       background: #00a8e8;
     }
@@ -451,6 +455,14 @@
 
     .summary-description .summary-line-red {
       color: #b00020;
+    }
+
+    .summary-person {
+      background: #fff;
+      border: 1px solid #d0d0d0;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
     }
 
     .summary-preview table {
@@ -769,6 +781,10 @@
         width: 100%;
       }
 
+      .control-button.hide-on-mobile {
+        display: none;
+      }
+
       .tutorial-content {
         padding: 1.5rem;
         max-height: 90vh;
@@ -1030,7 +1046,7 @@
           Remove Expense
         </button>
         <button
-          class="control-button"
+          class="control-button hide-on-mobile"
           type="button"
           id="save-json"
           title="Download this form as a JSON file for safekeeping or later reuse."
@@ -1038,7 +1054,7 @@
           Save JSON
         </button>
         <button
-          class="control-button"
+          class="control-button hide-on-mobile"
           type="button"
           id="load-json"
           title="Load a previously saved Trip Attendance JSON file."
@@ -1274,6 +1290,7 @@
 
     let memberNames = [];
     let bankingDetailsData = null;
+    let defaultBankingDetails = null;
     let bankingDetailsEdited = false;
     const defaultBannerSource =
       bannerImageElement?.getAttribute("src") || "banner.png";
@@ -1746,6 +1763,10 @@
         )
         .forEach((element) => element.remove());
 
+      node
+        .querySelectorAll(".miner-image-container, .miner-image")
+        .forEach((element) => element.remove());
+
       node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         const replacement = node.ownerDocument.createElement("span");
         replacement.className = "summary-check";
@@ -1957,14 +1978,6 @@
       if (topSection) {
         sections.push(topSection);
       }
-      const attendanceTable = document.getElementById("attendance-table");
-      if (attendanceTable) {
-        sections.push(attendanceTable);
-      }
-      const summarySection = document.querySelector("section");
-      if (summarySection) {
-        sections.push(summarySection);
-      }
 
       let descriptionInserted = false;
 
@@ -1984,10 +1997,6 @@
           } else {
             imported.insertBefore(summaryDescription, imported.firstChild);
           }
-          const minerImage = imported.querySelector(".miner-image");
-          if (minerImage) {
-            summaryDescription.appendChild(minerImage);
-          }
           descriptionInserted = true;
         }
         container.appendChild(imported);
@@ -1996,6 +2005,97 @@
       if (!descriptionInserted) {
         container.insertBefore(summaryDescription, container.firstChild);
       }
+
+      const calculation = calculateFinancials(false);
+      const peopleSection = targetDocument.createElement("section");
+      const peopleHeading = targetDocument.createElement("h2");
+      peopleHeading.textContent = "Participant balances";
+      peopleSection.appendChild(peopleHeading);
+
+      participants.forEach((participant, index) => {
+        const name = (participant.name || "").trim();
+        if (!name) {
+          return;
+        }
+
+        const personWrapper = targetDocument.createElement("div");
+        personWrapper.className = "summary-person";
+
+        const balance = calculation.balances[index] || 0;
+        const balanceLine = targetDocument.createElement("p");
+        const amountText = `$${formatCurrency(Math.abs(balance)) || "0.00"}`;
+        const balanceLabel = balance > 0 ? "Owes" : "Reimburse";
+        balanceLine.innerHTML = `<strong>${name}</strong>: ${balanceLabel} ${amountText}`;
+        personWrapper.appendChild(balanceLine);
+
+        const contributionDetails = calculation.participantContributionDetails[index] || [];
+        const contributionItems = contributionDetails.filter(
+          (entry) => entry && (Number(entry.value) || entry.distance)
+        );
+        if (contributionItems.length) {
+          const contributionsHeading = targetDocument.createElement("p");
+          contributionsHeading.textContent = "Contributions:";
+          const list = targetDocument.createElement("ul");
+          contributionItems.forEach((entry) => {
+            const item = targetDocument.createElement("li");
+            const pieces = [];
+            if (Number(entry.value)) {
+              pieces.push(`${entry.name}: $${formatCurrency(entry.value) || "0.00"}`);
+            } else {
+              pieces.push(entry.name);
+            }
+            if (entry.distance) {
+              pieces.push(`${Math.round(entry.distance)} km`);
+            }
+            item.textContent = pieces.join(" – ");
+            list.appendChild(item);
+          });
+          personWrapper.appendChild(contributionsHeading);
+          personWrapper.appendChild(list);
+        }
+
+        const feeBreakdown = calculation.participantFeeBreakdowns[index] || [];
+        if (feeBreakdown.length) {
+          const breakdownHeading = targetDocument.createElement("p");
+          breakdownHeading.textContent = "Fee breakdown:";
+          const list = targetDocument.createElement("ul");
+          feeBreakdown.forEach((entry) => {
+            const item = targetDocument.createElement("li");
+            item.textContent = `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`;
+            list.appendChild(item);
+          });
+          personWrapper.appendChild(breakdownHeading);
+          personWrapper.appendChild(list);
+        }
+
+        peopleSection.appendChild(personWrapper);
+      });
+
+      container.appendChild(peopleSection);
+
+      const summaryTotals = targetDocument.createElement("section");
+      const totalsHeading = targetDocument.createElement("h2");
+      totalsHeading.textContent = "Summary";
+      summaryTotals.appendChild(totalsHeading);
+
+      const totalsList = targetDocument.createElement("ul");
+      const totalFeesItem = targetDocument.createElement("li");
+      totalFeesItem.textContent = `Total fees: $${formatCurrency(calculation.totalFees) || "0.00"}`;
+      totalsList.appendChild(totalFeesItem);
+
+      const balanceItem = targetDocument.createElement("li");
+      const balanceLabel = calculation.totalBalance > 0 ? "Club Gear Depreciation (owed)" : "Club Gear Depreciation (credit)";
+      balanceItem.textContent = `${balanceLabel}: ${
+        calculation.totalBalance ? `$${formatCurrency(Math.abs(calculation.totalBalance))}` : "$0.00"
+      }`;
+      totalsList.appendChild(balanceItem);
+
+      const incomeItem = targetDocument.createElement("li");
+      incomeItem.textContent = `Club income: $${formatCurrency(calculation.clubIncome) || "0.00"}`;
+      totalsList.appendChild(incomeItem);
+
+      summaryTotals.appendChild(totalsList);
+      container.appendChild(summaryTotals);
 
       return container;
     }
@@ -2059,12 +2159,6 @@
 
         .summary-preview .summary-description-text {
           flex: 1 1 0;
-        }
-
-        .summary-preview .summary-description .miner-image {
-          flex: 0 0 auto;
-          max-width: clamp(160px, 25%, 220px);
-          height: auto;
         }
       `;
       summaryDocument.head.appendChild(extraStyle);
@@ -3326,11 +3420,15 @@
       });
     }
 
-    function recalculate() {
+    function calculateFinancials(applyDomUpdates = true) {
       const activeExpenses = getActiveExpenses();
       const participantFeeTotals = new Array(participants.length).fill(0);
       const participantFeeBreakdowns = participants.map(() => []);
       const participantContributions = new Array(participants.length).fill(0);
+      const participantContributionDetails = participants.map(() => []);
+      const participantHasName = participants.map(
+        (participant) => Boolean(participant.name && participant.name.trim())
+      );
       let clubIncome = 0;
 
       activeExpenses.forEach((expense) => {
@@ -3343,8 +3441,7 @@
           let consumerCount = 0;
 
           participants.forEach((participant, personIndex) => {
-            const hasName = Boolean(participant.name && participant.name.trim());
-            if (!hasName) {
+            if (!participantHasName[personIndex]) {
               return;
             }
             if (expense.consumers[personIndex]) {
@@ -3364,22 +3461,24 @@
             }
           });
 
-          const totalCell = document.querySelector(
-            `.expense-total[data-expense-id="${expense.id}"]`
-          );
-          if (totalCell) {
-            const totalText = formatCurrency(total);
-            totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
-            const summary = document.createElement("div");
-            summary.textContent = `Selected: ${consumerCount}`;
-            totalCell.appendChild(summary);
-          }
+          if (applyDomUpdates) {
+            const totalCell = document.querySelector(
+              `.expense-total[data-expense-id="${expense.id}"]`
+            );
+            if (totalCell) {
+              const totalText = formatCurrency(total);
+              totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
+              const summary = document.createElement("div");
+              summary.textContent = `Selected: ${consumerCount}`;
+              totalCell.appendChild(summary);
+            }
 
-          const consumersCell = document.querySelector(
-            `.expense-consumers[data-expense-id="${expense.id}"]`
-          );
-          if (consumersCell) {
-            consumersCell.textContent = `Consumers: ${consumerCount}`;
+            const consumersCell = document.querySelector(
+              `.expense-consumers[data-expense-id="${expense.id}"]`
+            );
+            if (consumersCell) {
+              consumersCell.textContent = `Consumers: ${consumerCount}`;
+            }
           }
 
           return;
@@ -3397,12 +3496,16 @@
         }
 
         expense.amounts.forEach((amount, personIndex) => {
-          const participant = participants[personIndex];
-          const hasName = Boolean(participant.name && participant.name.trim());
+          const hasName = participantHasName[personIndex];
           if (hasName && amount !== "" && Number.isFinite(Number(amount))) {
             const numericAmount = Number(amount);
             fuelTotal += numericAmount;
             participantContributions[personIndex] += numericAmount;
+            participantContributionDetails[personIndex].push({
+              name: expense.name,
+              value: numericAmount,
+              distance: null
+            });
           }
           if (expense.key === "petrol" && hasName) {
             if (!Array.isArray(expense.distances)) {
@@ -3413,9 +3516,18 @@
               const numericDistance = Number(distanceValue);
               if (Number.isFinite(numericDistance)) {
                 totalDistance += numericDistance;
-                if (expense.key === "petrol") {
-                  driverDistances[personIndex] = numericDistance;
-                  driverHasDistance[personIndex] = true;
+                driverDistances[personIndex] = numericDistance;
+                driverHasDistance[personIndex] = true;
+                const contributionEntry = participantContributionDetails[personIndex];
+                const lastEntry = contributionEntry[contributionEntry.length - 1];
+                if (lastEntry && lastEntry.name === expense.name && lastEntry.distance === null) {
+                  lastEntry.distance = numericDistance;
+                } else {
+                  contributionEntry.push({
+                    name: expense.name,
+                    value: 0,
+                    distance: numericDistance
+                  });
                 }
               }
             }
@@ -3469,56 +3581,64 @@
           });
         }
 
-        const totalCell = document.querySelector(
-          `.expense-total[data-expense-id="${expense.id}"]`
-        );
-        if (totalCell) {
-          const totalText = formatCurrency(combinedTotal);
-          totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
-          if (expense.key === "petrol") {
-            const fuelLine = document.createElement("div");
-            fuelLine.textContent = `Fuel: $${formatCurrency(fuelTotal) || "0.00"}`;
-            const maintenanceLine = document.createElement("div");
-            const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
-            const distanceText = `${Math.round(totalDistance) || 0} km`;
-            maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
-            totalCell.appendChild(fuelLine);
-            totalCell.appendChild(maintenanceLine);
-          }
-        }
-        if (expense.key === "petrol") {
-          const distanceSummaryCell = document.querySelector(
-            `.expense-distance-summary[data-expense-id="${expense.id}"]`
+        if (applyDomUpdates) {
+          const totalCell = document.querySelector(
+            `.expense-total[data-expense-id="${expense.id}"]`
           );
-          if (distanceSummaryCell) {
-            const roundedDistance = Math.round(totalDistance) || 0;
-            distanceSummaryCell.textContent = `Distance: ${roundedDistance} km`;
+          if (totalCell) {
+            const totalText = formatCurrency(combinedTotal);
+            totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
+            if (expense.key === "petrol") {
+              const fuelLine = document.createElement("div");
+              fuelLine.textContent = `Fuel: $${formatCurrency(fuelTotal) || "0.00"}`;
+              const maintenanceLine = document.createElement("div");
+              const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
+              const distanceText = `${Math.round(totalDistance) || 0} km`;
+              maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
+              totalCell.appendChild(fuelLine);
+              totalCell.appendChild(maintenanceLine);
+            }
           }
-        }
-        const consumersCell = document.querySelector(
-          `.expense-consumers[data-expense-id="${expense.id}"]`
-        );
-        if (consumersCell) {
-          const shareText =
-            consumerCount > 0
-              ? `Share: $${formatCurrency(combinedShare) || "0.00"}`
-              : "Share: $0.00";
-          consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
+          if (expense.key === "petrol") {
+            const distanceSummaryCell = document.querySelector(
+              `.expense-distance-summary[data-expense-id="${expense.id}"]`
+            );
+            if (distanceSummaryCell) {
+              const roundedDistance = Math.round(totalDistance) || 0;
+              distanceSummaryCell.textContent = `Distance: ${roundedDistance} km`;
+            }
+          }
+          const consumersCell = document.querySelector(
+            `.expense-consumers[data-expense-id="${expense.id}"]`
+          );
+          if (consumersCell) {
+            const shareText =
+              consumerCount > 0
+                ? `Share: $${formatCurrency(combinedShare) || "0.00"}`
+                : "Share: $0.00";
+            consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
+          }
         }
       });
 
       let totalFees = 0;
       let totalBalance = 0;
+      const balances = new Array(participants.length).fill(0);
 
       participants.forEach((participant, personIndex) => {
-        const hasName = Boolean(participant.name && participant.name.trim());
+        const hasName = participantHasName[personIndex];
         const fee = hasName ? participantFeeTotals[personIndex] : 0;
         const contributions = hasName ? participantContributions[personIndex] : 0;
         const balance = fee - contributions;
+        balances[personIndex] = balance;
 
         if (hasName) {
           totalFees += fee;
           totalBalance += balance;
+        }
+
+        if (!applyDomUpdates) {
+          return;
         }
 
         const breakdownCell = document.querySelector(
@@ -3602,38 +3722,56 @@
         }
       });
 
-      const totalFeeCell = document.querySelector(".total-fee");
-      if (totalFeeCell) {
-        totalFeeCell.textContent = totalFees ? `$${formatCurrency(totalFees)}` : "";
-      }
-
-      const totalReimbCell = document.querySelector(".total-reimbursed");
-      if (totalReimbCell) {
-        totalReimbCell.textContent = "";
-        totalReimbCell.classList.remove("amount-due", "amount-credit");
-        if (totalBalance) {
-          const prefix = document.createTextNode("Club Gear Depreciation: ");
-          totalReimbCell.appendChild(prefix);
-          const valueSpan = document.createElement("span");
-          if (totalBalance > 0) {
-            valueSpan.textContent = `($${formatCurrency(totalBalance)})`;
-            valueSpan.classList.add("amount-due");
-          } else {
-            valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
-            valueSpan.classList.add("amount-credit");
-          }
-          totalReimbCell.appendChild(valueSpan);
+      if (applyDomUpdates) {
+        const totalFeeCell = document.querySelector(".total-fee");
+        if (totalFeeCell) {
+          totalFeeCell.textContent = totalFees ? `$${formatCurrency(totalFees)}` : "";
         }
+
+        const totalReimbCell = document.querySelector(".total-reimbursed");
+        if (totalReimbCell) {
+          totalReimbCell.textContent = "";
+          totalReimbCell.classList.remove("amount-due", "amount-credit");
+          if (totalBalance) {
+            const prefix = document.createTextNode("Club Gear Depreciation: ");
+            totalReimbCell.appendChild(prefix);
+            const valueSpan = document.createElement("span");
+            if (totalBalance > 0) {
+              valueSpan.textContent = `($${formatCurrency(totalBalance)})`;
+              valueSpan.classList.add("amount-due");
+            } else {
+              valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+              valueSpan.classList.add("amount-credit");
+            }
+            totalReimbCell.appendChild(valueSpan);
+          }
+        }
+
+        const clubIncomeCell = document.getElementById("club-income-value");
+        if (clubIncomeCell) {
+          clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
+        }
+
+        syncMobileInputsFromState();
+        syncDesktopInputsFromState();
+        syncSrtKitMasterToggleState();
       }
 
-      const clubIncomeCell = document.getElementById("club-income-value");
-      if (clubIncomeCell) {
-        clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
-      }
+      return {
+        activeExpenses,
+        participantFeeTotals,
+        participantFeeBreakdowns,
+        participantContributions,
+        participantContributionDetails,
+        balances,
+        totalFees,
+        totalBalance,
+        clubIncome
+      };
+    }
 
-      syncMobileInputsFromState();
-      syncDesktopInputsFromState();
-      syncSrtKitMasterToggleState();
+    function recalculate() {
+      return calculateFinancials(true);
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
@@ -3815,7 +3953,15 @@
     }
 
     function getCurrentBankingDetails() {
-      return normalizeBankingDetails(bankingDetailsData);
+      if (bankingDetailsData) {
+        return normalizeBankingDetails(bankingDetailsData);
+      }
+
+      if (defaultBankingDetails) {
+        return normalizeBankingDetails(defaultBankingDetails);
+      }
+
+      return normalizeBankingDetails(null);
     }
 
     function populateBankingFormFields() {
@@ -3964,6 +4110,7 @@
         const normalized = normalizeBankingDetails(
           data && typeof data === "object" ? data : null
         );
+        defaultBankingDetails = normalized;
         if (bankingDetailsEdited) {
           return;
         }
@@ -3971,7 +4118,7 @@
       } catch (error) {
         console.warn("Could not load banking details", error);
         if (!bankingDetailsEdited) {
-          bankingDetailsData = null;
+          bankingDetailsData = defaultBankingDetails;
         }
       }
 
