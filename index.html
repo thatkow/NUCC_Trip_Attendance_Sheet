@@ -287,6 +287,10 @@
       cursor: pointer;
     }
 
+    .attendance-table {
+      display: none;
+    }
+
     .control-button.hide-on-mobile {
       display: inline-flex;
     }
@@ -1994,6 +1998,16 @@
         sanitizeSummaryClone(clone);
         removeEmptySummaryNameRows(clone);
         const imported = targetDocument.importNode(clone, true);
+
+        const summaryBankingDetails = imported.querySelector(".banking-details");
+        if (summaryBankingDetails) {
+          renderBankingDetailsInto(summaryBankingDetails, targetDocument);
+        }
+
+        const summaryBankingLogo = imported.querySelector(".banking-logo");
+        if (summaryBankingLogo && bankingLogoSource) {
+          summaryBankingLogo.src = bankingLogoSource;
+        }
 
         if (!descriptionInserted && section === topSection) {
           const metaTable = imported.querySelector(".meta-table");
@@ -3992,12 +4006,12 @@
       }
     }
 
-    function renderBankingDetails() {
-      const container = document.getElementById("banking-details");
+    function renderBankingDetailsInto(container, targetDocument = document) {
       if (!container) {
         return;
       }
 
+      const doc = targetDocument || document;
       const lines = [];
       const { name, bsb, account } = getCurrentBankingDetails();
 
@@ -4021,16 +4035,21 @@
       }
 
       lines.forEach((line) => {
-        const paragraph = document.createElement("p");
-        const labelSpan = document.createElement("span");
+        const paragraph = doc.createElement("p");
+        const labelSpan = doc.createElement("span");
         labelSpan.classList.add("banking-label");
         labelSpan.textContent = `${line.label}:`;
-        const valueSpan = document.createElement("span");
+        const valueSpan = doc.createElement("span");
         valueSpan.textContent = String(line.value);
         paragraph.appendChild(labelSpan);
         paragraph.appendChild(valueSpan);
         container.appendChild(paragraph);
       });
+    }
+
+    function renderBankingDetails() {
+      const container = document.getElementById("banking-details");
+      renderBankingDetailsInto(container, document);
     }
 
     function applyBankingFormChanges(event) {
