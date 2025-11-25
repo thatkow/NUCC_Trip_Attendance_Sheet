@@ -297,6 +297,90 @@
       margin: 0.5rem 0 0;
     }
 
+    .mobile-tabs {
+      display: block;
+    }
+
+    .mobile-tab-list {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 0.75rem;
+      padding: 0;
+      list-style: none;
+      overflow-x: auto;
+    }
+
+    .mobile-tab-button {
+      padding: 0.5rem 0.85rem;
+      border-radius: 0.5rem;
+      border: 1px solid #0077b6;
+      background: #e1f5fe;
+      color: #01579b;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .mobile-tab-button.is-active {
+      background: #0096c7;
+      color: #fff;
+      border-color: #0077b6;
+      box-shadow: 0 0 0 3px rgba(0, 150, 199, 0.2);
+    }
+
+    .mobile-tab-panel {
+      display: block;
+    }
+
+    .mobile-person-panel {
+      display: none;
+    }
+
+    .mobile-person-panel .person-panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .mobile-person-panel label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-weight: 600;
+      background: #fff;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .mobile-person-panel input,
+    .mobile-person-panel textarea {
+      font: inherit;
+      padding: 0.4rem 0.45rem;
+      border-radius: 0.4rem;
+      border: 1px solid #bdbdbd;
+      background: #fff;
+    }
+
+    .mobile-person-panel textarea {
+      min-height: 4rem;
+      resize: vertical;
+    }
+
+    .mobile-person-panel .mobile-checkbox-field {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mobile-summary-line {
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+
     .name-input.duplicate-name {
       border-color: #b00020;
       background: #ffe8ec;
@@ -714,6 +798,26 @@
       .tutorial-video {
         max-height: 40vh;
       }
+
+      .mobile-tab-list {
+        display: flex;
+      }
+
+      .mobile-tab-panel {
+        display: none;
+      }
+
+      .mobile-tab-panel.is-active {
+        display: block;
+      }
+
+      .mobile-person-panel {
+        display: block;
+      }
+
+      #attendance-table {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -753,6 +857,19 @@
     </div>
   </div>
 
+  <div class="mobile-tabs" id="mobile-tabs">
+    <div
+      class="mobile-tab-list"
+      id="mobile-tab-list"
+      role="tablist"
+      aria-label="Trip sections"
+    ></div>
+    <div class="mobile-tab-panels" id="mobile-tab-panels">
+      <div
+        class="mobile-tab-panel is-active"
+        id="general-panel"
+        data-tab-id="general"
+      >
     <div class="top-section">
       <div class="top-section-left">
         <div class="header-row">
@@ -1011,6 +1128,10 @@
     aria-hidden="true"
   />
 
+      </div>
+    </div>
+  </div>
+
   <dialog class="banking-dialog" id="banking-dialog">
     <form id="banking-form" method="dialog">
       <h3>Edit banking details</h3>
@@ -1109,6 +1230,9 @@
     const bannerImageInput = document.getElementById("banner-image-input");
     const minerImageInput = document.getElementById("miner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
+    const mobileTabList = document.getElementById("mobile-tab-list");
+    const mobileTabPanels = document.getElementById("mobile-tab-panels");
+    const generalPanel = document.getElementById("general-panel");
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
@@ -1162,6 +1286,58 @@
       return legacyExpenseKeyMap[key] || key;
     }
 
+    function getPersonTabId(index) {
+      return `person-${index}`;
+    }
+
+    function getPersonLabel(participant, index) {
+      const name = (participant?.name || "").trim();
+      return name || `Person ${index + 1}`;
+    }
+
+    function setActiveMobileTab(tabId) {
+      activeMobileTabId = tabId;
+      const panels = document.querySelectorAll(".mobile-tab-panel");
+      panels.forEach((panel) => {
+        const isMatch = panel.dataset.tabId === tabId;
+        panel.classList.toggle("is-active", isMatch);
+      });
+      const buttons = document.querySelectorAll(".mobile-tab-button");
+      buttons.forEach((button) => {
+        const isMatch = button.dataset.tabId === tabId;
+        button.classList.toggle("is-active", isMatch);
+        button.setAttribute("aria-selected", isMatch ? "true" : "false");
+        button.tabIndex = isMatch ? 0 : -1;
+      });
+    }
+
+    function refreshMobileTabLabels() {
+      document.querySelectorAll(".mobile-tab-button").forEach((button) => {
+        const tabId = button.dataset.tabId;
+        if (!tabId || tabId === "general") {
+          return;
+        }
+        const [, indexPart] = tabId.split("-");
+        const personIndex = Number(indexPart);
+        if (!Number.isInteger(personIndex)) {
+          return;
+        }
+        const participant = participants[personIndex];
+        button.textContent = getPersonLabel(participant, personIndex);
+      });
+    }
+
+    function syncInputValueIfInactive(input, value, isCheckbox = false) {
+      if (!input || document.activeElement === input) {
+        return;
+      }
+      if (isCheckbox) {
+        input.checked = Boolean(value);
+      } else {
+        input.value = value;
+      }
+    }
+
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
     const participants = Array.from({ length: 10 }, () => ({
@@ -1169,6 +1345,7 @@
       bold: false,
       notes: ""
     }));
+    let activeMobileTabId = "general";
 
     const baseExpenseDefinitions = [
       {
@@ -1305,6 +1482,22 @@
       return expense.key === "horizontal-gear" || expense.key === "srt-kit";
     }
 
+    function getExpenseHeaderLabel(expense) {
+      if (!expense) {
+        return "";
+      }
+      if (isDirectChargeExpense(expense)) {
+        if (expense.key === "horizontal-gear") {
+          return "Hired Horizontal Gear?";
+        }
+        if (expense.key === "srt-kit") {
+          return "Used SRT Kit?";
+        }
+        return `${expense.name}?`;
+      }
+      return expense.name;
+    }
+
     function applyBaseExpenseRateToExpense(key) {
       const expense = baseExpenses.find((item) => item.key === key);
       if (!expense) {
@@ -1338,16 +1531,14 @@
     }
 
     function updateDuplicateNameWarnings() {
-      const nameInputs = Array.from(document.querySelectorAll(".name-input"));
       const warningElement = document.getElementById("duplicate-name-warning");
       const counts = new Map();
 
-      nameInputs.forEach((input) => {
-        const normalized = input.value.trim().toLowerCase();
-        if (!normalized) {
-          return;
+      participants.forEach((participant) => {
+        const normalized = (participant.name || "").trim().toLowerCase();
+        if (normalized) {
+          counts.set(normalized, (counts.get(normalized) || 0) + 1);
         }
-        counts.set(normalized, (counts.get(normalized) || 0) + 1);
       });
 
       const duplicateKeys = new Set();
@@ -1357,8 +1548,11 @@
         }
       });
 
+      const nameInputs = Array.from(
+        document.querySelectorAll(".name-input, .mobile-name-input")
+      );
       nameInputs.forEach((input) => {
-        const normalized = input.value.trim().toLowerCase();
+        const normalized = (input.value || "").trim().toLowerCase();
         if (normalized && duplicateKeys.has(normalized)) {
           input.classList.add("duplicate-name");
           input.setAttribute("aria-invalid", "true");
@@ -1371,15 +1565,11 @@
       if (warningElement) {
         if (duplicateKeys.size > 0) {
           const labels = [];
-          duplicateKeys.forEach((key) => {
-            const matchingInput = nameInputs.find(
-              (input) => input.value.trim().toLowerCase() === key
-            );
-            if (matchingInput) {
-              const trimmed = matchingInput.value.trim();
-              if (trimmed && !labels.includes(trimmed)) {
-                labels.push(trimmed);
-              }
+          participants.forEach((participant) => {
+            const trimmed = (participant.name || "").trim();
+            const normalized = trimmed.toLowerCase();
+            if (trimmed && duplicateKeys.has(normalized) && !labels.includes(trimmed)) {
+              labels.push(trimmed);
             }
           });
           warningElement.hidden = false;
@@ -2372,6 +2562,301 @@
       getAllExpenses().forEach(ensureExpenseSize);
     }
 
+    function createMobilePersonPanel(participant, personIndex, activeExpenses) {
+      const panel = document.createElement("div");
+      panel.className = "mobile-tab-panel mobile-person-panel";
+      panel.dataset.tabId = getPersonTabId(personIndex);
+      panel.dataset.personIndex = String(personIndex);
+
+      const heading = document.createElement("h2");
+      heading.textContent = getPersonLabel(participant, personIndex);
+      panel.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className = "person-panel-grid";
+
+      const nameLabel = document.createElement("label");
+      nameLabel.textContent = "Name";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = participant.name;
+      nameInput.setAttribute("list", nameListId);
+      nameInput.dataset.personIndex = String(personIndex);
+      nameInput.className = "mobile-name-input";
+      nameInput.addEventListener("input", (event) => {
+        const value = event.target.value;
+        participants[personIndex].name = value;
+        const desktopInput = document.querySelector(
+          `.name-input[data-person-index="${personIndex}"]`
+        );
+        if (desktopInput) {
+          desktopInput.value = value;
+        }
+        refreshMobileTabLabels();
+        recalculate();
+        updateDuplicateNameWarnings();
+      });
+      nameLabel.appendChild(nameInput);
+      grid.appendChild(nameLabel);
+
+      activeExpenses.forEach((expense) => {
+        ensureExpenseSize(expense);
+        const label = document.createElement("label");
+        label.textContent = getExpenseHeaderLabel(expense);
+
+        if (isDirectChargeExpense(expense)) {
+          label.classList.add("mobile-checkbox-field");
+          const consumeInput = document.createElement("input");
+          consumeInput.type = "checkbox";
+          consumeInput.checked = Boolean(expense.consumers[personIndex]);
+          consumeInput.dataset.expenseId = expense.id;
+          consumeInput.dataset.personIndex = String(personIndex);
+          consumeInput.className = "mobile-direct-charge";
+          consumeInput.addEventListener("change", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            const index = Number(event.target.dataset.personIndex);
+            targetExpense.consumers[index] = event.target.checked;
+            const desktopConsume = document.querySelector(
+              `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${index}"]`
+            );
+            if (desktopConsume) {
+              desktopConsume.checked = event.target.checked;
+            }
+            recalculate();
+          });
+          label.appendChild(consumeInput);
+          grid.appendChild(label);
+          return;
+        }
+
+        const amountInput = document.createElement("input");
+        amountInput.type = "number";
+        amountInput.step = "0.01";
+        amountInput.placeholder = "0.00";
+        amountInput.value =
+          expense.amounts[personIndex] !== ""
+            ? expense.amounts[personIndex]
+            : "";
+        amountInput.dataset.expenseId = expense.id;
+        amountInput.dataset.personIndex = String(personIndex);
+        amountInput.className = "mobile-amount-input";
+        if (isBaseRateControlled(expense)) {
+          const rate = baseExpenseRates[expense.key];
+          amountInput.value = rate === "" ? "" : rate;
+          amountInput.readOnly = true;
+          amountInput.tabIndex = -1;
+          amountInput.classList.add("read-only-amount");
+          amountInput.setAttribute(
+            "title",
+            `${expense.name} is managed from the controls above.`
+          );
+          amountInput.setAttribute("aria-readonly", "true");
+        }
+        amountInput.addEventListener("input", (event) => {
+          if (event.target.readOnly) {
+            return;
+          }
+          const targetExpense = findExpenseById(event.target.dataset.expenseId);
+          if (!targetExpense) {
+            return;
+          }
+          const index = Number(event.target.dataset.personIndex);
+          const value = event.target.value.trim();
+          targetExpense.amounts[index] = value === "" ? "" : Number(value);
+          const desktopAmount = document.querySelector(
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field!="true"]`
+          );
+          if (desktopAmount && !desktopAmount.readOnly) {
+            desktopAmount.value = value;
+          }
+          recalculate();
+        });
+        label.appendChild(amountInput);
+        grid.appendChild(label);
+
+        if (expense.key === "petrol") {
+          const distanceLabel = document.createElement("label");
+          distanceLabel.textContent = "Distance (km)";
+          const distanceInput = document.createElement("input");
+          distanceInput.type = "number";
+          distanceInput.step = "1";
+          distanceInput.min = "0";
+          distanceInput.inputMode = "numeric";
+          const storedDistance = expense.distances[personIndex];
+          distanceInput.value = storedDistance !== "" ? storedDistance : "";
+          distanceInput.placeholder = "0";
+          distanceInput.dataset.expenseId = expense.id;
+          distanceInput.dataset.personIndex = String(personIndex);
+          distanceInput.dataset.distanceField = "true";
+          distanceInput.className = "mobile-distance-input";
+          distanceInput.addEventListener("input", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            if (!Array.isArray(targetExpense.distances)) {
+              targetExpense.distances = [];
+            }
+            const index = Number(event.target.dataset.personIndex);
+            const rawValue = event.target.value.trim();
+            if (rawValue === "") {
+              targetExpense.distances[index] = "";
+            } else {
+              const numericValue = Number(rawValue);
+              if (Number.isFinite(numericValue)) {
+                const sanitizedValue = Math.max(0, Math.round(numericValue));
+                targetExpense.distances[index] = sanitizedValue;
+                event.target.value = String(sanitizedValue);
+              } else {
+                targetExpense.distances[index] = "";
+              }
+            }
+            const desktopDistance = document.querySelector(
+              `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field="true"]`
+            );
+            if (desktopDistance) {
+              desktopDistance.value = targetExpense.distances[index];
+            }
+            recalculate();
+          });
+          distanceLabel.appendChild(distanceInput);
+          grid.appendChild(distanceLabel);
+        }
+
+        const consumeLabel = document.createElement("label");
+        consumeLabel.className = "mobile-checkbox-field";
+        const consumeInput = document.createElement("input");
+        consumeInput.type = "checkbox";
+        consumeInput.checked = Boolean(expense.consumers[personIndex]);
+        consumeInput.dataset.expenseId = expense.id;
+        consumeInput.dataset.personIndex = String(personIndex);
+        consumeInput.className = "mobile-consume-input";
+        consumeInput.addEventListener("change", (event) => {
+          const targetExpense = findExpenseById(event.target.dataset.expenseId);
+          if (!targetExpense) {
+            return;
+          }
+          const index = Number(event.target.dataset.personIndex);
+          targetExpense.consumers[index] = event.target.checked;
+          const desktopConsume = document.querySelector(
+            `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${index}"]`
+          );
+          if (desktopConsume) {
+            desktopConsume.checked = event.target.checked;
+          }
+          recalculate();
+        });
+        const consumeText = document.createElement("span");
+        consumeText.textContent = "Include in share";
+        consumeLabel.appendChild(consumeInput);
+        consumeLabel.appendChild(consumeText);
+        grid.appendChild(consumeLabel);
+      });
+
+      const notesLabel = document.createElement("label");
+      notesLabel.textContent = "Notes";
+      const notesInput = document.createElement("textarea");
+      notesInput.value = participant.notes;
+      notesInput.dataset.personIndex = String(personIndex);
+      notesInput.className = "mobile-notes-input";
+      notesInput.addEventListener("input", (event) => {
+        const index = Number(event.target.dataset.personIndex);
+        participants[index].notes = event.target.value;
+        const desktopNotes = document.querySelector(
+          `.attendance-table textarea[data-person-index="${index}"]`
+        );
+        if (desktopNotes) {
+          desktopNotes.value = event.target.value;
+        }
+      });
+      notesLabel.appendChild(notesInput);
+      grid.appendChild(notesLabel);
+
+      panel.appendChild(grid);
+
+      const breakdown = document.createElement("div");
+      breakdown.className = "mobile-summary-line mobile-fee-breakdown";
+      breakdown.dataset.personIndex = String(personIndex);
+      panel.appendChild(breakdown);
+
+      const feeLine = document.createElement("div");
+      feeLine.className = "mobile-summary-line";
+      feeLine.innerHTML =
+        'Fee: <span class="mobile-fee-value" data-person-index="' +
+        personIndex +
+        '"></span>';
+      panel.appendChild(feeLine);
+
+      const reimbLine = document.createElement("div");
+      reimbLine.className = "mobile-summary-line";
+      reimbLine.innerHTML =
+        'Reimburse (Due): <span class="mobile-reimbursed-value" data-person-index="' +
+        personIndex +
+        '"></span>';
+      panel.appendChild(reimbLine);
+
+      return panel;
+    }
+
+    function renderMobileTabs(activeExpenses) {
+      if (!mobileTabList || !mobileTabPanels || !generalPanel) {
+        return;
+      }
+
+      mobileTabList.innerHTML = "";
+      const tabs = [
+        {
+          id: "general",
+          label: "General"
+        }
+      ];
+
+      participants.forEach((participant, personIndex) => {
+        tabs.push({
+          id: getPersonTabId(personIndex),
+          label: getPersonLabel(participant, personIndex)
+        });
+      });
+
+      tabs.forEach((tab, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mobile-tab-button";
+        button.dataset.tabId = tab.id;
+        button.setAttribute("role", "tab");
+        button.setAttribute("aria-controls", tab.id === "general" ? "general-panel" : tab.id);
+        button.textContent = tab.label;
+        button.tabIndex = index === 0 ? 0 : -1;
+        button.addEventListener("click", () => {
+          setActiveMobileTab(tab.id);
+        });
+        mobileTabList.appendChild(button);
+      });
+
+      mobileTabPanels
+        .querySelectorAll(".mobile-person-panel")
+        .forEach((panel) => panel.remove());
+
+      participants.forEach((participant, personIndex) => {
+        const panel = createMobilePersonPanel(
+          participant,
+          personIndex,
+          activeExpenses
+        );
+        panel.id = getPersonTabId(personIndex);
+        mobileTabPanels.appendChild(panel);
+      });
+
+      const validTabIds = tabs.map((tab) => tab.id);
+      if (!validTabIds.includes(activeMobileTabId)) {
+        activeMobileTabId = "general";
+      }
+      setActiveMobileTab(activeMobileTabId);
+    }
+
     function renderTable() {
       syncAllExpenseSizes();
       const activeExpenses = getActiveExpenses();
@@ -2381,22 +2866,6 @@
       const nameHeader = document.createElement("th");
       nameHeader.textContent = "Name";
       headerRow.appendChild(nameHeader);
-
-      function getExpenseHeaderLabel(expense) {
-        if (!expense) {
-          return "";
-        }
-        if (isDirectChargeExpense(expense)) {
-          if (expense.key === "horizontal-gear") {
-            return "Hired Horizontal Gear?";
-          }
-          if (expense.key === "srt-kit") {
-            return "Used SRT Kit?";
-          }
-          return `${expense.name}?`;
-        }
-        return expense.name;
-      }
 
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
@@ -2442,6 +2911,7 @@
 
       renderBody(activeExpenses);
       renderFooter(activeExpenses);
+      renderMobileTabs(activeExpenses);
       updateDuplicateNameWarnings();
       recalculate();
     }
@@ -2479,6 +2949,7 @@
           }
           recalculate();
           updateDuplicateNameWarnings();
+          refreshMobileTabLabels();
         });
 
         nameInput.addEventListener("keydown", (event) => {
@@ -2503,6 +2974,7 @@
           recalculate();
           event.target.value = "";
           updateDuplicateNameWarnings();
+          refreshMobileTabLabels();
         });
 
         nameWrapper.appendChild(nameInput);
@@ -2664,6 +3136,7 @@
         const notesCell = document.createElement("td");
         const notesInput = document.createElement("textarea");
         notesInput.value = participant.notes;
+        notesInput.dataset.personIndex = String(personIndex);
         notesInput.addEventListener("input", (event) => {
           participants[personIndex].notes = event.target.value;
         });
@@ -2781,6 +3254,99 @@
       srtKitMasterToggle.indeterminate =
         checkedCount > 0 && checkedCount < total;
       srtKitMasterToggle.checked = checkedCount === total;
+    }
+
+    function syncMobileInputsFromState() {
+      participants.forEach((participant, personIndex) => {
+        const nameInput = document.querySelector(
+          `.mobile-name-input[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(nameInput, participant.name);
+
+        const notesInput = document.querySelector(
+          `.mobile-notes-input[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(notesInput, participant.notes);
+      });
+
+      getAllExpenses().forEach((expense) => {
+        ensureExpenseSize(expense);
+        expense.consumers.forEach((consumerState, personIndex) => {
+          const directChargeInput = document.querySelector(
+            `.mobile-direct-charge[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(directChargeInput, consumerState, true);
+
+          const consumeInput = document.querySelector(
+            `.mobile-consume-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(consumeInput, consumerState, true);
+        });
+
+        expense.amounts.forEach((amount, personIndex) => {
+          const amountInput = document.querySelector(
+            `.mobile-amount-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          if (amountInput && !amountInput.readOnly) {
+            const value = amount === "" ? "" : String(amount);
+            syncInputValueIfInactive(amountInput, value);
+          }
+
+          if (expense.key === "petrol") {
+            const distanceInput = document.querySelector(
+              `.mobile-distance-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+            );
+            const distance = Array.isArray(expense.distances)
+              ? expense.distances[personIndex]
+              : "";
+            syncInputValueIfInactive(distanceInput, distance);
+          }
+        });
+      });
+    }
+
+    function syncDesktopInputsFromState() {
+      participants.forEach((participant, personIndex) => {
+        const nameInput = document.querySelector(
+          `.name-input[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(nameInput, participant.name);
+
+        const notesInput = document.querySelector(
+          `.attendance-table textarea[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(notesInput, participant.notes);
+      });
+
+      getAllExpenses().forEach((expense) => {
+        ensureExpenseSize(expense);
+        expense.consumers.forEach((consumerState, personIndex) => {
+          const consumeInput = document.querySelector(
+            `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(consumeInput, consumerState, true);
+        });
+
+        expense.amounts.forEach((amount, personIndex) => {
+          const amountInput = document.querySelector(
+            `.attendance-table input[type="number"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field!="true"]`
+          );
+          if (amountInput && !amountInput.readOnly) {
+            const value = amount === "" ? "" : String(amount);
+            syncInputValueIfInactive(amountInput, value);
+          }
+
+          if (expense.key === "petrol") {
+            const distanceInput = document.querySelector(
+              `.attendance-table input[type="number"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field="true"]`
+            );
+            const distance = Array.isArray(expense.distances)
+              ? expense.distances[personIndex]
+              : "";
+            syncInputValueIfInactive(distanceInput, distance);
+          }
+        });
+      });
     }
 
     function recalculate() {
@@ -3016,6 +3582,47 @@
             }
           }
         }
+
+        const mobileBreakdown = document.querySelector(
+          `.mobile-fee-breakdown[data-person-index="${personIndex}"]`
+        );
+        const mobileFee = document.querySelector(
+          `.mobile-fee-value[data-person-index="${personIndex}"]`
+        );
+        const mobileReimb = document.querySelector(
+          `.mobile-reimbursed-value[data-person-index="${personIndex}"]`
+        );
+
+        if (mobileBreakdown) {
+          if (hasName) {
+            const breakdown = participantFeeBreakdowns[personIndex];
+            mobileBreakdown.textContent = breakdown.length
+              ? breakdown
+                  .map((entry) => `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`)
+                  .join("; ")
+              : "";
+          } else {
+            mobileBreakdown.textContent = "";
+          }
+        }
+
+        if (mobileFee) {
+          mobileFee.textContent = hasName && fee ? `$${formatCurrency(fee)}` : "";
+        }
+
+        if (mobileReimb) {
+          mobileReimb.textContent = "";
+          mobileReimb.classList.remove("amount-due", "amount-credit");
+          if (hasName && balance) {
+            if (balance > 0) {
+              mobileReimb.textContent = `($${formatCurrency(balance)})`;
+              mobileReimb.classList.add("amount-due");
+            } else {
+              mobileReimb.textContent = `$${formatCurrency(Math.abs(balance))}`;
+              mobileReimb.classList.add("amount-credit");
+            }
+          }
+        }
       });
 
       const totalFeeCell = document.querySelector(".total-fee");
@@ -3047,6 +3654,8 @@
         clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
       }
 
+      syncMobileInputsFromState();
+      syncDesktopInputsFromState();
       syncSrtKitMasterToggleState();
     }
 
