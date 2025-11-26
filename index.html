@@ -748,6 +748,11 @@
         flex-basis: 100%;
       }
 
+      .header-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
       .top-section-right {
         flex-basis: 100%;
         max-width: none;
@@ -933,7 +938,7 @@
               <input
                 type="date"
                 id="trip-date"
-                title="Starting date of the trip."
+                placeholder="Starting date of the trip."
               />
             </td>
             <th scope="row">Location</th>
@@ -941,7 +946,7 @@
               <input
                 type="text"
                 id="trip-location"
-                title="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
+                placeholder="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
               />
             </td>
           </tr>
@@ -952,7 +957,7 @@
                 type="text"
                 id="trip-leader"
                 list="trip-leader-options"
-                title="That’s you! The main organizer or leader of the trip."
+                placeholder="That’s you! The main organizer or leader of the trip."
               />
             </td>
             <th scope="row">Clerk</th>
@@ -961,7 +966,7 @@
                 type="text"
                 id="clerk"
                 list="trip-leader-options"
-                title="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
+                placeholder="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
               />
             </td>
           </tr>
@@ -1099,7 +1104,20 @@
               hidden
             />
           </div>
-          <div class="banking-details" id="banking-details" aria-live="polite"></div>
+          <div class="banking-details" id="banking-details" aria-live="polite">
+            <p>
+              <span class="banking-label">Name:</span>
+              <span>Society Cheque Acct</span>
+            </p>
+            <p>
+              <span class="banking-label">BSB:</span>
+              <span>062903</span>
+            </p>
+            <p>
+              <span class="banking-label">Account:</span>
+              <span>10320366</span>
+            </p>
+          </div>
           <div class="banking-actions">
             <button
               type="button"
@@ -1383,8 +1401,7 @@
 
     const participants = Array.from({ length: 10 }, () => ({
       name: "",
-      bold: false,
-      notes: ""
+      bold: false
     }));
     const baseExpenseDefinitions = [
       {
@@ -2044,7 +2061,8 @@
         const balanceLine = targetDocument.createElement("p");
         const amountText = `$${formatCurrency(Math.abs(balance)) || "0.00"}`;
         const balanceLabel = balance > 0 ? "Owes" : "Reimburse";
-        balanceLine.innerHTML = `<strong>${name}</strong>: ${balanceLabel} ${amountText}`;
+        const balanceClass = balance > 0 ? "amount-due" : "amount-credit";
+        balanceLine.innerHTML = `<strong>${name}</strong>: ${balanceLabel} <span class="${balanceClass}">${amountText}</span>`;
         personWrapper.appendChild(balanceLine);
 
         const contributionDetails = calculation.participantContributionDetails[index] || [];
@@ -2414,8 +2432,7 @@
         })),
         participants: participants.map((participant) => ({
           name: participant.name,
-          bold: participant.bold,
-          notes: participant.notes
+          bold: participant.bold
         })),
         images: {
           banner: bannerImageSource,
@@ -2534,12 +2551,11 @@
         participantData.forEach((entry) => {
           participants.push({
             name: entry?.name || "",
-            bold: Boolean(entry?.bold),
-            notes: entry?.notes || ""
+            bold: Boolean(entry?.bold)
           });
         });
       } else {
-        participants.push({ name: "", bold: false, notes: "" });
+        participants.push({ name: "", bold: false });
       }
 
       if (rateData && typeof rateData === "object") {
@@ -2882,25 +2898,6 @@
         grid.appendChild(consumeLabel);
       });
 
-      const notesLabel = document.createElement("label");
-      notesLabel.textContent = "Notes";
-      const notesInput = document.createElement("textarea");
-      notesInput.value = participant.notes;
-      notesInput.dataset.personIndex = String(personIndex);
-      notesInput.className = "mobile-notes-input";
-      notesInput.addEventListener("input", (event) => {
-        const index = Number(event.target.dataset.personIndex);
-        participants[index].notes = event.target.value;
-        const desktopNotes = document.querySelector(
-          `.attendance-table textarea[data-person-index="${index}"]`
-        );
-        if (desktopNotes) {
-          desktopNotes.value = event.target.value;
-        }
-      });
-      notesLabel.appendChild(notesInput);
-      grid.appendChild(notesLabel);
-
       panel.appendChild(grid);
 
       const breakdown = document.createElement("div");
@@ -2994,10 +2991,6 @@
       reimbHeader.innerHTML =
         '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
       headerRow.appendChild(reimbHeader);
-
-      const notesHeader = document.createElement("th");
-      notesHeader.textContent = "Notes";
-      headerRow.appendChild(notesHeader);
 
       renderBody(activeExpenses);
       renderFooter(activeExpenses);
@@ -3223,16 +3216,6 @@
         reimbCell.dataset.personIndex = personIndex;
         row.appendChild(reimbCell);
 
-        const notesCell = document.createElement("td");
-        const notesInput = document.createElement("textarea");
-        notesInput.value = participant.notes;
-        notesInput.dataset.personIndex = String(personIndex);
-        notesInput.addEventListener("input", (event) => {
-          participants[personIndex].notes = event.target.value;
-        });
-        notesCell.appendChild(notesInput);
-        row.appendChild(notesCell);
-
         tbody.appendChild(row);
       });
     }
@@ -3353,10 +3336,6 @@
         );
         syncInputValueIfInactive(nameInput, participant.name);
 
-        const notesInput = document.querySelector(
-          `.mobile-notes-input[data-person-index="${personIndex}"]`
-        );
-        syncInputValueIfInactive(notesInput, participant.notes);
       });
 
       getAllExpenses().forEach((expense) => {
@@ -3401,11 +3380,6 @@
           `.name-input[data-person-index="${personIndex}"]`
         );
         syncInputValueIfInactive(nameInput, participant.name);
-
-        const notesInput = document.querySelector(
-          `.attendance-table textarea[data-person-index="${personIndex}"]`
-        );
-        syncInputValueIfInactive(notesInput, participant.notes);
       });
 
       getAllExpenses().forEach((expense) => {
@@ -3868,7 +3842,7 @@
     }
 
     function addParticipantRow() {
-      participants.push({ name: "", bold: false, notes: "" });
+      participants.push({ name: "", bold: false });
       if (srtKitMasterToggle && srtKitMasterToggle.checked) {
         const srtKitExpense = getSrtKitExpense();
         if (srtKitExpense && srtKitExpense.enabled) {
