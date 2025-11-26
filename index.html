@@ -1184,6 +1184,7 @@
     const tutorialOverlay = document.getElementById("tutorial-overlay");
     const tutorialCloseButton = document.getElementById("tutorial-close");
     const tutorialVideo = document.getElementById("tutorial-video");
+    let memberNames = [];
 
     function hideTutorialOverlay() {
       if (!tutorialOverlay) return;
@@ -1274,7 +1275,6 @@
       });
     }
 
-    let memberNames = [];
     const bakedBankingDefaults = {
       Name: "Society Cheque Acct",
       BSB: "062903",
