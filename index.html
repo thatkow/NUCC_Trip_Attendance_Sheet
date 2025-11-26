@@ -45,17 +45,6 @@
       width: 100%;
     }
 
-    .miner-image {
-      display: block;
-      flex: 2 1 0;
-      max-width: clamp(154px, 49%, 252px);
-      max-height: 100%;
-      height: auto;
-      width: auto;
-      object-fit: contain;
-      align-self: center;
-    }
-
     .banking-info {
       display: flex;
       flex-direction: column;
@@ -151,14 +140,6 @@
       height: 72px;
       width: auto;
       display: block;
-    }
-
-    .miner-image-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      width: 100%;
     }
 
     .image-upload-button {
@@ -767,12 +748,6 @@
         text-align: center;
       }
 
-      .miner-image {
-        flex: 0 0 auto;
-        max-width: 240px;
-        height: auto;
-      }
-
       .banking-info {
         align-items: center;
         max-width: 100%;
@@ -1128,27 +1103,6 @@
             </button>
           </div>
         </div>
-        <div class="miner-image-container">
-          <img
-            src="taxminer.png"
-            alt="Tax Miner graphic"
-            class="miner-image"
-            id="miner-image"
-          />
-          <button
-            type="button"
-            class="image-upload-button"
-            id="replace-miner-button"
-          >
-            Replace miner image
-          </button>
-          <input
-            type="file"
-            id="miner-image-input"
-            accept="image/*"
-            hidden
-          />
-        </div>
       </div>
     </div>
     <div class="mobile-add-person">
@@ -1276,15 +1230,12 @@
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
     const bannerImageElement = document.getElementById("banner-image");
-    const minerImageElement = document.getElementById("miner-image");
     const bankingLogoElement = document.getElementById("banking-logo");
     const replaceBannerButton = document.getElementById("replace-banner-button");
-    const replaceMinerButton = document.getElementById("replace-miner-button");
     const replaceBankingLogoButton = document.getElementById(
       "replace-banking-logo-button"
     );
     const bannerImageInput = document.getElementById("banner-image-input");
-    const minerImageInput = document.getElementById("miner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
     const mobileTabPanels = document.getElementById("mobile-tab-panels");
     const mobileAddPersonButton = document.getElementById("add-person-mobile");
@@ -1321,12 +1272,9 @@
     let bankingDetailsEdited = false;
     const defaultBannerSource =
       bannerImageElement?.getAttribute("src") || "banner.png";
-    const defaultMinerSource =
-      minerImageElement?.getAttribute("src") || "taxminer.png";
     const defaultBankingLogoSource =
       bankingLogoElement?.getAttribute("src") || "banking_logo.png";
     let bannerImageSource = defaultBannerSource;
-    let minerImageSource = defaultMinerSource;
     let bankingLogoSource = defaultBankingLogoSource;
 
     const baseExpenseRates = {
@@ -1484,7 +1432,6 @@
 
     function syncImageSources() {
       syncImageElementSource(bannerImageElement, bannerImageSource, defaultBannerSource);
-      syncImageElementSource(minerImageElement, minerImageSource, defaultMinerSource);
       syncImageElementSource(
         bankingLogoElement,
         bankingLogoSource,
@@ -1790,10 +1737,7 @@
         .forEach((element) => element.remove());
 
       node
-        .querySelectorAll(".miner-image-container, .miner-image")
-        .forEach((element) => element.remove());
-
-      node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        .querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         const replacement = node.ownerDocument.createElement("span");
         replacement.className = "summary-check";
         replacement.textContent = checkbox.checked ? "✔" : "";
@@ -2525,7 +2469,6 @@
         })),
         images: {
           banner: bannerImageSource,
-          miner: minerImageSource,
           banking: bankingLogoSource
         },
         srtKitAllSelected: Boolean(
@@ -2674,17 +2617,12 @@
           images.banner,
           defaultBannerSource
         );
-        minerImageSource = normalizeImageSource(
-          images.miner,
-          defaultMinerSource
-        );
         bankingLogoSource = normalizeImageSource(
           images.banking,
           defaultBankingLogoSource
         );
       } else {
         bannerImageSource = defaultBannerSource;
-        minerImageSource = defaultMinerSource;
         bankingLogoSource = defaultBankingLogoSource;
       }
 
@@ -4161,11 +4099,6 @@
     function setupImageReplacements() {
       setupImageReplacement(replaceBannerButton, bannerImageInput, (source) => {
         bannerImageSource = source;
-        syncImageSources();
-      });
-
-      setupImageReplacement(replaceMinerButton, minerImageInput, (source) => {
-        minerImageSource = source;
         syncImageSources();
       });
 
