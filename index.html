@@ -2044,16 +2044,17 @@
 
       const calculation = calculateFinancials(false);
       const peopleSection = targetDocument.createElement("section");
+      peopleSection.className = "summary-people-section";
       const peopleHeading = targetDocument.createElement("h2");
       peopleHeading.textContent = "Participant balances";
       peopleSection.appendChild(peopleHeading);
 
-      participants.forEach((participant, index) => {
-        const name = (participant.name || "").trim();
-        if (!name) {
-          return;
-        }
+      const participantEntries = participants
+        .map((participant, index) => ({ participant, index }))
+        .filter(({ participant }) => (participant.name || "").trim());
 
+      participantEntries.forEach(({ participant, index }, displayIndex) => {
+        const name = (participant.name || "").trim();
         const personWrapper = targetDocument.createElement("div");
         personWrapper.className = "summary-person";
 
@@ -2106,6 +2107,14 @@
         }
 
         peopleSection.appendChild(personWrapper);
+
+        const isLastEntry = displayIndex === participantEntries.length - 1;
+        const shouldBreak = (displayIndex + 1) % 3 === 0 && !isLastEntry;
+        if (shouldBreak) {
+          const pageBreak = targetDocument.createElement("div");
+          pageBreak.className = "summary-page-break";
+          peopleSection.appendChild(pageBreak);
+        }
       });
 
       container.appendChild(peopleSection);
@@ -2167,12 +2176,27 @@
         }
 
         .summary-preview .top-section {
-          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.5rem;
+        }
+
+        .summary-preview .header-row {
+          flex-wrap: nowrap;
           align-items: center;
+          gap: 1.25rem;
+        }
+
+        .summary-preview .header-logo-block {
+          align-items: flex-start;
+        }
+
+        .summary-preview .header-row h1 {
+          margin-top: 0.35rem;
         }
 
         .summary-preview .top-section-left {
           width: 100%;
+          max-width: none;
         }
 
         .summary-preview .top-section-right {
@@ -2182,21 +2206,65 @@
         }
 
         .summary-preview .top-section-right-inner {
-          display: grid;
-          grid-template-columns: 1fr;
-          justify-items: center;
+          display: flex;
           align-items: center;
-          gap: 1rem;
+          justify-content: flex-end;
+          gap: 1.25rem;
+          flex-wrap: wrap;
         }
 
         .summary-preview .banking-info {
-          width: 100%;
-          max-width: 420px;
-          margin: 0 auto;
+          flex-direction: row;
+          align-items: center;
+          justify-content: flex-start;
+          text-align: left;
+          gap: 1rem;
+          width: auto;
+          max-width: none;
+        }
+
+        .summary-preview .banking-logo-wrapper {
+          flex: 0 0 auto;
+        }
+
+        .summary-preview .banking-logo-wrapper .image-upload-button,
+        .summary-preview .banking-logo-wrapper input[type="file"] {
+          display: none;
+        }
+
+        .summary-preview .banking-details {
+          width: auto;
+          min-width: 240px;
+          margin: 0;
         }
 
         .summary-preview .banking-actions {
           display: none;
+        }
+
+        .summary-preview .meta-table {
+          width: auto;
+        }
+
+        .summary-preview .meta-table tbody {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.35rem 1rem;
+          align-items: center;
+        }
+
+        .summary-preview .meta-table tr {
+          display: contents;
+        }
+
+        .summary-preview .meta-table th {
+          text-align: right;
+          white-space: nowrap;
+          padding: 0.2rem 0.4rem;
+        }
+
+        .summary-preview .meta-table td {
+          padding: 0.2rem 0.4rem;
         }
 
         .summary-preview .summary-description {
@@ -2207,6 +2275,16 @@
 
         .summary-preview .summary-description-text {
           flex: 1 1 0;
+        }
+
+        .summary-preview .summary-people-section {
+          break-before: page;
+          page-break-before: always;
+        }
+
+        .summary-preview .summary-page-break {
+          break-before: page;
+          page-break-before: always;
         }
       `;
       summaryDocument.head.appendChild(extraStyle);
