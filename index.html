@@ -547,6 +547,17 @@
       cursor: pointer;
     }
 
+    @media (max-width: 700px) {
+      .name-input-wrapper {
+        flex-wrap: wrap;
+      }
+
+      .name-select {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
     .name-input.bold {
       font-weight: 600;
     }
@@ -1243,10 +1254,12 @@
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
+      wrapInputWithNameLookup(tripLeaderInput);
     }
 
     if (clerkInput) {
       clerkInput.setAttribute("list", tripLeaderListId);
+      wrapInputWithNameLookup(clerkInput);
     }
 
     if (tripDateInput) {
@@ -1665,6 +1678,38 @@
       });
 
       selectElement.value = "";
+    }
+
+    function wrapInputWithNameLookup(input, onSelect) {
+      if (!input || input.closest(".name-input-wrapper")) {
+        return null;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "name-input-wrapper";
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+
+      const nameSelect = document.createElement("select");
+      nameSelect.className = "name-select";
+      nameSelect.setAttribute("aria-label", "Select member from list");
+      nameSelect.title = "Select member";
+      populateNameSelect(nameSelect);
+
+      nameSelect.addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (value) {
+          input.value = value;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          if (typeof onSelect === "function") {
+            onSelect(value);
+          }
+        }
+        event.target.value = "";
+      });
+
+      wrapper.appendChild(nameSelect);
+      return nameSelect;
     }
 
     function cloneNodeWithFormValues(node) {
@@ -2746,6 +2791,8 @@
 
       const nameLabel = document.createElement("label");
       nameLabel.textContent = "Name";
+      const nameWrapper = document.createElement("div");
+      nameWrapper.className = "name-input-wrapper";
       const nameInput = document.createElement("input");
       nameInput.type = "text";
       nameInput.value = participant.name;
@@ -2765,7 +2812,26 @@
         recalculate();
         updateDuplicateNameWarnings();
       });
-      nameLabel.appendChild(nameInput);
+      nameWrapper.appendChild(nameInput);
+
+      const mobileNameSelect = document.createElement("select");
+      mobileNameSelect.className = "name-select";
+      mobileNameSelect.dataset.personIndex = String(personIndex);
+      mobileNameSelect.setAttribute("aria-label", "Select member from list");
+      mobileNameSelect.title = "Select member";
+      populateNameSelect(mobileNameSelect);
+      mobileNameSelect.addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (!value) {
+          return;
+        }
+        nameInput.value = value;
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+        event.target.value = "";
+      });
+
+      nameWrapper.appendChild(mobileNameSelect);
+      nameLabel.appendChild(nameWrapper);
       grid.appendChild(nameLabel);
 
       activeExpenses.forEach((expense) => {
