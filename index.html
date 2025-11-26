@@ -2114,6 +2114,7 @@
       container.appendChild(peopleSection);
 
       const summaryTotals = targetDocument.createElement("section");
+      summaryTotals.className = "summary-totals";
       const totalsHeading = targetDocument.createElement("h2");
       totalsHeading.textContent = "Summary";
       summaryTotals.appendChild(totalsHeading);
@@ -2279,6 +2280,11 @@
         }
 
         .summary-preview .summary-page-break {
+          break-before: page;
+          page-break-before: always;
+        }
+
+        .summary-preview .summary-totals {
           break-before: page;
           page-break-before: always;
         }
