@@ -548,12 +548,14 @@
       display: flex;
       gap: 0.25rem;
       align-items: center;
+      width: 100%;
     }
 
     .name-select {
-      width: 1.75rem;
-      min-width: 1.75rem;
-      padding: 0.2rem;
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 2.25rem;
+      padding: 0.35rem 0.5rem;
       border: 1px solid #bdbdbd;
       border-radius: 0.3rem;
       background: #fff;
@@ -562,15 +564,13 @@
       cursor: pointer;
     }
 
-    @media (max-width: 700px) {
-      .name-input-wrapper {
-        flex-wrap: wrap;
-      }
-
-      .name-select {
-        width: 100%;
-        min-width: 0;
-      }
+    .name-input-wrapper input[type="text"],
+    .name-input-wrapper input[type="search"],
+    .name-input-wrapper input[type="email"],
+    .name-input-wrapper input[type="tel"],
+    .name-input-wrapper input[type="url"],
+    .name-input-wrapper input[type="number"] {
+      flex: 1 1 auto;
     }
 
     .name-input.bold {
@@ -918,46 +918,50 @@
 
         <table class="meta-table">
           <tbody>
-          <tr>
-            <th scope="row">Date</th>
-            <td>
-              <input
-                type="date"
-                id="trip-date"
-                placeholder="Starting date of the trip."
-              />
-            </td>
-            <th scope="row">Location</th>
-            <td>
-              <input
-                type="text"
-                id="trip-location"
-                placeholder="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
-              />
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Trip Leader</th>
-            <td>
-              <input
-                type="text"
-                id="trip-leader"
-                list="trip-leader-options"
-                placeholder="That’s you! The main organizer or leader of the trip."
-              />
-            </td>
-            <th scope="row">Clerk</th>
-            <td>
-              <input
-                type="text"
-                id="clerk"
-                list="trip-leader-options"
-                placeholder="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <tr>
+              <th scope="row">Date</th>
+              <td>
+                <input
+                  type="date"
+                  id="trip-date"
+                  placeholder="Starting date of the trip."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Location</th>
+              <td>
+                <input
+                  type="text"
+                  id="trip-location"
+                  placeholder="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Trip Leader</th>
+              <td>
+                <input
+                  type="text"
+                  id="trip-leader"
+                  list="trip-leader-options"
+                  placeholder="That’s you! The main organizer or leader of the trip."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Clerk</th>
+              <td>
+                <input
+                  type="text"
+                  id="clerk"
+                  list="trip-leader-options"
+                  placeholder="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
       <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
         <label
