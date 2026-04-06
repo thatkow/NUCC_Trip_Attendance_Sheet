@@ -1614,6 +1614,128 @@
       return "Paid means this member paid this amount on behalf of others. If unchecked, the member owes this amount.";
     }
 
+    function getInputFieldHelpText(field, labelText) {
+      if (!field) {
+        return "";
+      }
+
+      const inputIdHelpMap = {
+        "trip-date":
+          "Trip start date used in the summary and CSV export.",
+        "trip-location":
+          "Location label shown in the summary and used to tag this trip in saved records.",
+        "trip-leader":
+          "Main organizer for the trip. This helps identify who coordinated the sheet.",
+        clerk:
+          "Person who handles reimbursements and payment tracking for this sheet.",
+        "horizontal-gear-rate":
+          "Per-person depreciation charge applied to members ticked under Hired Horizontal Gear?.",
+        "camping-gear-rate":
+          "Per-person depreciation charge applied to members ticked under Hired Camping Gear?.",
+        "srt-kit-rate":
+          "Per-person depreciation charge applied to members ticked under Used SRT Kit?.",
+        "maintenance-rate":
+          "Kilometre reimbursement rate used with Petrol distance to calculate maintenance contributions."
+      };
+
+      if (field.id && inputIdHelpMap[field.id]) {
+        return inputIdHelpMap[field.id];
+      }
+
+      if (field.dataset && field.dataset.expenseKey) {
+        const expenseToggleMap = {
+          "horizontal-gear":
+            "Show or hide the Horizontal Gear columns and calculations for this trip.",
+          "camping-gear":
+            "Show or hide the Camping Gear columns and calculations for this trip.",
+          "srt-kit":
+            "Show or hide the SRT Kit columns and calculations for this trip.",
+          petrol:
+            "Show or hide Petrol amount, inclusion, and distance-based maintenance calculations."
+        };
+        return (
+          expenseToggleMap[field.dataset.expenseKey] ||
+          "Show or hide this expense category from the table and summary."
+        );
+      }
+
+      if (field.id === "srt-kit-master-toggle") {
+        return "Bulk toggle for all Used SRT Kit? checkboxes in the member table.";
+      }
+
+      if (
+        field.classList.contains("mobile-direct-charge") ||
+        labelText.startsWith("Hired ") ||
+        labelText.startsWith("Used SRT Kit?")
+      ) {
+        return "Tick this member if they used/hired this gear so the configured per-person fee is added to their total.";
+      }
+
+      if (field.classList.contains("mobile-consume-input")) {
+        return "Include this member when splitting the matching base expense across consumers.";
+      }
+
+      if (field.classList.contains("mobile-paid-input")) {
+        return getPaidCheckboxInfoText();
+      }
+
+      if (field.classList.contains("mobile-distance-input")) {
+        return "Distance in km used with the maintenance rate for petrol reimbursement calculations.";
+      }
+
+      if (
+        field.classList.contains("mobile-amount-input") ||
+        field.classList.contains("read-only-amount")
+      ) {
+        return "Amount for this member for the selected expense. For custom expenses, pair with Paid to indicate paid vs owes.";
+      }
+
+      const helpFromField =
+        field.getAttribute("title") ||
+        field.getAttribute("placeholder") ||
+        field.getAttribute("aria-label") ||
+        "";
+      if (helpFromField.trim()) {
+        return helpFromField.trim();
+      }
+
+      return labelText ? `Enter ${labelText}.` : "";
+    }
+
+    function getHeaderHelpText(thText, target) {
+      if (!thText) {
+        return "";
+      }
+
+      const helpMap = {
+        Name: "Member name used for all fee, reimbursement, and CSV rows.",
+        "Distance (km)":
+          "Per-member distance used with Maintenance rate to calculate maintenance reimbursement.",
+        "Fee Breakdown":
+          "Read-only explanation of how each member total was built from active expense columns.",
+        Fee: "Final total fee allocated to this member.",
+        Reimburse:
+          "Green values are reimbursements owed to the member; red values (Due) are amounts the member must pay back.",
+        "Reimburse(Due)":
+          "Green values are reimbursements owed to the member; red values (Due) are amounts the member must pay back.",
+        "Inc?":
+          "Include this member in sharing the adjacent base expense amount."
+      };
+      if (helpMap[thText]) {
+        return helpMap[thText];
+      }
+
+      if (thText.startsWith("Hired ") || thText.startsWith("Used SRT Kit?")) {
+        return "Checkbox column: tick members who used this gear so the corresponding per-person depreciation fee is charged.";
+      }
+
+      if (target && target.dataset && target.dataset.expenseId) {
+        return "Per-member amount column for this expense. For custom expenses, Paid marks positive contributions while unticked members owe that amount. Expense totals must balance to $0 before summarising.";
+      }
+
+      return `${thText} field details.`;
+    }
+
     function getFieldHelpText(target) {
       if (!target) {
         return "";
@@ -1629,33 +1751,13 @@
         if (!field) {
           return "";
         }
-        const helpFromField =
-          field.getAttribute("title") ||
-          field.getAttribute("placeholder") ||
-          field.getAttribute("aria-label") ||
-          "";
-        if (helpFromField.trim()) {
-          return helpFromField.trim();
-        }
         const labelText = target.textContent.replace(/\s+/g, " ").trim();
-        return labelText ? `Enter ${labelText}.` : "";
+        return getInputFieldHelpText(field, labelText);
       }
 
       if (target.tagName === "TH") {
         const thText = target.textContent.replace(/\s+/g, " ").trim();
-        if (!thText) {
-          return "";
-        }
-        const helpMap = {
-          Name: "Enter or select the participant name.",
-          "Distance (km)": "Distance travelled by this participant in kilometres.",
-          "Fee Breakdown": "Shows how each participant's fee was calculated.",
-          Fee: "Total fee allocated to this participant.",
-          Reimburse: "Amount reimbursed to participant, or due from participant if shown in red.",
-          "Reimburse(Due)": "Amount reimbursed to participant, or due from participant if shown in red.",
-          "Inc?": "Whether this participant is included in sharing this expense."
-        };
-        return helpMap[thText] || `${thText} field details.`;
+        return getHeaderHelpText(thText, target);
       }
 
       return "";
