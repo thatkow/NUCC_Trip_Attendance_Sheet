@@ -124,7 +124,7 @@
       const promptText = buildPrompt();
       try {
         await navigator.clipboard.writeText(promptText);
-        window.alert("Prompt copied! Now open ChatGPT, paste it, then come back and paste the CSV response.");
+        console.info("Prompt copied.");
       } catch (error) {
         console.error("Could not copy prompt", error);
         window.alert(`Could not copy automatically. Please copy manually:\n\n${promptText}`);
