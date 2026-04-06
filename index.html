@@ -2414,7 +2414,7 @@
       if (!summaryWindow) {
         window.alert("Please allow pop-ups to view the summary.");
         URL.revokeObjectURL(url);
-        return;
+        return false;
       }
 
       summaryWindow.document.open();
@@ -2440,6 +2440,7 @@
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 0);
+      return true;
     }
 
     async function loadMemberOptions() {
@@ -4637,16 +4638,26 @@
     const summariseButton = document.getElementById("summarise-button");
     if (summariseButton) {
       summariseButton.addEventListener("click", () => {
-        recalculate();
-        const imbalanceMessages = getCustomExpenseImbalanceMessages();
-        if (imbalanceMessages.length > 0) {
+        try {
+          recalculate();
+          const imbalanceMessages = getCustomExpenseImbalanceMessages();
+          if (imbalanceMessages.length > 0) {
+            window.alert(
+              "Cannot summarise yet. Please balance these custom expenses first:\n\n" +
+                imbalanceMessages.join("\n")
+            );
+            return;
+          }
+          const opened = downloadAndOpenSummaryHtml();
+          if (!opened) {
+            return;
+          }
+        } catch (error) {
+          console.error("Could not generate summary", error);
           window.alert(
-            "Cannot summarise yet. Please balance these custom expenses first:\n\n" +
-              imbalanceMessages.join("\n")
+            "Could not generate summary. Please check that all fields are valid and try again."
           );
-          return;
         }
-        downloadAndOpenSummaryHtml();
       });
     }
 
