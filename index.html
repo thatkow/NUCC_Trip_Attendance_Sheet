@@ -476,6 +476,32 @@
       line-height: 1.4;
     }
 
+    .custom-expense-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .custom-expense-paid-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+    }
+
+    .custom-expense-info-button {
+      border: 1px solid #90a4ae;
+      border-radius: 999px;
+      width: 1.35rem;
+      height: 1.35rem;
+      font-size: 0.8rem;
+      line-height: 1;
+      cursor: pointer;
+      background: #eceff1;
+      color: #263238;
+      padding: 0;
+    }
+
     .summary-description .summary-line-gold {
       color: #b8860b;
     }
@@ -1435,7 +1461,7 @@
       key = null,
       type = "custom",
       enabled = true,
-      defaultConsumerState = true
+      defaultConsumerState = false
     }) {
       const id = type === "base" ? `base-${key}` : `custom-${customExpenseCounter++}`;
       return {
@@ -1557,6 +1583,10 @@
       return isPaid
         ? "How much person paid for others"
         : "How much person owes";
+    }
+
+    function getPaidCheckboxInfoText() {
+      return "Paid means this member paid this amount on behalf of others. If unchecked, the member owes this amount.";
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -3031,7 +3061,7 @@
           name: meta.name || "Custom Expense",
           enabled: parseBooleanString(meta.enabled),
           amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
-          consumers: Array.from({ length: participantsData.length || 2 }, () => true)
+          consumers: Array.from({ length: participantsData.length || 2 }, () => false)
         }));
 
         const customFieldToIndex = new Map();
@@ -3403,6 +3433,8 @@
           amountInput.placeholder = getCustomExpensePlaceholder(
             Boolean(expense.consumers[personIndex])
           );
+          const controlsRow = document.createElement("div");
+          controlsRow.className = "custom-expense-paid-row";
           const paidLabel = document.createElement("label");
           paidLabel.className = "mobile-checkbox-field";
           const paidInput = document.createElement("input");
@@ -3431,11 +3463,22 @@
           paidText.textContent = "Paid";
           paidLabel.appendChild(paidInput);
           paidLabel.appendChild(paidText);
+          controlsRow.appendChild(paidLabel);
+
+          const infoButton = document.createElement("button");
+          infoButton.type = "button";
+          infoButton.className = "custom-expense-info-button";
+          infoButton.textContent = "i";
+          infoButton.title = getPaidCheckboxInfoText();
+          infoButton.setAttribute("aria-label", "Paid checkbox info");
+          infoButton.addEventListener("click", () => {
+            window.alert(getPaidCheckboxInfoText());
+          });
+          controlsRow.appendChild(infoButton);
+          label.appendChild(controlsRow);
+
           if (petrolGroup) {
-            petrolGroup.appendChild(paidLabel);
             grid.appendChild(petrolGroup);
-          } else {
-            grid.appendChild(paidLabel);
           }
           return;
         }
@@ -3759,8 +3802,15 @@
             amountInput.placeholder = getCustomExpensePlaceholder(
               Boolean(expense.consumers[personIndex])
             );
+            const customInputGroup = document.createElement("div");
+            customInputGroup.className = "custom-expense-input-group";
+            amountCell.innerHTML = "";
+            customInputGroup.appendChild(amountInput);
+
+            const controlsRow = document.createElement("div");
+            controlsRow.className = "custom-expense-paid-row";
             const paidWrapper = document.createElement("label");
-            paidWrapper.className = "consume-cell";
+            paidWrapper.className = "mobile-checkbox-field";
             const paidInput = document.createElement("input");
             paidInput.type = "checkbox";
             paidInput.checked = Boolean(expense.consumers[personIndex]);
@@ -3788,7 +3838,20 @@
             paidText.textContent = "Paid";
             paidWrapper.appendChild(paidInput);
             paidWrapper.appendChild(paidText);
-            amountCell.appendChild(paidWrapper);
+            controlsRow.appendChild(paidWrapper);
+
+            const infoButton = document.createElement("button");
+            infoButton.type = "button";
+            infoButton.className = "custom-expense-info-button";
+            infoButton.textContent = "i";
+            infoButton.title = getPaidCheckboxInfoText();
+            infoButton.setAttribute("aria-label", "Paid checkbox info");
+            infoButton.addEventListener("click", () => {
+              window.alert(getPaidCheckboxInfoText());
+            });
+            controlsRow.appendChild(infoButton);
+            customInputGroup.appendChild(controlsRow);
+            amountCell.appendChild(customInputGroup);
             return;
           }
 
