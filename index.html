@@ -1057,7 +1057,7 @@
           class="control-button"
           type="button"
           id="add-expense"
-          title="Add a balancing transfer category where member amounts must net to $0. Use positive values for members who paid and negative values for members who owe that payer."
+          title="Add a balancing transfer category. Enter amount plus Paid checkbox per member: checked means paid for others, unchecked means owes."
         >
           Add Expense
         </button>
@@ -1095,9 +1095,10 @@
         </button>
       </div>
       <p class="additional-expense-help">
-        Additional expenses are balancing transfers: enter positive amounts for
-        members who paid and negative amounts for members who owe. Each added
-        expense should sum to $0 so dues and reimbursements stay balanced.
+        Additional expenses are balancing transfers: for each member, enter the
+        amount and tick Paid if they paid for others; leave Paid unticked if
+        they owe that amount. Each added expense should net to $0 so dues and
+        reimbursements stay balanced.
       </p>
     </div>
     <div class="top-section-right">
@@ -1550,6 +1551,12 @@
 
     function isBalancingCustomExpense(expense) {
       return Boolean(expense && expense.type === "custom");
+    }
+
+    function getCustomExpensePlaceholder(isPaid) {
+      return isPaid
+        ? "How much person paid for others"
+        : "How much person owes";
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -2035,7 +2042,7 @@
 
       const additionalExpenseParagraph = targetDocument.createElement("p");
       additionalExpenseParagraph.textContent =
-        "Additional expenses are entered as balancing transfers: positive values for members who paid and negative values for members who owe. Each added expense should net to $0 so totals reconcile cleanly.";
+        "Additional expenses are entered as balancing transfers: record an amount per member and tick Paid when they paid for others. If Paid is unticked, that member owes the amount. Each added expense should net to $0 so totals reconcile cleanly.";
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
@@ -2683,6 +2690,7 @@
           matrixHeader.push(`Std:${entry.field}`);
         } else if (entry.type === "custom") {
           matrixHeader.push(`Exp:${entry.field}`);
+          matrixHeader.push(`Paid:${entry.field}`);
         } else {
           matrixHeader.push(`Exp:${entry.field}`);
           matrixHeader.push(`Inc:${entry.field}`);
@@ -2706,6 +2714,7 @@
           } else if (entry.type === "custom") {
             const amount = entry.amounts[index];
             row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
+            row.push(entry.consumers[index] ? "true" : "false");
           } else {
             const amount = entry.amounts[index];
             row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
@@ -3018,6 +3027,7 @@
           .sort((a, b) => a.field.localeCompare(b.field));
 
         const customExpensesState = customExpenseEntries.map((meta) => ({
+          type: "custom",
           name: meta.name || "Custom Expense",
           enabled: parseBooleanString(meta.enabled),
           amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
@@ -3043,6 +3053,13 @@
 
         const expenseColumnStartIndex =
           (header[1] || "").trim() === "Bold" ? 2 : 1;
+        const customFieldsWithPaidColumn = new Set();
+        for (let index = expenseColumnStartIndex; index < header.length; index += 1) {
+          const [prefix, field] = String(header[index] || "").split(":");
+          if (prefix === "Paid" && field) {
+            customFieldsWithPaidColumn.add(field);
+          }
+        }
         for (
           let columnIndex = expenseColumnStartIndex;
           columnIndex < header.length;
@@ -3062,7 +3079,20 @@
             if (prefix === "Std") {
               targetExpense.consumers[participantIndex] = parseBooleanString(cell);
             } else if (prefix === "Exp") {
-              targetExpense.amounts[participantIndex] = parseNumericString(cell);
+              const numericValue = parseNumericString(cell);
+              if (
+                targetExpense.type === "custom" &&
+                numericValue !== ""
+              ) {
+                targetExpense.amounts[participantIndex] = Math.abs(Number(numericValue));
+                if (!customFieldsWithPaidColumn.has(field)) {
+                  targetExpense.consumers[participantIndex] = Number(numericValue) >= 0;
+                }
+              } else {
+                targetExpense.amounts[participantIndex] = numericValue;
+              }
+            } else if (prefix === "Paid" && targetExpense.type === "custom") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
             } else if (prefix === "Inc") {
               targetExpense.consumers[participantIndex] = parseBooleanString(cell);
             } else if (prefix === "Dist" && targetExpense.key === "petrol") {
@@ -3262,11 +3292,8 @@
         }
 
         const amountInput = document.createElement("input");
-        amountInput.type = isBalancingCustomExpense(expense) ? "text" : "number";
+        amountInput.type = "number";
         amountInput.step = "0.01";
-        if (isBalancingCustomExpense(expense)) {
-          amountInput.inputMode = "decimal";
-        }
         amountInput.placeholder = "0.00";
         amountInput.value =
           expense.amounts[personIndex] !== ""
@@ -3297,7 +3324,7 @@
           }
           const index = Number(event.target.dataset.personIndex);
           const value = event.target.value.trim();
-          targetExpense.amounts[index] = value === "" ? "" : value;
+          targetExpense.amounts[index] = value === "" ? "" : Number(value);
           const desktopAmount = document.querySelector(
             `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field!="true"]`
           );
@@ -3372,9 +3399,43 @@
         }
 
         if (isBalancingCustomExpense(expense)) {
-          amountInput.placeholder = "Positive paid / negative owes";
+          amountInput.min = "0";
+          amountInput.placeholder = getCustomExpensePlaceholder(
+            Boolean(expense.consumers[personIndex])
+          );
+          const paidLabel = document.createElement("label");
+          paidLabel.className = "mobile-checkbox-field";
+          const paidInput = document.createElement("input");
+          paidInput.type = "checkbox";
+          paidInput.checked = Boolean(expense.consumers[personIndex]);
+          paidInput.dataset.expenseId = expense.id;
+          paidInput.dataset.personIndex = String(personIndex);
+          paidInput.className = "mobile-paid-input";
+          paidInput.addEventListener("change", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            const index = Number(event.target.dataset.personIndex);
+            targetExpense.consumers[index] = event.target.checked;
+            amountInput.placeholder = getCustomExpensePlaceholder(event.target.checked);
+            const desktopPaid = document.querySelector(
+              `.attendance-table input.custom-paid-input[data-expense-id="${expense.id}"][data-person-index="${index}"]`
+            );
+            if (desktopPaid) {
+              desktopPaid.checked = event.target.checked;
+            }
+            recalculate();
+          });
+          const paidText = document.createElement("span");
+          paidText.textContent = "Paid";
+          paidLabel.appendChild(paidInput);
+          paidLabel.appendChild(paidText);
           if (petrolGroup) {
+            petrolGroup.appendChild(paidLabel);
             grid.appendChild(petrolGroup);
+          } else {
+            grid.appendChild(paidLabel);
           }
           return;
         }
@@ -3611,11 +3672,8 @@
           }
 
           const amountInput = document.createElement("input");
-          amountInput.type = isBalancingCustomExpense(expense) ? "text" : "number";
+          amountInput.type = "number";
           amountInput.step = "0.01";
-          if (isBalancingCustomExpense(expense)) {
-            amountInput.inputMode = "decimal";
-          }
           amountInput.value = expense.amounts[personIndex] !== "" ? expense.amounts[personIndex] : "";
           amountInput.placeholder = "0.00";
           amountInput.dataset.expenseId = expense.id;
@@ -3642,7 +3700,7 @@
             }
             const index = Number(event.target.dataset.personIndex);
             const value = event.target.value.trim();
-            targetExpense.amounts[index] = value === "" ? "" : value;
+            targetExpense.amounts[index] = value === "" ? "" : Number(value);
             recalculate();
           });
           amountCell.appendChild(amountInput);
@@ -3697,6 +3755,40 @@
           }
 
           if (isBalancingCustomExpense(expense)) {
+            amountInput.min = "0";
+            amountInput.placeholder = getCustomExpensePlaceholder(
+              Boolean(expense.consumers[personIndex])
+            );
+            const paidWrapper = document.createElement("label");
+            paidWrapper.className = "consume-cell";
+            const paidInput = document.createElement("input");
+            paidInput.type = "checkbox";
+            paidInput.checked = Boolean(expense.consumers[personIndex]);
+            paidInput.className = "custom-paid-input";
+            paidInput.dataset.expenseId = expense.id;
+            paidInput.dataset.personIndex = String(personIndex);
+            paidInput.setAttribute("aria-label", `${expense.name} paid`);
+            paidInput.addEventListener("change", (event) => {
+              const targetExpense = findExpenseById(event.target.dataset.expenseId);
+              if (!targetExpense) {
+                return;
+              }
+              const index = Number(event.target.dataset.personIndex);
+              targetExpense.consumers[index] = event.target.checked;
+              amountInput.placeholder = getCustomExpensePlaceholder(event.target.checked);
+              const mobilePaid = document.querySelector(
+                `.mobile-paid-input[data-expense-id="${expense.id}"][data-person-index="${index}"]`
+              );
+              if (mobilePaid) {
+                mobilePaid.checked = event.target.checked;
+              }
+              recalculate();
+            });
+            const paidText = document.createElement("span");
+            paidText.textContent = "Paid";
+            paidWrapper.appendChild(paidInput);
+            paidWrapper.appendChild(paidText);
+            amountCell.appendChild(paidWrapper);
             return;
           }
 
@@ -3877,6 +3969,11 @@
             `.mobile-consume-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
           );
           syncInputValueIfInactive(consumeInput, consumerState, true);
+
+          const paidInput = document.querySelector(
+            `.mobile-paid-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(paidInput, consumerState, true);
         });
 
         expense.amounts.forEach((amount, personIndex) => {
@@ -3886,6 +3983,11 @@
           if (amountInput && !amountInput.readOnly) {
             const value = amount === "" ? "" : String(amount);
             syncInputValueIfInactive(amountInput, value);
+            if (isBalancingCustomExpense(expense)) {
+              amountInput.placeholder = getCustomExpensePlaceholder(
+                Boolean(expense.consumers[personIndex])
+              );
+            }
           }
 
           if (expense.key === "petrol") {
@@ -3925,6 +4027,11 @@
           if (amountInput && !amountInput.readOnly) {
             const value = amount === "" ? "" : String(amount);
             syncInputValueIfInactive(amountInput, value);
+            if (isBalancingCustomExpense(expense)) {
+              amountInput.placeholder = getCustomExpensePlaceholder(
+                Boolean(expense.consumers[personIndex])
+              );
+            }
           }
 
           if (expense.key === "petrol") {
@@ -4016,26 +4123,28 @@
             if (amount === "" || !Number.isFinite(Number(amount))) {
               return;
             }
-            const numericAmount = Number(amount);
-            if (numericAmount === 0) {
+            const rawAmount = Number(amount);
+            const magnitude = Math.abs(rawAmount);
+            if (magnitude === 0) {
               return;
             }
-            netTotal += numericAmount;
-            if (numericAmount > 0) {
+            const isPaid = Boolean(expense.consumers[personIndex]);
+            if (isPaid) {
+              netTotal += magnitude;
               contributorCount += 1;
-              participantContributions[personIndex] += numericAmount;
+              participantContributions[personIndex] += magnitude;
               participantContributionDetails[personIndex].push({
                 name: expense.name,
-                value: numericAmount,
+                value: magnitude,
                 distance: null
               });
             } else {
+              netTotal -= magnitude;
               owingCount += 1;
-              const owedAmount = Math.abs(numericAmount);
-              participantFeeTotals[personIndex] += owedAmount;
+              participantFeeTotals[personIndex] += magnitude;
               participantFeeBreakdowns[personIndex].push({
                 name: expense.name,
-                value: owedAmount
+                value: magnitude
               });
             }
           });
@@ -4347,7 +4456,7 @@
 
     document.getElementById("add-expense").addEventListener("click", () => {
       const expenseName = window.prompt(
-        "Enter a name for the new balancing expense (positive = paid, negative = owes):"
+        "Enter a name for the new balancing expense (set amount + Paid checkbox per member):"
       );
       if (!expenseName) {
         return;
