@@ -1300,6 +1300,9 @@
         <button type="button" class="banking-dialog-cancel" id="banking-cancel">
           Cancel
         </button>
+        <button type="button" class="banking-dialog-cancel" id="banking-reset">
+          Reset to defaults
+        </button>
         <button type="submit">Save banking details</button>
       </div>
     </form>
@@ -1389,6 +1392,7 @@
     const bankingBsbInput = document.getElementById("banking-bsb");
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
+    const bankingResetButton = document.getElementById("banking-reset");
     const gptCsvPromptButton = document.getElementById("gpt-csv-prompt");
     const pasteCsvButton = document.getElementById("paste-csv-button");
     const pasteCsvDialog = document.getElementById("paste-csv-dialog");
@@ -3046,6 +3050,7 @@
 
     function buildGptCsvPrompt() {
       const schemaExample = buildApplicationStateCsv();
+      const bankingDefaults = normalizeBankingDetails(defaultBankingDetails);
       return [
         "You are converting rough trip notes into a NUCC Trip Attendance CSV.",
         "Return ONLY a CSV in a fenced code block using ```csv.",
@@ -3065,6 +3070,7 @@
         "  - if net < 0 => Paid=false and Exp=absolute(net)",
         "  - if net = 0 => Exp blank and Paid false",
         "- For each custom expense, ensure SUM(Exp where Paid=true) equals SUM(Exp where Paid=false).",
+        `- If notes do not include bank details, default to bank_name='${bankingDefaults.name}', bank_bsb='${bankingDefaults.bsb}', bank_account='${bankingDefaults.account}'.`,
         "- If notes do not provide a value, leave that CSV cell blank.",
         "",
         "CSV structure example:",
@@ -5185,6 +5191,19 @@
       }
     }
 
+    function resetBankingFormFieldsToDefaults() {
+      const defaults = normalizeBankingDetails(defaultBankingDetails);
+      if (bankingNameInput) {
+        bankingNameInput.value = defaults.name;
+      }
+      if (bankingBsbInput) {
+        bankingBsbInput.value = defaults.bsb;
+      }
+      if (bankingAccountInput) {
+        bankingAccountInput.value = defaults.account;
+      }
+    }
+
     function renderBankingDetailsInto(container, targetDocument = document) {
       if (!container) {
         return;
@@ -5270,6 +5289,12 @@
           if (bankingDialog?.open) {
             bankingDialog.close();
           }
+        });
+      }
+
+      if (bankingResetButton) {
+        bankingResetButton.addEventListener("click", () => {
+          resetBankingFormFieldsToDefaults();
         });
       }
     }
