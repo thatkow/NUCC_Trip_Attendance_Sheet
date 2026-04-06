@@ -2275,6 +2275,7 @@
 
       const summaryDescription = targetDocument.createElement("div");
       summaryDescription.className = "summary-description";
+      summaryDescription.classList.add("summary-detail-item");
 
       const maintenanceRateText = formatMaintenanceRateDisplay(
         getEffectiveMaintenanceRate()
@@ -2402,6 +2403,25 @@
       }
 
       const calculation = calculateFinancials(false);
+      const detailsToggleWrapper = targetDocument.createElement("div");
+      detailsToggleWrapper.className = "summary-details-toggle";
+      const detailsToggleLabel = targetDocument.createElement("label");
+      const detailsToggleInput = targetDocument.createElement("input");
+      detailsToggleInput.type = "checkbox";
+      detailsToggleInput.setAttribute(
+        "aria-label",
+        "Hide summary details and show only participant owes and reimburse values"
+      );
+      const detailsToggleText = targetDocument.createElement("span");
+      detailsToggleText.textContent = "Hide details (show only owes and reimburse)";
+      detailsToggleLabel.appendChild(detailsToggleInput);
+      detailsToggleLabel.appendChild(detailsToggleText);
+      detailsToggleWrapper.appendChild(detailsToggleLabel);
+      detailsToggleInput.addEventListener("change", (event) => {
+        container.classList.toggle("summary-hide-details", event.target.checked);
+      });
+      container.appendChild(detailsToggleWrapper);
+
       const peopleSection = targetDocument.createElement("section");
       peopleSection.className = "summary-people-section";
       const peopleHeading = targetDocument.createElement("h2");
@@ -2432,7 +2452,9 @@
         if (contributionItems.length) {
           const contributionsHeading = targetDocument.createElement("p");
           contributionsHeading.textContent = "Contributions:";
+          contributionsHeading.classList.add("summary-detail-item");
           const list = targetDocument.createElement("ul");
+          list.classList.add("summary-detail-item");
           contributionItems.forEach((entry) => {
             const item = targetDocument.createElement("li");
             const pieces = [];
@@ -2455,7 +2477,9 @@
         if (feeBreakdown.length) {
           const breakdownHeading = targetDocument.createElement("p");
           breakdownHeading.textContent = "Fee breakdown:";
+          breakdownHeading.classList.add("summary-detail-item");
           const list = targetDocument.createElement("ul");
+          list.classList.add("summary-detail-item");
           feeBreakdown.forEach((entry) => {
             const item = targetDocument.createElement("li");
             item.textContent = `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`;
@@ -2480,6 +2504,7 @@
 
       const summaryTotals = targetDocument.createElement("section");
       summaryTotals.className = "summary-totals";
+      summaryTotals.classList.add("summary-detail-item");
       const totalsHeading = targetDocument.createElement("h2");
       totalsHeading.textContent = "Summary";
       summaryTotals.appendChild(totalsHeading);
@@ -2637,6 +2662,27 @@
 
         .summary-preview .summary-description-text {
           flex: 1 1 0;
+        }
+
+        .summary-preview .summary-details-toggle {
+          margin: 0.5rem 0 1rem;
+        }
+
+        .summary-preview .summary-details-toggle label {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 600;
+        }
+
+        .summary-preview .summary-details-toggle input[type="checkbox"] {
+          width: auto;
+          pointer-events: auto;
+          accent-color: #00695c;
+        }
+
+        .summary-preview.summary-hide-details .summary-detail-item {
+          display: none !important;
         }
 
         .summary-preview .summary-people-section {
