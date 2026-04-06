@@ -5335,6 +5335,56 @@
       });
     }
 
+    function consumeAiTransferPayload() {
+      const storageKey = "nucc-ai-transfer";
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        return;
+      }
+
+      let payload = null;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        console.error("Could not parse AI transfer payload", error);
+      }
+
+      window.localStorage.removeItem(storageKey);
+
+      if (!payload || typeof payload !== "object") {
+        return;
+      }
+
+      const csvText = String(payload.csv || "").trim();
+      if (csvText) {
+        loadTableFromCsvContent(csvText);
+      }
+
+      const trip = payload.trip && typeof payload.trip === "object" ? payload.trip : {};
+      if (tripDateInput && !tripDateInput.value && trip.date) {
+        tripDateInput.value = trip.date;
+      }
+      if (tripLocationInput && !tripLocationInput.value && trip.location) {
+        tripLocationInput.value = trip.location;
+      }
+      if (tripLeaderInput && !tripLeaderInput.value && trip.leader) {
+        tripLeaderInput.value = trip.leader;
+      }
+
+      const query = new URLSearchParams(window.location.search);
+      if (query.get("from") === "ai") {
+        const shouldSummarise = window.confirm("Your form has been filled, go to summary?");
+        if (shouldSummarise) {
+          document.getElementById("summarise-button")?.click();
+        }
+        if (window.history && typeof window.history.replaceState === "function") {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
+
+    consumeAiTransferPayload();
+
     const summariseButton = document.getElementById("summarise-button");
     const summariseImbalanceMessage = document.getElementById(
       "summarise-imbalance-message"
