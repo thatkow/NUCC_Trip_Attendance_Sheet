@@ -1800,7 +1800,7 @@
         console.error("Could not copy AI wizard prompt", err);
         window.alert("Could not copy automatically. Please copy this prompt manually:\n\n" + promptText);
       }
-      window.open("paste-csv.html?goto=1", "_blank");
+      window.location.href = 'paste-csv.html?goto=1';
     });
 
     const nameListId = "member-options";
@@ -5494,7 +5494,7 @@
           window.alert(`Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`);
         }
         gptFormDialog.close();
-        window.open("paste-csv.html?goto=1", "_blank");
+        window.location.href = 'paste-csv.html?goto=1';
       });
     }
 
