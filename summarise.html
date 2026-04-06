@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NUCC Trip Attendance Summary</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="NUCC Trip Attendance Summary" />
   <meta property="og:description" content="View the trip expense breakdown, participant balances, and reimbursement details for this NUCC outing." />
@@ -732,6 +733,8 @@
       try {
         const state = JSON.parse(decodeURIComponent(escape(atob(encoded))));
         applyState(state);
+        const titleAlias = buildTinyAlias(trip.location, trip.date);
+        if (titleAlias) document.title = titleAlias.replace(/-/g, " ");
         renderSummary();
       } catch (err) {
         console.error("Could not decode summary state", err);
