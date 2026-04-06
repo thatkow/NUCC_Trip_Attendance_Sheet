@@ -4532,6 +4532,8 @@
         }
         ensureExpenseSize(expense);
         let net = 0;
+        let paidTotal = 0;
+        let owesTotal = 0;
         expense.amounts.forEach((amount, personIndex) => {
           if (!participantHasName[personIndex]) {
             return;
@@ -4544,19 +4546,22 @@
             return;
           }
           if (expense.consumers[personIndex]) {
+            paidTotal += magnitude;
             net += magnitude;
           } else {
+            owesTotal += magnitude;
             net -= magnitude;
           }
         });
 
         if (Math.abs(net) > tolerance) {
-          const direction =
+          const adjustmentAmount = Math.abs(net);
+          const adjustmentHint =
             net > 0
-              ? "more marked as Paid than Owes"
-              : "more marked as Owes than Paid";
+              ? `Add $${formatCurrency(adjustmentAmount)} to Owes or remove from Paid`
+              : `Add $${formatCurrency(adjustmentAmount)} to Paid or remove from Owes`;
           messages.push(
-            `${expense.name}: net $${formatCurrency(net)} (${direction}).`
+            `${expense.name}: Paid $${formatCurrency(paidTotal)}, Owes $${formatCurrency(owesTotal)}, Net $${formatCurrency(net)}. ${adjustmentHint}.`
           );
         }
       });
