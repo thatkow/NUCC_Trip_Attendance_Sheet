@@ -2568,18 +2568,134 @@
       return `"${escaped}"`;
     }
 
+    function encodeHashValue(value) {
+      return encodeURIComponent(String(value ?? ""));
+    }
+
+    function decodeHashValue(value) {
+      if (value === undefined || value === null) {
+        return "";
+      }
+      try {
+        return decodeURIComponent(String(value));
+      } catch (error) {
+        return String(value);
+      }
+    }
+
+    function parseBooleanString(value) {
+      return /^true$/i.test(String(value || "").trim());
+    }
+
+    function parseNumericString(value) {
+      const trimmed = String(value ?? "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      const numeric = Number(trimmed);
+      return Number.isFinite(numeric) ? numeric : "";
+    }
+
     function buildApplicationStateCsv() {
       const state = buildApplicationState();
-      const stateJson = JSON.stringify(state);
-      const rows = [
-        ["key", "value"],
-        ["format", "nucc_trip_attendance_state_v1"],
-        ["saved_at", new Date().toISOString()],
-        ["state_json", stateJson]
+      const hashLines = [
+        `#format=${encodeHashValue("nucc_trip_attendance_matrix_v1")}`,
+        `#saved_at=${encodeHashValue(new Date().toISOString())}`,
+        `#trip_date=${encodeHashValue(state.trip?.date || "")}`,
+        `#trip_location=${encodeHashValue(state.trip?.location || "")}`,
+        `#trip_leader=${encodeHashValue(state.trip?.leader || "")}`,
+        `#clerk=${encodeHashValue(state.trip?.clerk || "")}`,
+        `#bank_name=${encodeHashValue(state.bankingDetails?.Name || "")}`,
+        `#bank_bsb=${encodeHashValue(state.bankingDetails?.BSB || "")}`,
+        `#bank_account=${encodeHashValue(state.bankingDetails?.Account || "")}`,
+        `#maintenance_rate=${encodeHashValue(state.maintenanceRate)}`
       ];
-      return rows
+
+      Object.entries(state.baseExpenseRates || {}).forEach(([key, value]) => {
+        hashLines.push(`#base_rate.${key}=${encodeHashValue(value)}`);
+      });
+
+      const expenseEntries = [];
+      (state.baseExpenses || []).forEach((expense) => {
+        expenseEntries.push({
+          field: expense.key,
+          name: expense.name,
+          key: expense.key,
+          type: "base",
+          enabled: Boolean(expense.enabled),
+          amounts: Array.isArray(expense.amounts) ? expense.amounts : [],
+          consumers: Array.isArray(expense.consumers) ? expense.consumers : [],
+          distances: Array.isArray(expense.distances) ? expense.distances : []
+        });
+      });
+      (state.customExpenses || []).forEach((expense, index) => {
+        const field = `custom-${index + 1}`;
+        expenseEntries.push({
+          field,
+          name: expense.name || `Custom Expense ${index + 1}`,
+          key: null,
+          type: "custom",
+          enabled: Boolean(expense.enabled),
+          amounts: Array.isArray(expense.amounts) ? expense.amounts : [],
+          consumers: Array.isArray(expense.consumers) ? expense.consumers : [],
+          distances: []
+        });
+      });
+
+      expenseEntries.forEach((entry) => {
+        hashLines.push(`#expense.${entry.field}.name=${encodeHashValue(entry.name)}`);
+        hashLines.push(`#expense.${entry.field}.key=${encodeHashValue(entry.key || "")}`);
+        hashLines.push(`#expense.${entry.field}.type=${encodeHashValue(entry.type)}`);
+        hashLines.push(
+          `#expense.${entry.field}.enabled=${encodeHashValue(entry.enabled)}`
+        );
+      });
+
+      const matrixHeader = ["Name", "Bold"];
+      expenseEntries.forEach((entry) => {
+        if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
+          matrixHeader.push(`Std:${entry.field}`);
+        } else {
+          matrixHeader.push(`Exp:${entry.field}`);
+          matrixHeader.push(`Inc:${entry.field}`);
+          if (entry.key === "petrol") {
+            matrixHeader.push(`Dist:${entry.field}`);
+          }
+        }
+      });
+
+      const participantCount = Math.max(
+        3,
+        Array.isArray(state.participants) ? state.participants.length : 0
+      );
+      const matrixRows = [matrixHeader];
+      for (let index = 0; index < participantCount; index += 1) {
+        const participant = state.participants?.[index] || { name: "", bold: false };
+        const row = [participant.name || "", participant.bold ? "true" : "false"];
+        expenseEntries.forEach((entry) => {
+          if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
+            row.push(entry.consumers[index] ? "true" : "false");
+          } else {
+            const amount = entry.amounts[index];
+            row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
+            row.push(entry.consumers[index] ? "true" : "false");
+            if (entry.key === "petrol") {
+              const distance = entry.distances[index];
+              row.push(
+                distance === "" || distance === undefined || distance === null
+                  ? ""
+                  : String(distance)
+              );
+            }
+          }
+        });
+        matrixRows.push(row);
+      }
+
+      const matrixCsv = matrixRows
         .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
         .join("\n");
+      return `${hashLines.join("\n")}\n${matrixCsv}`;
     }
 
     function downloadAttendanceCsv() {
@@ -2794,24 +2910,181 @@
 
     function loadTableFromCsvContent(text) {
       try {
-        const rows = parseCsv(text);
-        const entries = rows.slice(1);
-        const valuesByKey = {};
-        entries.forEach((row) => {
-          const key = row[0] ? row[0].trim() : "";
-          if (!key) {
+        const lines = String(text || "")
+          .split(/\r?\n/)
+          .filter((line) => line.trim() !== "");
+        const hashValues = {};
+        const matrixLines = [];
+
+        lines.forEach((line) => {
+          if (line.startsWith("#")) {
+            const equalsIndex = line.indexOf("=");
+            if (equalsIndex > 1) {
+              const key = line.slice(1, equalsIndex).trim();
+              const value = line.slice(equalsIndex + 1);
+              hashValues[key] = decodeHashValue(value);
+            }
             return;
           }
-          valuesByKey[key] = row[1] || "";
+          matrixLines.push(line);
         });
 
-        const stateJson = valuesByKey.state_json;
-        if (!stateJson) {
-          throw new Error("Missing state_json row");
+        if (matrixLines.length === 0) {
+          throw new Error("Missing matrix section");
         }
 
-        const parsedState = JSON.parse(stateJson);
-        applyApplicationState(parsedState);
+        const matrixRows = parseCsv(matrixLines.join("\n"));
+        if (matrixRows.length === 0) {
+          throw new Error("Missing matrix rows");
+        }
+
+        const header = matrixRows[0];
+        const participantRows = matrixRows.slice(1);
+
+        const participantsData = participantRows.map((row) => ({
+          name: row[0] || "",
+          bold: parseBooleanString(row[1])
+        }));
+
+        const expenseMeta = new Map();
+        Object.entries(hashValues).forEach(([rawKey, rawValue]) => {
+          if (!rawKey.startsWith("expense.")) {
+            return;
+          }
+          const parts = rawKey.split(".");
+          if (parts.length < 3) {
+            return;
+          }
+          const field = parts[1];
+          const property = parts.slice(2).join(".");
+          if (!expenseMeta.has(field)) {
+            expenseMeta.set(field, { field });
+          }
+          expenseMeta.get(field)[property] = rawValue;
+        });
+
+        const baseExpensesState = baseExpenses.map((expense) => ({
+          key: expense.key,
+          name: expense.name,
+          enabled: expense.enabled,
+          amounts: Array.from({ length: participantsData.length || 3 }, () => ""),
+          consumers: Array.from(
+            { length: participantsData.length || 3 },
+            () => expense.defaultConsumerState
+          ),
+          ...(expense.key === "petrol"
+            ? {
+                distances: Array.from(
+                  { length: participantsData.length || 3 },
+                  () => ""
+                )
+              }
+            : {})
+        }));
+
+        const customExpenseEntries = Array.from(expenseMeta.values())
+          .filter((meta) => meta.type === "custom")
+          .sort((a, b) => a.field.localeCompare(b.field));
+
+        const customExpensesState = customExpenseEntries.map((meta) => ({
+          name: meta.name || "Custom Expense",
+          enabled: parseBooleanString(meta.enabled),
+          amounts: Array.from({ length: participantsData.length || 3 }, () => ""),
+          consumers: Array.from({ length: participantsData.length || 3 }, () => true)
+        }));
+
+        const customFieldToIndex = new Map();
+        customExpenseEntries.forEach((meta, index) => {
+          customFieldToIndex.set(meta.field, index);
+        });
+
+        function getExpenseStateByField(field) {
+          const baseMatch = baseExpensesState.find((item) => item.key === field);
+          if (baseMatch) {
+            return baseMatch;
+          }
+          const customIndex = customFieldToIndex.get(field);
+          if (customIndex === undefined) {
+            return null;
+          }
+          return customExpensesState[customIndex];
+        }
+
+        for (let columnIndex = 2; columnIndex < header.length; columnIndex += 1) {
+          const columnLabel = header[columnIndex] || "";
+          const [prefix, field] = columnLabel.split(":");
+          if (!prefix || !field) {
+            continue;
+          }
+          const targetExpense = getExpenseStateByField(field);
+          if (!targetExpense) {
+            continue;
+          }
+          participantRows.forEach((row, participantIndex) => {
+            const cell = row[columnIndex] || "";
+            if (prefix === "Std") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
+            } else if (prefix === "Exp") {
+              targetExpense.amounts[participantIndex] = parseNumericString(cell);
+            } else if (prefix === "Inc") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
+            } else if (prefix === "Dist" && targetExpense.key === "petrol") {
+              const numericDistance = parseNumericString(cell);
+              targetExpense.distances[participantIndex] =
+                numericDistance === ""
+                  ? ""
+                  : Math.max(0, Math.round(Number(numericDistance)));
+            }
+          });
+        }
+
+        const rebuiltState = {
+          trip: {
+            date: hashValues.trip_date || "",
+            location: hashValues.trip_location || "",
+            leader: hashValues.trip_leader || "",
+            clerk: hashValues.clerk || ""
+          },
+          bankingDetails: {
+            Name: hashValues.bank_name || "",
+            BSB: hashValues.bank_bsb || "",
+            Account: hashValues.bank_account || ""
+          },
+          baseExpenseRates: { ...baseExpenseRates },
+          maintenanceRate:
+            parseNumericString(hashValues.maintenance_rate) === ""
+              ? maintenanceRate
+              : Number(parseNumericString(hashValues.maintenance_rate)),
+          baseExpenses: baseExpensesState,
+          customExpenses: customExpensesState,
+          participants:
+            participantsData.length > 0
+              ? participantsData
+              : [
+                  { name: "", bold: false },
+                  { name: "", bold: false },
+                  { name: "", bold: false }
+                ]
+        };
+
+        Object.keys(baseExpenseRates).forEach((rateKey) => {
+          const rateValue = parseNumericString(hashValues[`base_rate.${rateKey}`]);
+          if (rateValue !== "") {
+            rebuiltState.baseExpenseRates[rateKey] = Number(rateValue);
+          }
+        });
+
+        baseExpensesState.forEach((expenseState) => {
+          const meta = expenseMeta.get(expenseState.key);
+          if (meta && meta.enabled !== undefined) {
+            expenseState.enabled = parseBooleanString(meta.enabled);
+          }
+        });
+        customExpenseEntries.forEach((meta, index) => {
+          customExpensesState[index].enabled = parseBooleanString(meta.enabled);
+        });
+
+        applyApplicationState(rebuiltState);
       } catch (error) {
         console.error("Could not parse CSV", error);
         window.alert("Could not load CSV. Please check the file format.");
