@@ -3367,7 +3367,7 @@
           const value = event.target.value.trim();
           targetExpense.amounts[index] = value === "" ? "" : Number(value);
           const desktopAmount = document.querySelector(
-            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field!="true"]`
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"]:not([data-distance-field="true"])`
           );
           if (desktopAmount && !desktopAmount.readOnly) {
             desktopAmount.value = value;
@@ -4096,7 +4096,7 @@
 
         expense.amounts.forEach((amount, personIndex) => {
           const amountInput = document.querySelector(
-            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field!="true"]`
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]:not([data-distance-field="true"])`
           );
           if (amountInput && !amountInput.readOnly) {
             const value = amount === "" ? "" : String(amount);
