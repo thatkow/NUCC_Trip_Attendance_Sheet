@@ -1263,25 +1263,9 @@
           <span style="font-weight:400">Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear? Who hired camping gear? Who hired SRT kits? What additional expenses were there?</span>
           <textarea id="ai-notes" placeholder="e.g. Alice, Bob, Carol came. Alice drove and spent $60 on petrol. Bob hired horizontal gear. Carol hired camping gear..."></textarea>
         </label>
-        <button type="button" class="ai-wizard-copy-btn" id="ai-copy-prompt-btn">Click to copy prompt and open in new tab — paste into ChatGPT to generate record</button>
+        <button type="button" class="ai-wizard-copy-btn" id="ai-copy-prompt-btn">Click to copy prompt and open chatgpt — paste into ChatGPT to generate record and paste back</button>
         <div class="ai-wizard-nav">
           <button type="button" class="ai-wizard-back" id="ai-step5-back">Back</button>
-          <button type="button" class="ai-wizard-next" id="ai-step5-next">I've got the CSV — next</button>
-        </div>
-      </div>
-
-      <!-- Step 6: Paste CSV response -->
-      <div class="ai-wizard-step" id="ai-step-6">
-        <h2>Paste the CSV from ChatGPT</h2>
-        <p class="ai-wizard-hint">Copy the CSV from ChatGPT's response and paste it below, then click Load to populate the form.</p>
-        <label>
-          CSV output
-          <textarea id="ai-csv-paste" placeholder="Paste the CSV code block content here..." spellcheck="false"></textarea>
-        </label>
-        <div class="ai-wizard-nav">
-          <button type="button" class="ai-wizard-back" id="ai-step6-back">Back</button>
-          <button type="button" class="ai-wizard-back" id="ai-step6-clear">Clear</button>
-          <button type="button" class="ai-wizard-next" id="ai-step6-load">Load &amp; Summarise</button>
         </div>
       </div>
 
@@ -1785,12 +1769,6 @@
     document.getElementById("ai-distance")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); showAiWizardStep(5); } });
 
     document.getElementById("ai-step5-back")?.addEventListener("click", () => showAiWizardStep(4));
-    document.getElementById("ai-step5-next")?.addEventListener("click", () => showAiWizardStep(6));
-    document.getElementById("ai-step6-back")?.addEventListener("click", () => showAiWizardStep(5));
-    document.getElementById("ai-step6-clear")?.addEventListener("click", () => {
-      const ta = document.getElementById("ai-csv-paste");
-      if (ta) { ta.value = ""; ta.focus(); }
-    });
 
     document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", async () => {
       const location = document.getElementById("ai-location")?.value.trim() || "";
@@ -1807,11 +1785,9 @@
       if (tripLocationInput && location) tripLocationInput.value = location;
       if (tripLeaderInput && leader) tripLeaderInput.value = leader;
 
-      // Set petrol distance on all existing rows (or store for later)
       window._aiWizardDistance = distance;
 
       const schemaPromptBase = buildGptCsvPrompt();
-      // Replace the placeholder with actual notes + pre-filled header
       const distanceLine = distance ? `Return trip distance: ${distance} km\n` : "";
       const promptText = schemaPromptBase.replace(
         "[PASTE YOUR NOTES HERE]",
@@ -1820,32 +1796,11 @@
 
       try {
         await copyTextToClipboard(promptText);
-        window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
-        window.alert("Prompt copied! Paste it into ChatGPT in the new tab, then come back here and paste the CSV response.");
       } catch (err) {
         console.error("Could not copy AI wizard prompt", err);
         window.alert("Could not copy automatically. Please copy this prompt manually:\n\n" + promptText);
-        window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
       }
-    });
-
-    document.getElementById("ai-step6-load")?.addEventListener("click", () => {
-      const csvText = document.getElementById("ai-csv-paste")?.value.trim() || "";
-      if (!csvText) { window.alert("Please paste the CSV text first."); return; }
-      // Strip fenced code block markers if present
-      const cleaned = csvText.replace(/^```[^\n]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
-      try {
-        loadTableFromCsvContent(cleaned);
-        hideAiWizard();
-        // Trigger summarise automatically
-        setTimeout(() => {
-          const summariseBtn = document.getElementById("summarise-button");
-          if (summariseBtn) summariseBtn.click();
-        }, 300);
-      } catch (error) {
-        console.error("Could not load CSV from AI wizard", error);
-        window.alert("Could not load CSV. " + (error?.message || "Please check the format."));
-      }
+      window.open("paste-csv.html?goto=1", "_blank");
     });
 
     const nameListId = "member-options";
@@ -5534,14 +5489,12 @@
 
         try {
           await copyTextToClipboard(promptText);
-          window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
-          gptFormDialog.close();
-          window.alert("Prompt copied! Paste it into ChatGPT in the new tab, then use Paste CSV Text to load the result.");
         } catch (error) {
           console.error("Could not copy GPT prompt", error);
           window.alert(`Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`);
-          window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
         }
+        gptFormDialog.close();
+        window.open("paste-csv.html?goto=1", "_blank");
       });
     }
 
@@ -5932,6 +5885,26 @@
     renderTable();
     renderBankingDetails();
     loadBankingDetails();
+
+    // Handle ?auto-csv=1 redirect from paste-csv.html
+    (function() {
+      if (!new URLSearchParams(window.location.search).has('auto-csv')) return;
+      history.replaceState(null, '', window.location.pathname);
+      const csv = sessionStorage.getItem('nucc-paste-csv');
+      sessionStorage.removeItem('nucc-paste-csv');
+      if (!csv) return;
+      const cleaned = csv.replace(/^```[^\n]*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+      try {
+        loadTableFromCsvContent(cleaned);
+        const state = buildApplicationState();
+        state.images = { banner: null, banking: null };
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+        const base = document.baseURI.split('?')[0].split('#')[0].replace(/[^/]*$/, '');
+        window.location.replace(base + 'summarise.html?share=' + encoded);
+      } catch(e) {
+        window.alert('Could not load CSV: ' + (e.message || 'Check the format.'));
+      }
+    })();
   </script>
 </body>
 </html>
