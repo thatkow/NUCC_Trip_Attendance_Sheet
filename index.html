@@ -397,6 +397,21 @@
       white-space: pre-line;
     }
 
+    .field-info-button {
+      margin-left: 0.35rem;
+      border: 1px solid #90a4ae;
+      border-radius: 999px;
+      width: 1.1rem;
+      height: 1.1rem;
+      font-size: 0.72rem;
+      line-height: 1;
+      cursor: pointer;
+      background: #eceff1;
+      color: #263238;
+      padding: 0;
+      vertical-align: middle;
+    }
+
     .name-input.duplicate-name {
       border-color: #b00020;
       background: #ffe8ec;
@@ -1597,6 +1612,79 @@
 
     function getPaidCheckboxInfoText() {
       return "Paid means this member paid this amount on behalf of others. If unchecked, the member owes this amount.";
+    }
+
+    function getFieldHelpText(target) {
+      if (!target) {
+        return "";
+      }
+
+      const explicit = target.getAttribute("data-info-text");
+      if (explicit && explicit.trim()) {
+        return explicit.trim();
+      }
+
+      if (target.tagName === "LABEL") {
+        const field = target.querySelector("input, select, textarea");
+        if (!field) {
+          return "";
+        }
+        const helpFromField =
+          field.getAttribute("title") ||
+          field.getAttribute("placeholder") ||
+          field.getAttribute("aria-label") ||
+          "";
+        if (helpFromField.trim()) {
+          return helpFromField.trim();
+        }
+        const labelText = target.textContent.replace(/\s+/g, " ").trim();
+        return labelText ? `Enter ${labelText}.` : "";
+      }
+
+      if (target.tagName === "TH") {
+        const thText = target.textContent.replace(/\s+/g, " ").trim();
+        if (!thText) {
+          return "";
+        }
+        const helpMap = {
+          Name: "Enter or select the participant name.",
+          "Distance (km)": "Distance travelled by this participant in kilometres.",
+          "Fee Breakdown": "Shows how each participant's fee was calculated.",
+          Fee: "Total fee allocated to this participant.",
+          Reimburse: "Amount reimbursed to participant, or due from participant if shown in red.",
+          "Reimburse(Due)": "Amount reimbursed to participant, or due from participant if shown in red.",
+          "Inc?": "Whether this participant is included in sharing this expense."
+        };
+        return helpMap[thText] || `${thText} field details.`;
+      }
+
+      return "";
+    }
+
+    function addInfoIconToTarget(target) {
+      if (!target || target.querySelector(".field-info-button")) {
+        return;
+      }
+      const helpText = getFieldHelpText(target);
+      if (!helpText) {
+        return;
+      }
+      const infoButton = document.createElement("button");
+      infoButton.type = "button";
+      infoButton.className = "field-info-button";
+      infoButton.textContent = "i";
+      infoButton.title = helpText;
+      infoButton.setAttribute("aria-label", "Field information");
+      infoButton.addEventListener("click", () => {
+        window.alert(helpText);
+      });
+      target.appendChild(infoButton);
+    }
+
+    function attachFieldInfoIcons() {
+      document
+        .querySelectorAll("label, th")
+        .forEach((element) => addInfoIconToTarget(element));
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -3627,6 +3715,7 @@
       renderFooter(activeExpenses);
       renderMobileTabs(activeExpenses);
       updateDuplicateNameWarnings();
+      attachFieldInfoIcons();
       recalculate();
     }
 
