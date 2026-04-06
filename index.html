@@ -794,7 +794,7 @@
       }
 
       .control-button.hide-on-mobile {
-        display: none;
+        display: inline-flex;
       }
 
       .tutorial-content {
@@ -1045,10 +1045,10 @@
         <button
           class="control-button hide-on-mobile"
           type="button"
-          id="save-json"
-          title="Download this form as a JSON file for safekeeping or later reuse."
+          id="save-csv"
+          title="Download this form as a CSV file for safekeeping or later reuse."
         >
-          Save JSON
+          Save CSV
         </button>
         <button
           class="control-button hide-on-mobile"
@@ -1061,10 +1061,10 @@
         <button
           class="control-button hide-on-mobile"
           type="button"
-          id="load-json"
-          title="Load a previously saved Trip Attendance JSON file."
+          id="load-csv"
+          title="Load a previously saved Trip Attendance CSV file."
         >
-          Load JSON
+          Load CSV
         </button>
         <button
           class="control-button"
@@ -1159,8 +1159,8 @@
 
   <input
     type="file"
-    id="load-json-input"
-    accept=".json,application/json"
+    id="load-csv-input"
+    accept=".csv,text/csv"
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
@@ -2567,14 +2567,33 @@
       return snapshot;
     }
 
-    function downloadAttendanceJson() {
+    function escapeCsvCell(value) {
+      const stringValue = String(value ?? "");
+      const escaped = stringValue.replace(/"/g, '""');
+      return `"${escaped}"`;
+    }
+
+    function buildApplicationStateCsv() {
       const state = buildApplicationState();
-      const jsonContent = JSON.stringify(state, null, 2);
-      const blob = new Blob([jsonContent], { type: "application/json" });
+      const stateJson = JSON.stringify(state);
+      const rows = [
+        ["key", "value"],
+        ["format", "nucc_trip_attendance_state_v1"],
+        ["saved_at", new Date().toISOString()],
+        ["state_json", stateJson]
+      ];
+      return rows
+        .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
+        .join("\n");
+    }
+
+    function downloadAttendanceCsv() {
+      const csvContent = buildApplicationStateCsv();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = getFileBaseName("json");
+      link.download = getFileBaseName("csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -2642,7 +2661,7 @@
 
     function applyApplicationState(state) {
       if (!state || typeof state !== "object") {
-        window.alert("Invalid JSON data.");
+        window.alert("Invalid saved data.");
         return;
       }
 
@@ -2779,13 +2798,29 @@
       renderBankingDetails();
     }
 
-    function loadTableFromJsonContent(text) {
+    function loadTableFromCsvContent(text) {
       try {
-        const parsed = JSON.parse(text);
-        applyApplicationState(parsed);
+        const rows = parseCsv(text);
+        const entries = rows.slice(1);
+        const valuesByKey = {};
+        entries.forEach((row) => {
+          const key = row[0] ? row[0].trim() : "";
+          if (!key) {
+            return;
+          }
+          valuesByKey[key] = row[1] || "";
+        });
+
+        const stateJson = valuesByKey.state_json;
+        if (!stateJson) {
+          throw new Error("Missing state_json row");
+        }
+
+        const parsedState = JSON.parse(stateJson);
+        applyApplicationState(parsedState);
       } catch (error) {
-        console.error("Could not parse JSON", error);
-        window.alert("Could not load JSON. Please check the file format.");
+        console.error("Could not parse CSV", error);
+        window.alert("Could not load CSV. Please check the file format.");
       }
     }
 
@@ -3953,8 +3988,8 @@
       renderTable();
     });
 
-    document.getElementById("save-json").addEventListener("click", () => {
-      downloadAttendanceJson();
+    document.getElementById("save-csv").addEventListener("click", () => {
+      downloadAttendanceCsv();
     });
 
     const saveDraftButton = document.getElementById("save-draft");
@@ -3964,13 +3999,13 @@
       });
     }
 
-    const loadJsonInput = document.getElementById("load-json-input");
-    document.getElementById("load-json").addEventListener("click", () => {
-      loadJsonInput.value = "";
-      loadJsonInput.click();
+    const loadCsvInput = document.getElementById("load-csv-input");
+    document.getElementById("load-csv").addEventListener("click", () => {
+      loadCsvInput.value = "";
+      loadCsvInput.click();
     });
 
-    loadJsonInput.addEventListener("change", (event) => {
+    loadCsvInput.addEventListener("change", (event) => {
       const [file] = event.target.files;
       if (!file) {
         return;
@@ -3981,10 +4016,10 @@
           const result = reader.result;
           const textContent =
             typeof result === "string" ? result : new TextDecoder().decode(result);
-          loadTableFromJsonContent(textContent);
+          loadTableFromCsvContent(textContent);
         } catch (error) {
-          console.error("Could not load JSON", error);
-          window.alert("Could not load JSON. Please check the file format.");
+          console.error("Could not load CSV", error);
+          window.alert("Could not load CSV. Please check the file format.");
         }
       };
       reader.readAsText(file);
