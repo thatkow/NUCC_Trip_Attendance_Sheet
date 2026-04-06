@@ -375,7 +375,17 @@
 
     .bottom-add-person {
       display: block;
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
       margin-top: 1rem;
+      padding: 0.75rem 0;
+      background: linear-gradient(
+        to top,
+        rgba(247, 247, 247, 0.98),
+        rgba(247, 247, 247, 0.9),
+        rgba(247, 247, 247, 0)
+      );
     }
 
     .name-input.duplicate-name {
@@ -1382,7 +1392,7 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = Array.from({ length: 3 }, () => ({
+    const participants = Array.from({ length: 2 }, () => ({
       name: "",
       bold: false
     }));
@@ -2659,7 +2669,7 @@
       });
 
       const participantCount = Math.max(
-        3,
+        2,
         Array.isArray(state.participants) ? state.participants.length : 0
       );
       const matrixRows = [];
@@ -2811,7 +2821,6 @@
       } else {
         participants.push({ name: "", bold: false });
         participants.push({ name: "", bold: false });
-        participants.push({ name: "", bold: false });
       }
 
       if (rateData && typeof rateData === "object") {
@@ -2954,15 +2963,15 @@
           key: expense.key,
           name: expense.name,
           enabled: expense.enabled,
-          amounts: Array.from({ length: participantsData.length || 3 }, () => ""),
+          amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
           consumers: Array.from(
-            { length: participantsData.length || 3 },
+            { length: participantsData.length || 2 },
             () => expense.defaultConsumerState
           ),
           ...(expense.key === "petrol"
             ? {
                 distances: Array.from(
-                  { length: participantsData.length || 3 },
+                  { length: participantsData.length || 2 },
                   () => ""
                 )
               }
@@ -2976,8 +2985,8 @@
         const customExpensesState = customExpenseEntries.map((meta) => ({
           name: meta.name || "Custom Expense",
           enabled: parseBooleanString(meta.enabled),
-          amounts: Array.from({ length: participantsData.length || 3 }, () => ""),
-          consumers: Array.from({ length: participantsData.length || 3 }, () => true)
+          amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
+          consumers: Array.from({ length: participantsData.length || 2 }, () => true)
         }));
 
         const customFieldToIndex = new Map();
@@ -3048,7 +3057,6 @@
             participantsData.length > 0
               ? participantsData
               : [
-                  { name: "", bold: false },
                   { name: "", bold: false },
                   { name: "", bold: false }
                 ]
