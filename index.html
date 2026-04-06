@@ -598,10 +598,6 @@
       flex: 1 1 auto;
     }
 
-    .name-input.bold {
-      font-weight: 600;
-    }
-
     .totals-row td {
       font-weight: 600;
       background: #f4f4f4;
@@ -1393,8 +1389,7 @@
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
     const participants = Array.from({ length: 2 }, () => ({
-      name: "",
-      bold: false
+      name: ""
     }));
     const baseExpenseDefinitions = [
       {
@@ -2568,8 +2563,7 @@
           consumers: [...expense.consumers]
         })),
         participants: participants.map((participant) => ({
-          name: participant.name,
-          bold: participant.bold
+          name: participant.name
         })),
         images: {
           banner: bannerImageSource,
@@ -2655,7 +2649,7 @@
         metadataRows.push([`expense.${entry.field}.enabled`, entry.enabled]);
       });
 
-      const matrixHeader = ["Name", "Bold"];
+      const matrixHeader = ["Name"];
       expenseEntries.forEach((entry) => {
         if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
           matrixHeader.push(`Std:${entry.field}`);
@@ -2674,8 +2668,8 @@
       );
       const matrixRows = [];
       for (let index = 0; index < participantCount; index += 1) {
-        const participant = state.participants?.[index] || { name: "", bold: false };
-        const row = [participant.name || "", participant.bold ? "true" : "false"];
+        const participant = state.participants?.[index] || { name: "" };
+        const row = [participant.name || ""];
         expenseEntries.forEach((entry) => {
           if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
             row.push(entry.consumers[index] ? "true" : "false");
@@ -2814,13 +2808,12 @@
       if (Array.isArray(participantData) && participantData.length > 0) {
         participantData.forEach((entry) => {
           participants.push({
-            name: entry?.name || "",
-            bold: Boolean(entry?.bold)
+            name: entry?.name || ""
           });
         });
       } else {
-        participants.push({ name: "", bold: false });
-        participants.push({ name: "", bold: false });
+        participants.push({ name: "" });
+        participants.push({ name: "" });
       }
 
       if (rateData && typeof rateData === "object") {
@@ -2919,7 +2912,7 @@
         }
 
         const headerRowIndex = rows.findIndex(
-          (row) => (row[0] || "").trim() === "Name" && (row[1] || "").trim() === "Bold"
+          (row) => (row[0] || "").trim() === "Name"
         );
         if (headerRowIndex === -1) {
           throw new Error("Missing expected matrix header row");
@@ -2938,8 +2931,7 @@
         const participantRows = rows.slice(headerRowIndex + 1);
 
         const participantsData = participantRows.map((row) => ({
-          name: row[0] || "",
-          bold: parseBooleanString(row[1])
+          name: row[0] || ""
         }));
 
         const expenseMeta = new Map();
@@ -3057,8 +3049,8 @@
             participantsData.length > 0
               ? participantsData
               : [
-                  { name: "", bold: false },
-                  { name: "", bold: false }
+                  { name: "" },
+                  { name: "" }
                 ]
         };
 
@@ -3478,7 +3470,7 @@
         nameInput.type = "text";
         nameInput.value = participant.name;
         nameInput.setAttribute("list", nameListId);
-        nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+        nameInput.className = "name-input";
         nameInput.dataset.personIndex = String(personIndex);
 
         const nameSelect = document.createElement("select");
@@ -4308,7 +4300,7 @@
     }
 
     function addParticipantRow() {
-      participants.push({ name: "", bold: false });
+      participants.push({ name: "" });
       if (srtKitMasterToggle && srtKitMasterToggle.checked) {
         const srtKitExpense = getSrtKitExpense();
         if (srtKitExpense && srtKitExpense.enabled) {
