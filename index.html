@@ -2491,6 +2491,13 @@
       return rows.filter((row) => row.some((value) => value && value.trim() !== ""));
     }
 
+    function parseTsv(text) {
+      return String(text || "")
+        .split(/\r?\n/)
+        .map((line) => line.split("\t"))
+        .filter((row) => row.some((value) => value && value.trim() !== ""));
+    }
+
     function syncExpenseToggleStates() {
       document
         .querySelectorAll('.expense-toggle-group input[type="checkbox"]')
@@ -2906,14 +2913,24 @@
 
     function loadTableFromCsvContent(text) {
       try {
-        const rows = parseCsv(String(text || ""));
+        let rows = parseCsv(String(text || ""));
         if (rows.length === 0) {
           throw new Error("Missing CSV rows");
         }
 
-        const headerRowIndex = rows.findIndex(
+        let headerRowIndex = rows.findIndex(
           (row) => (row[0] || "").trim() === "Name"
         );
+        if (headerRowIndex === -1) {
+          const tsvRows = parseTsv(String(text || ""));
+          const tsvHeaderRowIndex = tsvRows.findIndex(
+            (row) => (row[0] || "").trim() === "Name"
+          );
+          if (tsvHeaderRowIndex !== -1) {
+            rows = tsvRows;
+            headerRowIndex = tsvHeaderRowIndex;
+          }
+        }
         if (headerRowIndex === -1) {
           throw new Error("Missing expected matrix header row");
         }
