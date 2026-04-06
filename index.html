@@ -360,8 +360,8 @@
       font-weight: 600;
     }
 
-    .mobile-add-person {
-      display: none;
+    .bottom-add-person {
+      margin-top: 1rem;
     }
 
     .name-input.duplicate-name {
@@ -831,12 +831,7 @@
         grid-template-columns: 1fr;
       }
 
-      .mobile-add-person {
-        display: block;
-        margin-top: 1rem;
-      }
-
-      .mobile-add-person .control-button {
+      .bottom-add-person .control-button {
         width: 100%;
       }
 
@@ -1026,14 +1021,6 @@
         <button
           class="control-button"
           type="button"
-          id="add-row"
-          title="Add a new row to the members table."
-        >
-          Add Row
-        </button>
-        <button
-          class="control-button"
-          type="button"
           id="remove-row"
           title="Remove the last row from the members table."
         >
@@ -1139,11 +1126,6 @@
         </div>
       </div>
     </div>
-    <div class="mobile-add-person">
-      <button type="button" class="control-button" id="add-person-mobile">
-        Add Person
-      </button>
-    </div>
   </div>
 
   <p
@@ -1163,6 +1145,17 @@
     <tbody id="attendance-body"></tbody>
     <tfoot id="attendance-foot"></tfoot>
   </table>
+
+  <div class="bottom-add-person">
+    <button
+      type="button"
+      class="control-button"
+      id="add-row"
+      title="Add a new row to the members table."
+    >
+      Add Person
+    </button>
+  </div>
 
   <input
     type="file"
@@ -1273,7 +1266,6 @@
     const bannerImageInput = document.getElementById("banner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
     const mobileTabPanels = document.getElementById("mobile-tab-panels");
-    const mobileAddPersonButton = document.getElementById("add-person-mobile");
     const generalPanel = document.getElementById("general-panel");
 
     if (tripLeaderInput) {
@@ -1384,7 +1376,7 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = Array.from({ length: 10 }, () => ({
+    const participants = Array.from({ length: 3 }, () => ({
       name: "",
       bold: false
     }));
@@ -2694,6 +2686,8 @@
           });
         });
       } else {
+        participants.push({ name: "", bold: false });
+        participants.push({ name: "", bold: false });
         participants.push({ name: "", bold: false });
       }
 
@@ -4021,10 +4015,6 @@
     const addRowButton = document.getElementById("add-row");
     if (addRowButton) {
       addRowButton.addEventListener("click", addParticipantRow);
-    }
-
-    if (mobileAddPersonButton) {
-      mobileAddPersonButton.addEventListener("click", addParticipantRow);
     }
 
     document.getElementById("remove-row").addEventListener("click", () => {
