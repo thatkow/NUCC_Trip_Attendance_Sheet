@@ -2569,21 +2569,6 @@
       return `"${escaped}"`;
     }
 
-    function encodeHashValue(value) {
-      return encodeURIComponent(String(value ?? ""));
-    }
-
-    function decodeHashValue(value) {
-      if (value === undefined || value === null) {
-        return "";
-      }
-      try {
-        return decodeURIComponent(String(value));
-      } catch (error) {
-        return String(value);
-      }
-    }
-
     function parseBooleanString(value) {
       return /^true$/i.test(String(value || "").trim());
     }
@@ -2599,21 +2584,21 @@
 
     function buildApplicationStateCsv() {
       const state = buildApplicationState();
-      const hashLines = [
-        `#format=${encodeHashValue("nucc_trip_attendance_matrix_v1")}`,
-        `#saved_at=${encodeHashValue(new Date().toISOString())}`,
-        `#trip_date=${encodeHashValue(state.trip?.date || "")}`,
-        `#trip_location=${encodeHashValue(state.trip?.location || "")}`,
-        `#trip_leader=${encodeHashValue(state.trip?.leader || "")}`,
-        `#clerk=${encodeHashValue(state.trip?.clerk || "")}`,
-        `#bank_name=${encodeHashValue(state.bankingDetails?.Name || "")}`,
-        `#bank_bsb=${encodeHashValue(state.bankingDetails?.BSB || "")}`,
-        `#bank_account=${encodeHashValue(state.bankingDetails?.Account || "")}`,
-        `#maintenance_rate=${encodeHashValue(state.maintenanceRate)}`
+      const metadataRows = [
+        ["format", "nucc_trip_attendance_matrix_v2"],
+        ["saved_at", new Date().toISOString()],
+        ["trip_date", state.trip?.date || ""],
+        ["trip_location", state.trip?.location || ""],
+        ["trip_leader", state.trip?.leader || ""],
+        ["clerk", state.trip?.clerk || ""],
+        ["bank_name", state.bankingDetails?.Name || ""],
+        ["bank_bsb", state.bankingDetails?.BSB || ""],
+        ["bank_account", state.bankingDetails?.Account || ""],
+        ["maintenance_rate", state.maintenanceRate]
       ];
 
       Object.entries(state.baseExpenseRates || {}).forEach(([key, value]) => {
-        hashLines.push(`#base_rate.${key}=${encodeHashValue(value)}`);
+        metadataRows.push([`base_rate.${key}`, value]);
       });
 
       const expenseEntries = [];
@@ -2644,12 +2629,10 @@
       });
 
       expenseEntries.forEach((entry) => {
-        hashLines.push(`#expense.${entry.field}.name=${encodeHashValue(entry.name)}`);
-        hashLines.push(`#expense.${entry.field}.key=${encodeHashValue(entry.key || "")}`);
-        hashLines.push(`#expense.${entry.field}.type=${encodeHashValue(entry.type)}`);
-        hashLines.push(
-          `#expense.${entry.field}.enabled=${encodeHashValue(entry.enabled)}`
-        );
+        metadataRows.push([`expense.${entry.field}.name`, entry.name]);
+        metadataRows.push([`expense.${entry.field}.key`, entry.key || ""]);
+        metadataRows.push([`expense.${entry.field}.type`, entry.type]);
+        metadataRows.push([`expense.${entry.field}.enabled`, entry.enabled]);
       });
 
       const matrixHeader = ["Name", "Bold"];
@@ -2669,7 +2652,7 @@
         3,
         Array.isArray(state.participants) ? state.participants.length : 0
       );
-      const matrixRows = [matrixHeader];
+      const matrixRows = [];
       for (let index = 0; index < participantCount; index += 1) {
         const participant = state.participants?.[index] || { name: "", bold: false };
         const row = [participant.name || "", participant.bold ? "true" : "false"];
@@ -2693,10 +2676,10 @@
         matrixRows.push(row);
       }
 
-      const matrixCsv = matrixRows
+      const allRows = [...metadataRows, matrixHeader, ...matrixRows];
+      return allRows
         .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
         .join("\n");
-      return `${hashLines.join("\n")}\n${matrixCsv}`;
     }
 
     function downloadAttendanceCsv() {
@@ -2911,36 +2894,29 @@
 
     function loadTableFromCsvContent(text) {
       try {
-        const lines = String(text || "")
-          .split(/\r?\n/)
-          .filter((line) => line.trim() !== "");
-        const hashValues = {};
-        const matrixLines = [];
+        const rows = parseCsv(String(text || ""));
+        if (rows.length === 0) {
+          throw new Error("Missing CSV rows");
+        }
 
-        lines.forEach((line) => {
-          if (line.startsWith("#")) {
-            const equalsIndex = line.indexOf("=");
-            if (equalsIndex > 1) {
-              const key = line.slice(1, equalsIndex).trim();
-              const value = line.slice(equalsIndex + 1);
-              hashValues[key] = decodeHashValue(value);
-            }
+        const headerRowIndex = rows.findIndex(
+          (row) => (row[0] || "").trim() === "Name" && (row[1] || "").trim() === "Bold"
+        );
+        if (headerRowIndex === -1) {
+          throw new Error("Missing expected matrix header row");
+        }
+
+        const hashValues = {};
+        rows.slice(0, headerRowIndex).forEach((row) => {
+          const key = (row[0] || "").trim();
+          if (!key) {
             return;
           }
-          matrixLines.push(line);
+          hashValues[key] = row[1] || "";
         });
 
-        if (matrixLines.length === 0) {
-          throw new Error("Missing matrix section");
-        }
-
-        const matrixRows = parseCsv(matrixLines.join("\n"));
-        if (matrixRows.length === 0) {
-          throw new Error("Missing matrix rows");
-        }
-
-        const header = matrixRows[0];
-        const participantRows = matrixRows.slice(1);
+        const header = rows[headerRowIndex];
+        const participantRows = rows.slice(headerRowIndex + 1);
 
         const participantsData = participantRows.map((row) => ({
           name: row[0] || "",
