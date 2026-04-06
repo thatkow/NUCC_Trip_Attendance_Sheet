@@ -294,6 +294,11 @@
       display: inline-flex;
     }
 
+    .under-load-button {
+      flex-basis: 100%;
+      max-width: 13rem;
+    }
+
     .control-button:hover {
       background: #00a8e8;
     }
@@ -779,6 +784,18 @@
       font: inherit;
     }
 
+    .banking-dialog textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 14rem;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid #b0bec5;
+      border-radius: 0.4rem;
+      font: inherit;
+      line-height: 1.35;
+      resize: vertical;
+    }
+
     .banking-dialog .banking-dialog-actions {
       display: flex;
       justify-content: flex-end;
@@ -1135,6 +1152,22 @@
         >
           Load CSV
         </button>
+        <button
+          class="control-button hide-on-mobile under-load-button"
+          type="button"
+          id="gpt-csv-prompt"
+          title="Copy a ChatGPT prompt that asks for NUCC CSV output in a CSV code block."
+        >
+          GPT Prompt
+        </button>
+        <button
+          class="control-button hide-on-mobile under-load-button"
+          type="button"
+          id="paste-csv-button"
+          title="Paste CSV text directly (for example from ChatGPT output) and load it."
+        >
+          Paste CSV Text
+        </button>
       </div>
       <p class="additional-expense-help">
         Additional expenses are balancing transfers: for each member, enter the
@@ -1272,6 +1305,29 @@
     </form>
   </dialog>
 
+  <dialog class="banking-dialog" id="paste-csv-dialog">
+    <form id="paste-csv-form" method="dialog">
+      <h3>Paste CSV text</h3>
+      <p style="margin: 0; color: #444; font-size: 0.95rem; line-height: 1.4;">
+        Paste the full CSV text (including metadata rows and the Name header row), then load it into this form.
+      </p>
+      <label for="paste-csv-text">
+        CSV content
+        <textarea
+          id="paste-csv-text"
+          placeholder="Paste CSV here..."
+          spellcheck="false"
+        ></textarea>
+      </label>
+      <div class="banking-dialog-actions">
+        <button type="button" class="banking-dialog-cancel" id="paste-csv-cancel">
+          Cancel
+        </button>
+        <button type="submit">Load pasted CSV</button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
     const tutorialOverlay = document.getElementById("tutorial-overlay");
     const tutorialCloseButton = document.getElementById("tutorial-close");
@@ -1333,6 +1389,12 @@
     const bankingBsbInput = document.getElementById("banking-bsb");
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
+    const gptCsvPromptButton = document.getElementById("gpt-csv-prompt");
+    const pasteCsvButton = document.getElementById("paste-csv-button");
+    const pasteCsvDialog = document.getElementById("paste-csv-dialog");
+    const pasteCsvForm = document.getElementById("paste-csv-form");
+    const pasteCsvTextArea = document.getElementById("paste-csv-text");
+    const pasteCsvCancelButton = document.getElementById("paste-csv-cancel");
     const bannerImageElement = document.getElementById("banner-image");
     const bankingLogoElement = document.getElementById("banking-logo");
     const replaceBannerButton = document.getElementById("replace-banner-button");
@@ -2980,6 +3042,36 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    }
+
+    function buildGptCsvPrompt() {
+      const schemaExample = buildApplicationStateCsv();
+      return [
+        "You are converting rough trip notes into a NUCC Trip Attendance CSV.",
+        "Return ONLY a CSV in a fenced code block using ```csv.",
+        "Do not include any explanation outside the code block.",
+        "Requirements:",
+        "- Keep the same CSV structure and column ordering as the example.",
+        "- Keep metadata rows (format, trip fields, base rates, and expense.* rows).",
+        "- Keep boolean values as true/false.",
+        "- For custom balancing expenses, output Exp: and Paid: columns and keep each custom expense net balanced to 0 where possible.",
+        "- If notes do not provide a value, leave that CSV cell blank.",
+        "",
+        "CSV structure example:",
+        "```csv",
+        schemaExample,
+        "```",
+        "",
+        "Trip notes to convert:",
+        "[PASTE YOUR NOTES HERE]"
+      ].join("\n");
+    }
+
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return Promise.reject(new Error("Clipboard API unavailable"));
     }
 
     function saveStateToBrowserStorage() {
@@ -4842,6 +4934,61 @@
       };
       reader.readAsText(file);
     });
+
+    if (gptCsvPromptButton) {
+      gptCsvPromptButton.addEventListener("click", async () => {
+        const promptText = buildGptCsvPrompt();
+        try {
+          await copyTextToClipboard(promptText);
+          window.alert(
+            "GPT prompt copied to clipboard. Paste it into ChatGPT, then paste your notes where indicated."
+          );
+        } catch (error) {
+          console.error("Could not copy GPT prompt", error);
+          window.alert(
+            `Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`
+          );
+        }
+      });
+    }
+
+    if (pasteCsvButton && pasteCsvDialog) {
+      pasteCsvButton.addEventListener("click", () => {
+        if (pasteCsvTextArea) {
+          pasteCsvTextArea.value = "";
+        }
+        pasteCsvDialog.showModal();
+      });
+    }
+
+    if (pasteCsvCancelButton && pasteCsvDialog) {
+      pasteCsvCancelButton.addEventListener("click", () => {
+        pasteCsvDialog.close();
+      });
+    }
+
+    if (pasteCsvForm && pasteCsvDialog) {
+      pasteCsvForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const csvText = String(pasteCsvTextArea?.value || "").trim();
+        if (!csvText) {
+          window.alert("Please paste CSV text before loading.");
+          return;
+        }
+        try {
+          loadTableFromCsvContent(csvText);
+          pasteCsvDialog.close();
+          window.alert("CSV text loaded successfully.");
+        } catch (error) {
+          console.error("Could not load pasted CSV", error);
+          window.alert(
+            `Could not load pasted CSV. ${
+              error && error.message ? error.message : "Please check the format."
+            }`
+          );
+        }
+      });
+    }
 
     const summariseButton = document.getElementById("summarise-button");
     const summariseImbalanceMessage = document.getElementById(
