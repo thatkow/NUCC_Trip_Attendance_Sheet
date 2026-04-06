@@ -3015,7 +3015,13 @@
           return customExpensesState[customIndex];
         }
 
-        for (let columnIndex = 2; columnIndex < header.length; columnIndex += 1) {
+        const expenseColumnStartIndex =
+          (header[1] || "").trim() === "Bold" ? 2 : 1;
+        for (
+          let columnIndex = expenseColumnStartIndex;
+          columnIndex < header.length;
+          columnIndex += 1
+        ) {
           const columnLabel = header[columnIndex] || "";
           const [prefix, field] = columnLabel.split(":");
           if (!prefix || !field) {
