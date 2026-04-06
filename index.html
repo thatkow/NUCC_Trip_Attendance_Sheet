@@ -4517,6 +4517,52 @@
       return calculateFinancials(true);
     }
 
+    function getCustomExpenseImbalanceMessages() {
+      const messages = [];
+      const tolerance = 0.005;
+      const activeExpenses = getActiveExpenses();
+      const participantHasName = participants.map(
+        (participant) => Boolean(participant.name && participant.name.trim())
+      );
+
+      activeExpenses.forEach((expense) => {
+        if (!isBalancingCustomExpense(expense)) {
+          return;
+        }
+        ensureExpenseSize(expense);
+        let net = 0;
+        expense.amounts.forEach((amount, personIndex) => {
+          if (!participantHasName[personIndex]) {
+            return;
+          }
+          if (amount === "" || !Number.isFinite(Number(amount))) {
+            return;
+          }
+          const magnitude = Math.abs(Number(amount));
+          if (!magnitude) {
+            return;
+          }
+          if (expense.consumers[personIndex]) {
+            net += magnitude;
+          } else {
+            net -= magnitude;
+          }
+        });
+
+        if (Math.abs(net) > tolerance) {
+          const direction =
+            net > 0
+              ? "more marked as Paid than Owes"
+              : "more marked as Owes than Paid";
+          messages.push(
+            `${expense.name}: net $${formatCurrency(net)} (${direction}).`
+          );
+        }
+      });
+
+      return messages;
+    }
+
     document.getElementById("add-expense").addEventListener("click", () => {
       const expenseName = window.prompt(
         "Enter a name for the new balancing expense (set amount + Paid checkbox per member):"
@@ -4591,6 +4637,15 @@
     const summariseButton = document.getElementById("summarise-button");
     if (summariseButton) {
       summariseButton.addEventListener("click", () => {
+        recalculate();
+        const imbalanceMessages = getCustomExpenseImbalanceMessages();
+        if (imbalanceMessages.length > 0) {
+          window.alert(
+            "Cannot summarise yet. Please balance these custom expenses first:\n\n" +
+              imbalanceMessages.join("\n")
+          );
+          return;
+        }
         downloadAndOpenSummaryHtml();
       });
     }
