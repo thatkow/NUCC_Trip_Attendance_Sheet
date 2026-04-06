@@ -4571,7 +4571,9 @@
               ? `Add $${formatCurrency(adjustmentAmount)} to Owes or remove from Paid`
               : `Add $${formatCurrency(adjustmentAmount)} to Paid or remove from Owes`;
           messages.push(
-            `${expense.name}: Paid $${formatCurrency(paidTotal)}, Owes $${formatCurrency(owesTotal)}, Net $${formatCurrency(net)}. ${adjustmentHint}.`
+            `A difference of $${formatCurrency(net)} is outstanding for expense "${expense.name}" (Paid $${formatCurrency(
+              paidTotal
+            )} vs Owes $${formatCurrency(owesTotal)}). ${adjustmentHint}.`
           );
         }
       });
@@ -4679,9 +4681,22 @@
         } catch (error) {
           console.error("Could not generate summary", error);
           if (summariseImbalanceMessage) {
+            const imbalanceMessages = getCustomExpenseImbalanceMessages();
+            const errorDetail =
+              error && typeof error.message === "string" && error.message.trim()
+                ? `Details: ${error.message.trim()}`
+                : "";
             summariseImbalanceMessage.hidden = false;
             summariseImbalanceMessage.textContent =
-              "Could not generate summary. Please check that all fields are valid and try again.";
+              [
+                "Could not generate summary.",
+                errorDetail,
+                imbalanceMessages.length
+                  ? `Outstanding balances:\n${imbalanceMessages.join("\n")}`
+                  : "Please check that all fields are valid and try again."
+              ]
+                .filter(Boolean)
+                .join("\n");
           }
         }
       });
