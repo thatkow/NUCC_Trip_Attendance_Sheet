@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NUCC Trip Attendance Sheet</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="NUCC Trip Attendance Summary" />
+  <meta property="og:description" content="View the trip expense breakdown, participant balances, and reimbursement details for this NUCC outing." />
+  <meta property="og:image" content="banner.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="NUCC Trip Attendance Summary" />
+  <meta name="twitter:description" content="View the trip expense breakdown, participant balances, and reimbursement details for this NUCC outing." />
   <style>
     body {
       margin: 0;
@@ -562,6 +569,10 @@
       pointer-events: none;
     }
 
+    .summary-preview .summary-copy-link-btn {
+      pointer-events: auto;
+    }
+
     .summary-preview .summary-value,
     .summary-preview .summary-select,
     .summary-preview .summary-multiline {
@@ -706,6 +717,211 @@
 
     .tutorial-overlay.is-hidden {
       display: none;
+    }
+
+    /* Landing page overlay */
+    .landing-overlay {
+      position: fixed;
+      inset: 0;
+      background: #f7f7f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1100;
+    }
+
+    .landing-overlay.is-hidden {
+      display: none;
+    }
+
+    .landing-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .landing-content h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .landing-content p {
+      margin: 0;
+      color: #555;
+      font-size: 1rem;
+    }
+
+    .landing-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .landing-button {
+      padding: 1rem 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 0.6rem;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+
+    .landing-button-ai {
+      background: #0096c7;
+      color: #fff;
+      border: 2px solid #0077b6;
+    }
+
+    .landing-button-ai:hover,
+    .landing-button-ai:focus {
+      background: #00a8e8;
+    }
+
+    .landing-button-manual {
+      background: #fff;
+      color: #222;
+      border: 2px solid #bbb;
+    }
+
+    .landing-button-manual:hover,
+    .landing-button-manual:focus {
+      background: #f0f0f0;
+    }
+
+    /* AI Wizard overlay */
+    .ai-wizard-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1050;
+    }
+
+    .ai-wizard-overlay.is-hidden {
+      display: none;
+    }
+
+    .ai-wizard-content {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 2rem 2.5rem;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .ai-wizard-step {
+      display: none;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .ai-wizard-step.is-active {
+      display: flex;
+    }
+
+    .ai-wizard-step h2 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .ai-wizard-step label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .ai-wizard-step input[type="text"],
+    .ai-wizard-step input[type="date"],
+    .ai-wizard-step input[type="number"],
+    .ai-wizard-step textarea {
+      font: inherit;
+      padding: 0.5rem 0.65rem;
+      border-radius: 0.4rem;
+      border: 1px solid #bdbdbd;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .ai-wizard-step textarea {
+      min-height: 9rem;
+      resize: vertical;
+    }
+
+    .ai-wizard-nav {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .ai-wizard-back {
+      padding: 0.55rem 1.1rem;
+      border-radius: 0.4rem;
+      border: 1px solid #bbb;
+      background: #fff;
+      color: #333;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ai-wizard-back:hover {
+      background: #f0f0f0;
+    }
+
+    .ai-wizard-next {
+      padding: 0.55rem 1.25rem;
+      border-radius: 0.4rem;
+      border: 1px solid #0077b6;
+      background: #0096c7;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .ai-wizard-next:hover {
+      background: #00a8e8;
+    }
+
+    .ai-wizard-copy-btn {
+      padding: 0.65rem 1rem;
+      border-radius: 0.4rem;
+      border: 1px solid #00838f;
+      background: #00838f;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .ai-wizard-copy-btn:hover {
+      background: #0097a7;
+    }
+
+    .ai-wizard-hint {
+      font-size: 0.9rem;
+      color: #555;
+      margin: 0;
+      font-weight: 400;
     }
 
     .tutorial-content {
@@ -971,6 +1187,106 @@
     </div>
   </div>
 
+  <!-- Landing page -->
+  <div class="landing-overlay is-hidden" id="landing-overlay">
+    <div class="landing-content">
+      <img id="landing-banner" src="banner.png" alt="NUCC banner" style="max-width:260px;width:100%;height:auto;" />
+      <h2>Trip Attendance Sheet</h2>
+      <p>How would you like to fill in this trip record?</p>
+      <div class="landing-buttons">
+        <button type="button" class="landing-button landing-button-ai" id="landing-ai-btn">AI Form</button>
+        <button type="button" class="landing-button landing-button-manual" id="landing-manual-btn">Manual Form</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Wizard overlay -->
+  <div class="ai-wizard-overlay is-hidden" id="ai-wizard-overlay">
+    <div class="ai-wizard-content">
+
+      <!-- Step 1: Location -->
+      <div class="ai-wizard-step is-active" id="ai-step-1">
+        <h2>Where did you go?</h2>
+        <label>
+          Location
+          <input type="text" id="ai-location" placeholder="e.g. Tuglow, Yagby" autocomplete="off" />
+        </label>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-next" id="ai-step1-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Date -->
+      <div class="ai-wizard-step" id="ai-step-2">
+        <h2>When?</h2>
+        <label>
+          Date
+          <input type="date" id="ai-date" />
+        </label>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-back" id="ai-step2-back">Back</button>
+          <button type="button" class="ai-wizard-next" id="ai-step2-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Trip Leader -->
+      <div class="ai-wizard-step" id="ai-step-3">
+        <h2>Who lead the trip?</h2>
+        <label>
+          Trip Leader
+          <input type="text" id="ai-leader" placeholder="Name of the trip leader" autocomplete="off" />
+        </label>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-back" id="ai-step3-back">Back</button>
+          <button type="button" class="ai-wizard-next" id="ai-step3-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Distance -->
+      <div class="ai-wizard-step" id="ai-step-4">
+        <h2>How many KM is the return trip?</h2>
+        <label>
+          Return distance (km)
+          <input type="number" id="ai-distance" placeholder="e.g. 240" min="0" step="1" />
+        </label>
+        <p class="ai-wizard-hint">Used to calculate petrol reimbursements for drivers.</p>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-back" id="ai-step4-back">Back</button>
+          <button type="button" class="ai-wizard-next" id="ai-step4-next">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Free-text notes + copy prompt -->
+      <div class="ai-wizard-step" id="ai-step-5">
+        <h2>Provide details</h2>
+        <label>
+          <span style="font-weight:400">Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear? Who hired camping gear? Who hired SRT kits? What additional expenses were there?</span>
+          <textarea id="ai-notes" placeholder="e.g. Alice, Bob, Carol came. Alice drove and spent $60 on petrol. Bob hired horizontal gear. Carol hired camping gear..."></textarea>
+        </label>
+        <button type="button" class="ai-wizard-copy-btn" id="ai-copy-prompt-btn">Click to copy prompt and open in new tab — paste into ChatGPT to generate record</button>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-back" id="ai-step5-back">Back</button>
+          <button type="button" class="ai-wizard-next" id="ai-step5-next">I've got the CSV — next</button>
+        </div>
+      </div>
+
+      <!-- Step 6: Paste CSV response -->
+      <div class="ai-wizard-step" id="ai-step-6">
+        <h2>Paste the CSV from ChatGPT</h2>
+        <p class="ai-wizard-hint">Copy the CSV from ChatGPT's response and paste it below, then click Load to populate the form.</p>
+        <label>
+          CSV output
+          <textarea id="ai-csv-paste" placeholder="Paste the CSV code block content here..." spellcheck="false"></textarea>
+        </label>
+        <div class="ai-wizard-nav">
+          <button type="button" class="ai-wizard-back" id="ai-step6-back">Back</button>
+          <button type="button" class="ai-wizard-next" id="ai-step6-load">Load &amp; Summarise</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <div class="mobile-tabs" id="mobile-tabs">
     <div
       class="mobile-tab-list"
@@ -1039,17 +1355,7 @@
                 />
               </td>
             </tr>
-            <tr>
-              <th scope="row">Clerk</th>
-              <td>
-                <input
-                  type="text"
-                  id="clerk"
-                  list="trip-leader-options"
-                  placeholder="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
-                />
-              </td>
-            </tr>
+
           </tbody>
         </table>
 
@@ -1308,6 +1614,36 @@
     </form>
   </dialog>
 
+  <dialog class="banking-dialog" id="gpt-form-dialog">
+    <form id="gpt-form" method="dialog">
+      <h3>GPT Prompt</h3>
+      <label for="gpt-form-location">
+        Where did you go?
+        <input type="text" id="gpt-form-location" placeholder="e.g. Tuglow, Yagby" autocomplete="off" />
+      </label>
+      <label for="gpt-form-date">
+        When?
+        <input type="date" id="gpt-form-date" />
+      </label>
+      <label for="gpt-form-leader">
+        Who lead the trip?
+        <input type="text" id="gpt-form-leader" placeholder="Name of the trip leader" autocomplete="off" />
+      </label>
+      <label for="gpt-form-distance">
+        How many KM is the return trip?
+        <input type="number" id="gpt-form-distance" placeholder="e.g. 240" min="0" step="1" />
+      </label>
+      <label for="gpt-form-notes">
+        Provide details
+        <textarea id="gpt-form-notes" placeholder="Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear? Who hired camping gear? Who hired SRT kits? What additional expenses were there?"></textarea>
+      </label>
+      <div class="banking-dialog-actions">
+        <button type="button" class="banking-dialog-cancel" id="gpt-form-cancel">Cancel</button>
+        <button type="button" id="gpt-form-copy-btn">Copy prompt &amp; open ChatGPT</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="banking-dialog" id="paste-csv-dialog">
     <form id="paste-csv-form" method="dialog">
       <h3>Paste CSV text</h3>
@@ -1347,13 +1683,6 @@
     }
 
     if (tutorialOverlay) {
-      window.addEventListener("load", () => {
-        tutorialOverlay.classList.remove("is-hidden");
-        if (tutorialCloseButton) {
-          tutorialCloseButton.focus();
-        }
-      });
-
       tutorialOverlay.addEventListener("click", (event) => {
         if (event.target === tutorialOverlay) {
           hideTutorialOverlay();
@@ -1371,6 +1700,149 @@
       }
     });
 
+    // ── Landing page ────────────────────────────────────────────────────────
+    const landingOverlay = document.getElementById("landing-overlay");
+    const landingAiBtn = document.getElementById("landing-ai-btn");
+    const landingManualBtn = document.getElementById("landing-manual-btn");
+
+    function hideLanding() {
+      if (landingOverlay) landingOverlay.classList.add("is-hidden");
+    }
+
+    if (landingOverlay) {
+      window.addEventListener("load", () => {
+        landingOverlay.classList.remove("is-hidden");
+        if (landingAiBtn) landingAiBtn.focus();
+      });
+    }
+
+    if (landingManualBtn) {
+      landingManualBtn.addEventListener("click", () => {
+        hideLanding();
+        if (tutorialOverlay) {
+          tutorialOverlay.classList.remove("is-hidden");
+          if (tutorialCloseButton) tutorialCloseButton.focus();
+        }
+      });
+    }
+
+    if (landingAiBtn) {
+      landingAiBtn.addEventListener("click", () => {
+        hideLanding();
+        showAiWizardStep(1);
+      });
+    }
+
+    // ── AI Wizard ────────────────────────────────────────────────────────────
+    const aiWizardOverlay = document.getElementById("ai-wizard-overlay");
+
+    function showAiWizardStep(n) {
+      if (!aiWizardOverlay) return;
+      aiWizardOverlay.classList.remove("is-hidden");
+      for (let i = 1; i <= 6; i++) {
+        const el = document.getElementById("ai-step-" + i);
+        if (el) el.classList.toggle("is-active", i === n);
+      }
+      const firstInput = document.querySelector("#ai-step-" + n + " input, #ai-step-" + n + " textarea");
+      if (firstInput) firstInput.focus();
+    }
+
+    function hideAiWizard() {
+      if (aiWizardOverlay) aiWizardOverlay.classList.add("is-hidden");
+    }
+
+    // Step nav wiring
+    function aiStep1Next() {
+      const loc = document.getElementById("ai-location")?.value.trim();
+      if (!loc) { window.alert("Please enter a location."); return; }
+      showAiWizardStep(2);
+    }
+    function aiStep2Next() {
+      const d = document.getElementById("ai-date")?.value;
+      if (!d) { window.alert("Please enter a date."); return; }
+      showAiWizardStep(3);
+    }
+    function aiStep3Next() {
+      const l = document.getElementById("ai-leader")?.value.trim();
+      if (!l) { window.alert("Please enter the trip leader name."); return; }
+      showAiWizardStep(4);
+    }
+
+    document.getElementById("ai-step1-next")?.addEventListener("click", aiStep1Next);
+    document.getElementById("ai-location")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); aiStep1Next(); } });
+
+    document.getElementById("ai-step2-back")?.addEventListener("click", () => showAiWizardStep(1));
+    document.getElementById("ai-step2-next")?.addEventListener("click", aiStep2Next);
+    document.getElementById("ai-date")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); aiStep2Next(); } });
+
+    document.getElementById("ai-step3-back")?.addEventListener("click", () => showAiWizardStep(2));
+    document.getElementById("ai-step3-next")?.addEventListener("click", aiStep3Next);
+    document.getElementById("ai-leader")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); aiStep3Next(); } });
+
+    document.getElementById("ai-step4-back")?.addEventListener("click", () => showAiWizardStep(3));
+    document.getElementById("ai-step4-next")?.addEventListener("click", () => showAiWizardStep(5));
+    document.getElementById("ai-distance")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); showAiWizardStep(5); } });
+
+    document.getElementById("ai-step5-back")?.addEventListener("click", () => showAiWizardStep(4));
+    document.getElementById("ai-step5-next")?.addEventListener("click", () => showAiWizardStep(6));
+    document.getElementById("ai-step6-back")?.addEventListener("click", () => showAiWizardStep(5));
+
+    document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", async () => {
+      const location = document.getElementById("ai-location")?.value.trim() || "";
+      const date = document.getElementById("ai-date")?.value || "";
+      const leader = document.getElementById("ai-leader")?.value.trim() || "";
+      const distance = document.getElementById("ai-distance")?.value.trim() || "";
+      const notes = document.getElementById("ai-notes")?.value.trim() || "";
+
+      // Pre-fill the main form fields so buildGptCsvPrompt uses them
+      const tripDateInput = document.getElementById("trip-date");
+      const tripLocationInput = document.getElementById("trip-location");
+      const tripLeaderInput = document.getElementById("trip-leader");
+      if (tripDateInput && date) tripDateInput.value = date;
+      if (tripLocationInput && location) tripLocationInput.value = location;
+      if (tripLeaderInput && leader) tripLeaderInput.value = leader;
+
+      // Set petrol distance on all existing rows (or store for later)
+      window._aiWizardDistance = distance;
+
+      const schemaPromptBase = buildGptCsvPrompt();
+      // Replace the placeholder with actual notes + pre-filled header
+      const distanceLine = distance ? `Return trip distance: ${distance} km\n` : "";
+      const promptText = schemaPromptBase.replace(
+        "[PASTE YOUR NOTES HERE]",
+        `Location: ${location}\nDate: ${date}\nTrip Leader: ${leader}\n${distanceLine}${notes}`
+      );
+
+      try {
+        await copyTextToClipboard(promptText);
+        window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+        window.alert("Prompt copied! Paste it into ChatGPT in the new tab, then come back here and paste the CSV response.");
+      } catch (err) {
+        console.error("Could not copy AI wizard prompt", err);
+        window.alert("Could not copy automatically. Please copy this prompt manually:\n\n" + promptText);
+        window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+      }
+    });
+
+    document.getElementById("ai-step6-load")?.addEventListener("click", () => {
+      const csvText = document.getElementById("ai-csv-paste")?.value.trim() || "";
+      if (!csvText) { window.alert("Please paste the CSV text first."); return; }
+      // Strip fenced code block markers if present
+      const cleaned = csvText.replace(/^```[^\n]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+      try {
+        loadTableFromCsvContent(cleaned);
+        hideAiWizard();
+        // Trigger summarise automatically
+        setTimeout(() => {
+          const summariseBtn = document.getElementById("summarise-button");
+          if (summariseBtn) summariseBtn.click();
+        }, 300);
+      } catch (error) {
+        console.error("Could not load CSV from AI wizard", error);
+        window.alert("Could not load CSV. " + (error?.message || "Please check the format."));
+      }
+    });
+
     const nameListId = "member-options";
     const nameDatalist = document.createElement("datalist");
     nameDatalist.id = nameListId;
@@ -1382,7 +1854,6 @@
     document.body.appendChild(tripLeaderDatalist);
 
     const tripLeaderInput = document.getElementById("trip-leader");
-    const clerkInput = document.getElementById("clerk");
     const tripDateInput = document.getElementById("trip-date");
     const tripLocationInput = document.getElementById("trip-location");
     const editBankingButton = document.getElementById("edit-banking-details");
@@ -1415,10 +1886,6 @@
       wrapInputWithNameLookup(tripLeaderInput);
     }
 
-    if (clerkInput) {
-      clerkInput.setAttribute("list", tripLeaderListId);
-      wrapInputWithNameLookup(clerkInput);
-    }
 
     if (tripDateInput) {
       tripDateInput.addEventListener("input", () => {
@@ -1692,8 +2159,6 @@
           "Location label shown in the summary and used to tag this trip in saved records.",
         "trip-leader":
           "Main organizer for the trip. This helps identify who coordinated the sheet.",
-        clerk:
-          "Person who handles reimbursements and payment tracking for this sheet.",
         "horizontal-gear-rate":
           "Per-person depreciation charge applied to members ticked under Hired Horizontal Gear?.",
         "camping-gear-rate":
@@ -2273,10 +2738,6 @@
       const container = targetDocument.createElement("div");
       container.className = "summary-preview";
 
-      const summaryDescription = targetDocument.createElement("div");
-      summaryDescription.className = "summary-description";
-      summaryDescription.classList.add("summary-detail-item");
-
       const maintenanceRateText = formatMaintenanceRateDisplay(
         getEffectiveMaintenanceRate()
       );
@@ -2286,13 +2747,16 @@
       const formattedDate = formatSummaryDate(tripDateInput?.value || "");
       const dateValue = formattedDate || tripDateInput?.value || "";
 
+      // Build notes section (appended at bottom after balances)
+      const summaryNotes = targetDocument.createElement("div");
+      summaryNotes.className = "summary-notes";
+
       const descriptionSegments = ["Cost accounting for"];
       if (tripLocationValue) {
         descriptionSegments.push(tripLocationValue);
       } else {
         descriptionSegments.push("this trip");
       }
-
       if (dateValue) {
         descriptionSegments.push(`on ${dateValue}`);
       }
@@ -2316,11 +2780,6 @@
       oweParagraph.textContent =
         "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.";
 
-      summaryDescription.appendChild(descriptionParagraph);
-      summaryDescription.appendChild(leaderParagraph);
-      summaryDescription.appendChild(reimburseParagraph);
-      summaryDescription.appendChild(oweParagraph);
-
       const srtKitParagraph = targetDocument.createElement("p");
       srtKitParagraph.textContent =
         "SRT kit refers to club-issued Single Rope Technique gear used on vertical trips. Ropes, rigging equipment, canyon packs, and other shared tools are maintained by the club and are not charged per use.";
@@ -2337,90 +2796,65 @@
       petrolParagraph.textContent =
         `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
 
-      const additionalExpenseParagraph = targetDocument.createElement("p");
-      additionalExpenseParagraph.textContent =
-        "Additional expenses are entered as balancing transfers: record an amount per member and tick Paid when they paid for others. If Paid is unticked, that member owes the amount. Each added expense should net to $0 so totals reconcile cleanly.";
-
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
       versionParagraph.textContent = "Version: Nov 2025 – Current";
 
-      summaryDescription.appendChild(srtKitParagraph);
-      summaryDescription.appendChild(horizontalGearParagraph);
-      summaryDescription.appendChild(campingGearParagraph);
-      summaryDescription.appendChild(petrolParagraph);
-      summaryDescription.appendChild(additionalExpenseParagraph);
-      summaryDescription.appendChild(versionParagraph);
+      [descriptionParagraph, leaderParagraph, reimburseParagraph, oweParagraph,
+       srtKitParagraph, horizontalGearParagraph, campingGearParagraph,
+       petrolParagraph, versionParagraph
+      ].forEach((p) => summaryNotes.appendChild(p));
 
-      const summaryTextWrapper = targetDocument.createElement("div");
-      summaryTextWrapper.className = "summary-description-text";
-      while (summaryDescription.firstChild) {
-        summaryTextWrapper.appendChild(summaryDescription.firstChild);
-      }
-      summaryDescription.appendChild(summaryTextWrapper);
-
-      const sections = [];
+      // Clone and append the top section (banner + meta tiles + banking)
       const topSection = document.querySelector(".top-section");
       if (topSection) {
-        sections.push(topSection);
-      }
+        const clone = stripIds(cloneNodeWithFormValues(topSection));
+        if (clone) {
+          sanitizeSummaryClone(clone);
+          removeEmptySummaryNameRows(clone);
+          const imported = targetDocument.importNode(clone, true);
 
-      let descriptionInserted = false;
-
-      sections.forEach((section) => {
-        const clone = stripIds(cloneNodeWithFormValues(section));
-        if (!clone) {
-          return;
-        }
-        sanitizeSummaryClone(clone);
-        removeEmptySummaryNameRows(clone);
-        const imported = targetDocument.importNode(clone, true);
-
-        const summaryBankingDetails = imported.querySelector(".banking-details");
-        if (summaryBankingDetails) {
-          renderBankingDetailsInto(summaryBankingDetails, targetDocument);
-        }
-
-        const summaryBankingLogo = imported.querySelector(".banking-logo");
-        if (summaryBankingLogo && bankingLogoSource) {
-          summaryBankingLogo.src = bankingLogoSource;
-        }
-
-        if (!descriptionInserted && section === topSection) {
-          const metaTable = imported.querySelector(".meta-table");
-          if (metaTable) {
-            metaTable.insertAdjacentElement("afterend", summaryDescription);
-          } else {
-            imported.insertBefore(summaryDescription, imported.firstChild);
+          const summaryBankingDetails = imported.querySelector(".banking-details");
+          if (summaryBankingDetails) {
+            renderBankingDetailsInto(summaryBankingDetails, targetDocument);
           }
-          descriptionInserted = true;
-        }
-        container.appendChild(imported);
-      });
 
-      if (!descriptionInserted) {
-        container.insertBefore(summaryDescription, container.firstChild);
+          const summaryBankingLogo = imported.querySelector(".banking-logo");
+          if (summaryBankingLogo && bankingLogoSource) {
+            summaryBankingLogo.src = bankingLogoSource;
+          }
+
+          container.appendChild(imported);
+        }
       }
 
       const calculation = calculateFinancials(false);
-      const detailsToggleWrapper = targetDocument.createElement("div");
-      detailsToggleWrapper.className = "summary-details-toggle";
-      const detailsToggleLabel = targetDocument.createElement("label");
-      const detailsToggleInput = targetDocument.createElement("input");
-      detailsToggleInput.type = "checkbox";
-      detailsToggleInput.setAttribute(
-        "aria-label",
-        "Hide summary details and show only participant owes and reimburse values"
-      );
-      const detailsToggleText = targetDocument.createElement("span");
-      detailsToggleText.textContent = "Hide details (show only owes and reimburse)";
-      detailsToggleLabel.appendChild(detailsToggleInput);
-      detailsToggleLabel.appendChild(detailsToggleText);
-      detailsToggleWrapper.appendChild(detailsToggleLabel);
-      detailsToggleInput.addEventListener("change", (event) => {
-        container.classList.toggle("summary-hide-details", event.target.checked);
-      });
-      container.appendChild(detailsToggleWrapper);
+
+      // Copy link bar
+      const copyLinkBar = targetDocument.createElement("div");
+      copyLinkBar.className = "summary-copy-link-bar";
+      const copyLinkBtn = targetDocument.createElement("button");
+      copyLinkBtn.type = "button";
+      copyLinkBtn.className = "summary-copy-link-btn";
+      copyLinkBtn.textContent = "Copy link";
+      const copyLinkNotice = targetDocument.createElement("span");
+      copyLinkNotice.className = "summary-copy-link-notice";
+      copyLinkNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary.";
+      copyLinkBar.appendChild(copyLinkBtn);
+      copyLinkBar.appendChild(copyLinkNotice);
+
+      // Build share URL from current app state (images omitted — too large for a URL)
+      const shareState = buildApplicationState();
+      shareState.images = { banner: null, banking: null };
+      try {
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(shareState))));
+        const base = document.baseURI.split("?")[0].split("#")[0];
+        copyLinkBtn.setAttribute("data-share-url", base + "?share=" + encoded);
+      } catch (e) {
+        console.warn("Could not build share URL", e);
+      }
+
+      container.appendChild(copyLinkBar);
 
       const peopleSection = targetDocument.createElement("section");
       peopleSection.className = "summary-people-section";
@@ -2527,6 +2961,7 @@
 
       summaryTotals.appendChild(totalsList);
       container.appendChild(summaryTotals);
+      container.appendChild(summaryNotes);
 
       return container;
     }
@@ -2633,25 +3068,43 @@
           border-spacing: 0.6rem 0.5rem;
         }
 
+        .summary-preview .meta-table {
+          width: 100%;
+          border-spacing: 0;
+        }
+
         .summary-preview .meta-table tbody {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 0.35rem 1rem;
-          align-items: center;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
         }
 
         .summary-preview .meta-table tr {
-          display: contents;
+          display: flex;
+          flex-direction: column;
+          background: #f5f5f5;
+          border: 1px solid #e0e0e0;
+          border-radius: 0.45rem;
+          padding: 0.45rem 0.85rem;
+          flex: 1 1 0;
+          min-width: 120px;
         }
 
         .summary-preview .meta-table th {
-          text-align: right;
+          text-align: left;
           white-space: nowrap;
-          padding: 0.2rem 0.4rem;
+          padding: 0;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #666;
         }
 
         .summary-preview .meta-table td {
-          padding: 0.2rem 0.4rem;
+          padding: 0;
+          font-size: 1rem;
+          font-weight: 500;
         }
 
         .summary-preview .summary-description {
@@ -2662,27 +3115,6 @@
 
         .summary-preview .summary-description-text {
           flex: 1 1 0;
-        }
-
-        .summary-preview .summary-details-toggle {
-          margin: 0.5rem 0 1rem;
-        }
-
-        .summary-preview .summary-details-toggle label {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-weight: 600;
-        }
-
-        .summary-preview .summary-details-toggle input[type="checkbox"] {
-          width: auto;
-          pointer-events: auto;
-          accent-color: #00695c;
-        }
-
-        .summary-preview.summary-hide-details .summary-detail-item {
-          display: none !important;
         }
 
         .summary-preview .summary-people-section {
@@ -2699,6 +3131,55 @@
           break-before: page;
           page-break-before: always;
         }
+
+        .summary-copy-link-bar {
+          margin: 1.25rem 0 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        .summary-copy-link-btn {
+          padding: 0.55rem 1.1rem;
+          border-radius: 0.4rem;
+          border: 1px solid #0077b6;
+          background: #0096c7;
+          color: #fff;
+          font-weight: 700;
+          font-size: 0.95rem;
+          cursor: pointer;
+        }
+
+        .summary-copy-link-btn:hover {
+          background: #00a8e8;
+        }
+
+        .summary-copy-link-notice {
+          font-size: 0.88rem;
+          color: #555;
+        }
+
+        @media print {
+          .summary-copy-link-bar { display: none; }
+        }
+
+        .summary-preview .summary-notes {
+          margin-top: 2rem;
+          padding-top: 1.25rem;
+          border-top: 1px solid #e0e0e0;
+          font-size: 0.92rem;
+          color: #444;
+          line-height: 1.6;
+        }
+
+        .summary-preview .summary-notes p {
+          margin: 0 0 0.6rem;
+        }
+
+        .summary-preview .summary-notes p:last-child {
+          margin-bottom: 0;
+        }
       `;
       summaryDocument.head.appendChild(extraStyle);
 
@@ -2706,52 +3187,50 @@
       main.appendChild(buildSummaryPreview(summaryDocument));
       summaryDocument.body.appendChild(main);
 
+      // Inline script so the Copy link button works after serialisation
+      const copyLinkScript = summaryDocument.createElement("script");
+      copyLinkScript.textContent = `
+(function () {
+  var btn = document.querySelector('.summary-copy-link-btn');
+  var notice = document.querySelector('.summary-copy-link-notice');
+  if (!btn) return;
+  btn.addEventListener('click', async function () {
+    var url = btn.getAttribute('data-share-url');
+    if (!url) { alert('Could not generate share link.'); return; }
+    try {
+      await navigator.clipboard.writeText(url);
+      if (notice) { notice.textContent = 'Link copied!'; }
+      setTimeout(function () {
+        if (notice) notice.textContent = 'Paste into Messenger, WhatsApp, or email to share this summary.';
+      }, 2500);
+    } catch (err) {
+      window.prompt('Copy this link:', url);
+    }
+  });
+})();
+      `;
+      summaryDocument.body.appendChild(copyLinkScript);
+
       return `<!DOCTYPE html>${summaryDocument.documentElement.outerHTML}`;
     }
 
     function downloadAndOpenSummaryHtml() {
-      const summaryTitle = getDateLocationTag();
-      const htmlContent = buildSummaryHtml(summaryTitle);
-      const blob = new Blob([htmlContent], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-
-      const downloadLink = document.createElement("a");
-      downloadLink.href = url;
-      downloadLink.download = `${summaryTitle}.html`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-
-      const summaryWindow = window.open("", "_blank");
-      if (!summaryWindow) {
-        window.alert("Please allow pop-ups to view the summary.");
-        URL.revokeObjectURL(url);
+      const state = buildApplicationState();
+      state.images = { banner: null, banking: null };
+      let encoded;
+      try {
+        encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      } catch (e) {
+        window.alert("Could not encode summary state.");
         return false;
       }
-
-      summaryWindow.document.open();
-      summaryWindow.document.write(htmlContent);
-      summaryWindow.document.close();
-
-      const ensureSummaryWindowTitle = () => {
-        try {
-          summaryWindow.document.title = summaryTitle;
-        } catch (error) {
-          /* no-op */
-        }
-      };
-
-      ensureSummaryWindowTitle();
-
-      if (typeof summaryWindow.addEventListener === "function") {
-        summaryWindow.addEventListener("load", ensureSummaryWindowTitle, {
-          once: true
-        });
+      const base = document.baseURI.split("?")[0].split("#")[0].replace(/[^/]*$/, "");
+      const url = base + "summarise.html?share=" + encoded;
+      const opened = window.open(url, "_blank");
+      if (!opened) {
+        window.alert("Please allow pop-ups to view the summary.");
+        return false;
       }
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 0);
       return true;
     }
 
@@ -2908,7 +3387,7 @@
           date: tripDateInput ? tripDateInput.value : "",
           location: tripLocationInput ? tripLocationInput.value : "",
           leader: tripLeaderInput ? tripLeaderInput.value : "",
-          clerk: clerkInput ? clerkInput.value : ""
+          clerk: ""
         },
         bankingDetails: getCurrentBankingDetails(),
         baseExpenseRates: { ...baseExpenseRates },
@@ -2982,7 +3461,6 @@
         ["trip_date", state.trip?.date || ""],
         ["trip_location", state.trip?.location || ""],
         ["trip_leader", state.trip?.leader || ""],
-        ["clerk", state.trip?.clerk || ""],
         ["bank_name", state.bankingDetails?.Name || ""],
         ["bank_bsb", state.bankingDetails?.BSB || ""],
         ["bank_account", state.bankingDetails?.Account || ""],
@@ -3221,9 +3699,6 @@
       }
       if (tripLeaderInput) {
         tripLeaderInput.value = trip?.leader || "";
-      }
-      if (clerkInput) {
-        clerkInput.value = trip?.clerk || "";
       }
 
       if (Object.prototype.hasOwnProperty.call(state, "bankingDetails")) {
@@ -3495,7 +3970,7 @@
             date: hashValues.trip_date || "",
             location: hashValues.trip_location || "",
             leader: hashValues.trip_leader || "",
-            clerk: hashValues.clerk || ""
+            clerk: ""
           },
           bankingDetails: {
             Name: hashValues.bank_name || "",
@@ -4997,19 +5472,70 @@
       reader.readAsText(file);
     });
 
-    if (gptCsvPromptButton) {
-      gptCsvPromptButton.addEventListener("click", async () => {
-        const promptText = buildGptCsvPrompt();
+    const gptFormDialog = document.getElementById("gpt-form-dialog");
+    const gptFormLocation = document.getElementById("gpt-form-location");
+    const gptFormDate = document.getElementById("gpt-form-date");
+    const gptFormLeader = document.getElementById("gpt-form-leader");
+    const gptFormDistance = document.getElementById("gpt-form-distance");
+    const gptFormNotes = document.getElementById("gpt-form-notes");
+    const gptFormCancel = document.getElementById("gpt-form-cancel");
+    const gptFormCopyBtn = document.getElementById("gpt-form-copy-btn");
+
+    if (gptCsvPromptButton && gptFormDialog) {
+      gptCsvPromptButton.addEventListener("click", () => {
+        // Pre-fill from AI wizard fields if values exist there
+        if (gptFormLocation) gptFormLocation.value = document.getElementById("ai-location")?.value || tripLocationInput?.value || "";
+        if (gptFormDate) gptFormDate.value = document.getElementById("ai-date")?.value || tripDateInput?.value || "";
+        if (gptFormLeader) gptFormLeader.value = document.getElementById("ai-leader")?.value || tripLeaderInput?.value || "";
+        if (gptFormDistance) gptFormDistance.value = document.getElementById("ai-distance")?.value || "";
+        if (gptFormNotes) gptFormNotes.value = document.getElementById("ai-notes")?.value || "";
+        gptFormDialog.showModal();
+      });
+    }
+
+    if (gptFormCancel && gptFormDialog) {
+      gptFormCancel.addEventListener("click", () => gptFormDialog.close());
+    }
+
+    if (gptFormCopyBtn) {
+      gptFormCopyBtn.addEventListener("click", async () => {
+        const location = gptFormLocation?.value.trim() || "";
+        const date = gptFormDate?.value || "";
+        const leader = gptFormLeader?.value.trim() || "";
+        const distance = gptFormDistance?.value.trim() || "";
+        const notes = gptFormNotes?.value.trim() || "";
+
+        // Sync values back into the AI wizard fields and main form
+        const aiLocation = document.getElementById("ai-location");
+        const aiDate = document.getElementById("ai-date");
+        const aiLeader = document.getElementById("ai-leader");
+        const aiDistance = document.getElementById("ai-distance");
+        const aiNotes = document.getElementById("ai-notes");
+        if (aiLocation) aiLocation.value = location;
+        if (aiDate) aiDate.value = date;
+        if (aiLeader) aiLeader.value = leader;
+        if (aiDistance) aiDistance.value = distance;
+        if (aiNotes) aiNotes.value = notes;
+        if (tripLocationInput && location) tripLocationInput.value = location;
+        if (tripDateInput && date) tripDateInput.value = date;
+        if (tripLeaderInput && leader) tripLeaderInput.value = leader;
+
+        const schemaPromptBase = buildGptCsvPrompt();
+        const distanceLine = distance ? `Return trip distance: ${distance} km\n` : "";
+        const promptText = schemaPromptBase.replace(
+          "[PASTE YOUR NOTES HERE]",
+          `Location: ${location}\nDate: ${date}\nTrip Leader: ${leader}\n${distanceLine}${notes}`
+        );
+
         try {
           await copyTextToClipboard(promptText);
-          window.alert(
-            "GPT prompt copied to clipboard. Paste it into ChatGPT, then paste your notes where indicated."
-          );
+          window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+          gptFormDialog.close();
+          window.alert("Prompt copied! Paste it into ChatGPT in the new tab, then use Paste CSV Text to load the result.");
         } catch (error) {
           console.error("Could not copy GPT prompt", error);
-          window.alert(
-            `Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`
-          );
+          window.alert(`Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`);
+          window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
         }
       });
     }
@@ -5394,22 +5920,6 @@
       renderBankingDetails();
     }
 
-    async function loadClerk() {
-      try {
-        const response = await fetch("signature.txt");
-        if (!response.ok) {
-          return;
-        }
-        const text = await response.text();
-        const cleaned = text.trim();
-        if (clerkInput && !clerkInput.value) {
-          clerkInput.value = cleaned;
-        }
-      } catch (error) {
-        console.warn("Could not load clerk", error);
-      }
-    }
-
     syncBaseExpenseInputsFromRates();
     loadMemberOptions();
     setupImageReplacements();
@@ -5417,7 +5927,6 @@
     renderTable();
     renderBankingDetails();
     loadBankingDetails();
-    loadClerk();
   </script>
 </body>
 </html>

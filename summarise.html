@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NUCC Trip Attendance Summary</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="NUCC Trip Attendance Summary" />
+  <meta property="og:description" content="View the trip expense breakdown, participant balances, and reimbursement details for this NUCC outing." />
+  <meta property="og:image" content="banner.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="NUCC Trip Attendance Summary" />
+  <meta name="twitter:description" content="View the trip expense breakdown, participant balances, and reimbursement details for this NUCC outing." />
+  <style>
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #f7f7f7;
+      color: #222;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .summary-header-left {
+      flex: 2 1 0;
+      min-width: 260px;
+    }
+
+    .summary-header-right {
+      flex: 0 1 auto;
+      min-width: 220px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+
+    .summary-banner {
+      height: 72px;
+      width: auto;
+      display: block;
+      margin-bottom: 0.75rem;
+    }
+
+    h1.summary-title {
+      margin: 0 0 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 1.4rem;
+      white-space: nowrap;
+    }
+
+    /* ── Meta tiles ──────────────────────────────────────────────── */
+    .summary-meta-tiles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .summary-meta-tile {
+      display: flex;
+      flex-direction: column;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 0.45rem;
+      padding: 0.45rem 0.85rem;
+      flex: 1 1 0;
+      min-width: 120px;
+    }
+
+    .summary-meta-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+    }
+
+    .summary-meta-value {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    /* ── Banking ─────────────────────────────────────────────────── */
+    .banking-details {
+      font-size: 0.95rem;
+      line-height: 1.4;
+      background: #ffffff;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
+      min-width: 200px;
+    }
+
+    .banking-details p {
+      margin: 0;
+    }
+
+    .banking-details p + p {
+      margin-top: 0.35rem;
+    }
+
+    .banking-label {
+      font-weight: 600;
+      margin-right: 0.35rem;
+      color: #004d40;
+    }
+
+    /* ── Copy link bar ───────────────────────────────────────────── */
+    .summary-copy-link-bar {
+      margin: 1.25rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .summary-copy-link-btn {
+      padding: 0.55rem 1.1rem;
+      border-radius: 0.4rem;
+      border: 1px solid #0077b6;
+      background: #0096c7;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .summary-copy-link-btn:hover {
+      background: #00a8e8;
+    }
+
+    .summary-copy-link-notice {
+      font-size: 0.88rem;
+      color: #555;
+    }
+
+    /* ── Participant balances ────────────────────────────────────── */
+    .summary-people-section h2,
+    .summary-totals h2 {
+      margin: 1.5rem 0 0.75rem;
+      font-size: 1.15rem;
+    }
+
+    .summary-person {
+      background: #fff;
+      border: 1px solid #d0d0d0;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .summary-person p {
+      margin: 0 0 0.4rem;
+    }
+
+    .summary-person p:last-child {
+      margin-bottom: 0;
+    }
+
+    .summary-person ul {
+      margin: 0.25rem 0 0.4rem 1.25rem;
+      padding: 0;
+    }
+
+    .summary-person ul:last-child {
+      margin-bottom: 0;
+    }
+
+    .amount-due {
+      color: #b00020;
+      font-weight: 700;
+    }
+
+    .amount-credit {
+      color: #1b5e20;
+      font-weight: 700;
+    }
+
+    /* ── Summary totals ──────────────────────────────────────────── */
+    .summary-totals ul {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    /* ── Notes ───────────────────────────────────────────────────── */
+    .summary-notes {
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid #e0e0e0;
+      font-size: 0.92rem;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .summary-notes p {
+      margin: 0 0 0.6rem;
+    }
+
+    .summary-notes p:last-child {
+      margin-bottom: 0;
+    }
+
+    .summary-line-gold { color: #b8860b; }
+    .summary-line-green { color: #1b5e20; }
+    .summary-line-red { color: #b00020; }
+
+    /* ── Error ───────────────────────────────────────────────────── */
+    .summary-error {
+      color: #b00020;
+      font-weight: 600;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    @media print {
+      .summary-copy-link-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main id="summary-root">
+    <p class="summary-error" id="loading-msg">Loading summary…</p>
+  </main>
+  <script>
+    // ── Shared utilities ─────────────────────────────────────────────────────
+
+    function formatCurrency(value) {
+      if (!Number.isFinite(value)) return "";
+      const fixed = Number(value).toFixed(2);
+      return fixed === "-0.00" ? "0.00" : fixed;
+    }
+
+    function formatSummaryDate(rawValue) {
+      if (!rawValue) return "";
+      const parsed = new Date(rawValue + "T00:00:00");
+      if (Number.isNaN(parsed.getTime())) return rawValue;
+      try {
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(parsed);
+      } catch (e) {
+        return rawValue;
+      }
+    }
+
+    function formatMaintenanceRateDisplay(value) {
+      if (!Number.isFinite(value)) return "";
+      const fixed = value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+      return fixed || "0";
+    }
+
+    function normalizeBankingDetails(details) {
+      if (!details || typeof details !== "object") return { name: "", bsb: "", account: "" };
+      const name = details.Name !== undefined ? details.Name : (details.name !== undefined ? details.name : "");
+      const bsb = details.BSB !== undefined ? details.BSB : (details.bsb !== undefined ? details.bsb : "");
+      const account = details.Account !== undefined ? details.Account : (details.account !== undefined ? details.account : "");
+      return {
+        name: String(name ?? "").trim(),
+        bsb: String(bsb ?? "").trim(),
+        account: String(account ?? "").trim()
+      };
+    }
+
+    // ── State ────────────────────────────────────────────────────────────────
+
+    let trip = { date: "", location: "", leader: "" };
+    let bankingDetails = { name: "", bsb: "", account: "" };
+    let participants = [];
+    let baseExpenseRates = { "horizontal-gear": 5, "camping-gear": 10, "srt-kit": 5 };
+    let maintenanceRate = 0.025;
+    let baseExpenses = [];
+    let customExpenses = [];
+
+    function getEffectiveMaintenanceRate() {
+      return Number.isFinite(maintenanceRate) && maintenanceRate >= 0 ? maintenanceRate : 0;
+    }
+
+    function isBaseRateControlled(expense) {
+      return expense && Object.prototype.hasOwnProperty.call(baseExpenseRates, expense.key);
+    }
+
+    function isDirectChargeExpense(expense) {
+      return expense && (expense.key === "horizontal-gear" || expense.key === "camping-gear" || expense.key === "srt-kit");
+    }
+
+    function isBalancingCustomExpense(expense) {
+      return Boolean(expense && expense.type === "custom");
+    }
+
+    function getActiveExpenses() {
+      return [...baseExpenses.filter(e => e.enabled), ...customExpenses];
+    }
+
+    function ensureExpenseSize(expense) {
+      const needed = participants.length;
+      const rateKey = isBaseRateControlled(expense) ? expense.key : null;
+      const rateValue = rateKey ? baseExpenseRates[rateKey] : null;
+      while (expense.amounts.length < needed) {
+        expense.amounts.push(rateKey ? (rateValue === "" ? "" : rateValue) : "");
+      }
+      while (expense.consumers.length < needed) {
+        expense.consumers.push(Object.prototype.hasOwnProperty.call(expense, "defaultConsumerState") ? expense.defaultConsumerState : true);
+      }
+      while (expense.amounts.length > needed) expense.amounts.pop();
+      while (expense.consumers.length > needed) expense.consumers.pop();
+    }
+
+    // ── Financials ───────────────────────────────────────────────────────────
+
+    function calculateFinancials() {
+      const activeExpenses = getActiveExpenses();
+      const participantFeeTotals = new Array(participants.length).fill(0);
+      const participantFeeBreakdowns = participants.map(() => []);
+      const participantContributions = new Array(participants.length).fill(0);
+      const participantContributionDetails = participants.map(() => []);
+      const participantHasName = participants.map(p => Boolean(p.name && p.name.trim()));
+      let clubIncome = 0;
+
+      activeExpenses.forEach(expense => {
+        ensureExpenseSize(expense);
+
+        if (isDirectChargeExpense(expense)) {
+          const numericRate = Number(baseExpenseRates[expense.key]);
+          const perPersonCharge = Number.isFinite(numericRate) ? numericRate : 0;
+          participants.forEach((_, i) => {
+            if (!participantHasName[i]) return;
+            if (expense.consumers[i]) {
+              participantFeeTotals[i] += perPersonCharge;
+              if (perPersonCharge > 0) {
+                participantFeeBreakdowns[i].push({ name: expense.name, value: perPersonCharge });
+                clubIncome += perPersonCharge;
+              }
+            }
+          });
+          return;
+        }
+
+        if (isBalancingCustomExpense(expense)) {
+          expense.amounts.forEach((amount, i) => {
+            if (!participantHasName[i]) return;
+            if (amount === "" || !Number.isFinite(Number(amount))) return;
+            const mag = Math.abs(Number(amount));
+            if (mag === 0) return;
+            if (expense.consumers[i]) {
+              participantContributions[i] += mag;
+              participantContributionDetails[i].push({ name: expense.name, value: mag, distance: null });
+            } else {
+              participantFeeTotals[i] += mag;
+              participantFeeBreakdowns[i].push({ name: expense.name, value: mag });
+            }
+          });
+          return;
+        }
+
+        // Petrol / general pooled expense
+        let fuelTotal = 0;
+        let totalDistance = 0;
+        const consumers = [];
+        const driverDistances = new Array(participants.length).fill(0);
+        const driverHasDistance = new Array(participants.length).fill(false);
+
+        expense.amounts.forEach((amount, i) => {
+          if (participantHasName[i] && amount !== "" && Number.isFinite(Number(amount))) {
+            const num = Number(amount);
+            fuelTotal += num;
+            participantContributions[i] += num;
+            participantContributionDetails[i].push({ name: expense.name, value: num, distance: null });
+          }
+          if (expense.key === "petrol" && participantHasName[i]) {
+            if (!Array.isArray(expense.distances)) expense.distances = participants.map(() => "");
+            const dist = expense.distances[i];
+            if (dist !== "" && Number.isFinite(Number(dist))) {
+              const numDist = Number(dist);
+              totalDistance += numDist;
+              driverDistances[i] = numDist;
+              driverHasDistance[i] = true;
+              const details = participantContributionDetails[i];
+              const last = details[details.length - 1];
+              if (last && last.name === expense.name && last.distance === null) {
+                last.distance = numDist;
+              } else {
+                details.push({ name: expense.name, value: 0, distance: numDist });
+              }
+            }
+          }
+          if (participantHasName[i] && expense.consumers[i]) consumers.push(i);
+        });
+
+        const effectiveRate = getEffectiveMaintenanceRate();
+        const maintenanceTotal = expense.key === "petrol" ? totalDistance * effectiveRate : 0;
+        const combinedTotal = fuelTotal + maintenanceTotal;
+        const count = consumers.length;
+        const combinedShare = count > 0 ? combinedTotal / count : 0;
+        const fuelShare = count > 0 ? fuelTotal / count : 0;
+        const maintenanceShare = count > 0 ? maintenanceTotal / count : 0;
+
+        consumers.forEach(i => {
+          participantFeeTotals[i] += combinedShare;
+          if (fuelShare > 0) participantFeeBreakdowns[i].push({ name: expense.name, value: fuelShare });
+          if (maintenanceShare > 0) participantFeeBreakdowns[i].push({ name: "Maintenance", value: maintenanceShare });
+        });
+
+        if (expense.key === "petrol") {
+          driverDistances.forEach((dist, i) => {
+            if (!driverHasDistance[i]) return;
+            const credit = dist * effectiveRate;
+            if (credit > 0) {
+              participantFeeTotals[i] -= credit;
+              participantFeeBreakdowns[i].push({ name: "Maintenance credit", value: -credit });
+            }
+          });
+        }
+      });
+
+      let totalFees = 0;
+      let totalBalance = 0;
+      const balances = new Array(participants.length).fill(0);
+      participants.forEach((p, i) => {
+        if (!participantHasName[i]) return;
+        const fee = participantFeeTotals[i];
+        const contrib = participantContributions[i];
+        const balance = fee - contrib;
+        balances[i] = balance;
+        totalFees += fee;
+        totalBalance += balance;
+      });
+
+      return { participantFeeBreakdowns, participantContributionDetails, balances, totalFees, totalBalance, clubIncome };
+    }
+
+    // ── Apply state from decoded share object ────────────────────────────────
+
+    function applyState(state) {
+      trip = {
+        date: state.trip?.date || "",
+        location: state.trip?.location || "",
+        leader: state.trip?.leader || ""
+      };
+
+      bankingDetails = normalizeBankingDetails(state.bankingDetails || {});
+
+      if (state.baseExpenseRates && typeof state.baseExpenseRates === "object") {
+        Object.assign(baseExpenseRates, state.baseExpenseRates);
+      }
+
+      maintenanceRate = (typeof state.maintenanceRate === "number" && Number.isFinite(state.maintenanceRate))
+        ? state.maintenanceRate
+        : 0.025;
+
+      participants = Array.isArray(state.participants)
+        ? state.participants.map(p => ({ name: p.name || "" }))
+        : [];
+
+      // Base expenses
+      const legacyKeyMap = { "personal-gear": "horizontal-gear", "shared-gear": "srt-kit" };
+      const normalizeKey = k => legacyKeyMap[k] || k;
+
+      const baseDefinitions = [
+        { key: "horizontal-gear", name: "Horizontal Gear", defaultConsumerState: false },
+        { key: "camping-gear",    name: "Camping Gear",    defaultConsumerState: false },
+        { key: "srt-kit",         name: "SRT Kit",         defaultConsumerState: false },
+        { key: "petrol",          name: "Petrol",          defaultConsumerState: true  }
+      ];
+
+      baseExpenses = baseDefinitions.map(def => {
+        const saved = (state.baseExpenses || []).find(e => normalizeKey(e.key) === def.key);
+        const expense = {
+          id: "base-" + def.key,
+          key: def.key,
+          name: def.name,
+          type: "base",
+          enabled: saved ? Boolean(saved.enabled) : true,
+          defaultConsumerState: def.defaultConsumerState,
+          amounts: Array.isArray(saved?.amounts) ? [...saved.amounts] : participants.map(() => ""),
+          consumers: Array.isArray(saved?.consumers) ? [...saved.consumers] : participants.map(() => def.defaultConsumerState)
+        };
+        if (def.key === "petrol") {
+          expense.distances = Array.isArray(saved?.distances) ? [...saved.distances] : participants.map(() => "");
+        }
+        return expense;
+      });
+
+      let customCounter = 0;
+      customExpenses = Array.isArray(state.customExpenses)
+        ? state.customExpenses.map(e => ({
+            id: "custom-" + customCounter++,
+            name: e.name || "",
+            key: null,
+            type: "custom",
+            enabled: Boolean(e.enabled !== false),
+            defaultConsumerState: false,
+            amounts: Array.isArray(e.amounts) ? [...e.amounts] : participants.map(() => ""),
+            consumers: Array.isArray(e.consumers) ? [...e.consumers] : participants.map(() => false)
+          }))
+        : [];
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────
+
+    function el(tag, cls, text) {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function renderSummary() {
+      const root = document.getElementById("summary-root");
+      root.innerHTML = "";
+
+      const calc = calculateFinancials();
+      const maintenanceRateText = formatMaintenanceRateDisplay(getEffectiveMaintenanceRate());
+      const formattedDate = formatSummaryDate(trip.date);
+      const dateDisplay = formattedDate || trip.date || "";
+
+      // ── Header ──────────────────────────────────────────────────────────
+      const header = el("div", "summary-header");
+      const headerLeft = el("div", "summary-header-left");
+
+      const banner = document.createElement("img");
+      banner.src = "banner.png";
+      banner.alt = "NUCC banner";
+      banner.className = "summary-banner";
+      banner.onerror = () => { banner.style.display = "none"; };
+      headerLeft.appendChild(banner);
+
+      headerLeft.appendChild(el("h1", "summary-title", "Trip Attendance Sheet"));
+
+      // Meta tiles
+      const tiles = el("div", "summary-meta-tiles");
+      const metaFields = [
+        { label: "Date",        value: dateDisplay },
+        { label: "Location",    value: trip.location },
+        { label: "Trip Leader", value: trip.leader }
+      ];
+      metaFields.forEach(f => {
+        const tile = el("div", "summary-meta-tile");
+        tile.appendChild(el("span", "summary-meta-label", f.label));
+        tile.appendChild(el("span", "summary-meta-value", f.value || "—"));
+        tiles.appendChild(tile);
+      });
+      headerLeft.appendChild(tiles);
+      header.appendChild(headerLeft);
+
+      // Banking
+      const headerRight = el("div", "summary-header-right");
+      const bankingEl = el("div", "banking-details");
+      const tag = trip.date && trip.location
+        ? trip.date.replace(/-/g, "_") + "_" + trip.location.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+        : "";
+      [
+        { label: "Name",    value: bankingDetails.name },
+        { label: "BSB",     value: bankingDetails.bsb },
+        { label: "Account", value: bankingDetails.account },
+        ...(tag ? [{ label: "Tag", value: tag }] : [])
+      ].filter(l => l.value).forEach(line => {
+        const p = document.createElement("p");
+        const lbl = el("span", "banking-label", line.label + ":");
+        const val = el("span", null, " " + line.value);
+        p.appendChild(lbl);
+        p.appendChild(val);
+        bankingEl.appendChild(p);
+      });
+      headerRight.appendChild(bankingEl);
+      header.appendChild(headerRight);
+      root.appendChild(header);
+
+      // ── Copy link bar ────────────────────────────────────────────────────
+      const copyBar = el("div", "summary-copy-link-bar");
+      const copyBtn = el("button", "summary-copy-link-btn", "Copy link");
+      const copyNotice = el("span", "summary-copy-link-notice", "Paste into Messenger, WhatsApp, or email to share this summary.");
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          copyNotice.textContent = "Link copied!";
+          setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 2500);
+        } catch (err) {
+          window.prompt("Copy this link:", window.location.href);
+        }
+      });
+      copyBar.appendChild(copyBtn);
+      copyBar.appendChild(copyNotice);
+      root.appendChild(copyBar);
+
+      // ── Participant balances ─────────────────────────────────────────────
+      const peopleSection = el("section", "summary-people-section");
+      peopleSection.appendChild(el("h2", null, "Participant balances"));
+
+      participants.forEach((participant, i) => {
+        const name = (participant.name || "").trim();
+        if (!name) return;
+
+        const card = el("div", "summary-person");
+        const balance = calc.balances[i] || 0;
+        const amountText = "$" + (formatCurrency(Math.abs(balance)) || "0.00");
+        const balanceLabel = balance > 0 ? "Owes" : "Reimburse";
+        const balanceClass = balance > 0 ? "amount-due" : "amount-credit";
+        const balanceLine = document.createElement("p");
+        balanceLine.innerHTML = `<strong>${name}</strong>: ${balanceLabel} <span class="${balanceClass}">${amountText}</span>`;
+        card.appendChild(balanceLine);
+
+        const contribs = (calc.participantContributionDetails[i] || []).filter(e => e && (Number(e.value) || e.distance));
+        if (contribs.length) {
+          card.appendChild(el("p", null, "Contributions:"));
+          const ul = el("ul");
+          contribs.forEach(entry => {
+            const pieces = [];
+            if (Number(entry.value)) pieces.push(`${entry.name}: $${formatCurrency(entry.value) || "0.00"}`);
+            else pieces.push(entry.name);
+            if (entry.distance) pieces.push(`${Math.round(entry.distance)} km`);
+            ul.appendChild(el("li", null, pieces.join(" – ")));
+          });
+          card.appendChild(ul);
+        }
+
+        const breakdown = calc.participantFeeBreakdowns[i] || [];
+        if (breakdown.length) {
+          card.appendChild(el("p", null, "Fee breakdown:"));
+          const ul = el("ul");
+          breakdown.forEach(entry => {
+            ul.appendChild(el("li", null, `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`));
+          });
+          card.appendChild(ul);
+        }
+
+        peopleSection.appendChild(card);
+      });
+      root.appendChild(peopleSection);
+
+      // ── Summary totals ───────────────────────────────────────────────────
+      const totals = el("section", "summary-totals");
+      totals.appendChild(el("h2", null, "Summary"));
+      const ul = el("ul");
+      ul.appendChild(el("li", null, `Total fees: $${formatCurrency(calc.totalFees) || "0.00"}`));
+      const balLabel = calc.totalBalance > 0 ? "Club Gear Depreciation (owed)" : "Club Gear Depreciation (credit)";
+      ul.appendChild(el("li", null, `${balLabel}: ${calc.totalBalance ? "$" + formatCurrency(Math.abs(calc.totalBalance)) : "$0.00"}`));
+      ul.appendChild(el("li", null, `Club income: $${formatCurrency(calc.clubIncome) || "0.00"}`));
+      totals.appendChild(ul);
+      root.appendChild(totals);
+
+      // ── Notes ────────────────────────────────────────────────────────────
+      const notes = el("div", "summary-notes");
+      const descSegments = ["Cost accounting for", trip.location || "this trip"];
+      if (dateDisplay) descSegments.push("on " + dateDisplay);
+      const noteParas = [
+        { text: descSegments.join(" ") + " for various expenses shown below." },
+        {
+          text: (trip.leader
+            ? `Trip leader ${trip.leader} should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, save this page as a PDF and send it to all participants and the treasurer to record dues and process reimbursements.`
+            : "Trip leader should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, save this page as a PDF and send it to all participants and the treasurer to record dues and process reimbursements."),
+          cls: "summary-line-gold"
+        },
+        { text: "Those with Reimburse values, colored green, will receive payment from the club account.", cls: "summary-line-green" },
+        { text: "If you owe, colored red in the Reimburse(Due), please pay to the club account details of which are provided in the top right.", cls: "summary-line-red" },
+        { text: "SRT kit refers to club-issued Single Rope Technique gear used on vertical trips. Ropes, rigging equipment, canyon packs, and other shared tools are maintained by the club and are not charged per use." },
+        { text: "Horizontal gear covers helmets, headtorches, and similar equipment issued to individuals. A standard $5 charge applies when this option is selected." },
+        { text: "Camping gear covers sleeping bags, mats, stoves, and similar items hired for overnight trips. A standard $10 depreciation charge applies when this option is selected." },
+        { text: `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.` },
+        { text: "Version: Nov 2025 – Current", cls: "summary-version" }
+      ];
+      noteParas.forEach(n => {
+        const p = el("p", n.cls || null, n.text);
+        notes.appendChild(p);
+      });
+      root.appendChild(notes);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+
+    (function init() {
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get("share");
+      const loadingMsg = document.getElementById("loading-msg");
+
+      if (!encoded) {
+        if (loadingMsg) loadingMsg.textContent = "No summary data found. Please open this page via the Summarise button or a shared link.";
+        return;
+      }
+
+      try {
+        const state = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+        applyState(state);
+        renderSummary();
+      } catch (err) {
+        console.error("Could not decode summary state", err);
+        if (loadingMsg) loadingMsg.textContent = "Could not load summary. The link may be invalid or corrupted.";
+      }
+    })();
+  </script>
+</body>
+</html>
