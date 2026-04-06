@@ -1066,6 +1066,14 @@
         <button
           class="control-button hide-on-mobile"
           type="button"
+          id="save-draft"
+          title="Save the current form draft in this browser so you can continue later."
+        >
+          Save Draft
+        </button>
+        <button
+          class="control-button hide-on-mobile"
+          type="button"
           id="load-json"
           title="Load a previously saved Trip Attendance JSON file."
         >
@@ -2581,6 +2589,17 @@
       URL.revokeObjectURL(url);
     }
 
+    function saveDraftToBrowserStorage() {
+      const state = buildApplicationState();
+      const storageKey = "nucc-trip-attendance-draft";
+      const draftPayload = {
+        savedAt: new Date().toISOString(),
+        state
+      };
+      window.localStorage.setItem(storageKey, JSON.stringify(draftPayload));
+      window.alert("Draft saved in this browser.");
+    }
+
     function applyExpenseSnapshot(expense, snapshotEntry) {
       const participantCount = participants.length;
       const amounts = Array.isArray(snapshotEntry?.amounts)
@@ -3943,6 +3962,13 @@
     document.getElementById("save-json").addEventListener("click", () => {
       downloadAttendanceJson();
     });
+
+    const saveDraftButton = document.getElementById("save-draft");
+    if (saveDraftButton) {
+      saveDraftButton.addEventListener("click", () => {
+        saveDraftToBrowserStorage();
+      });
+    }
 
     const loadJsonInput = document.getElementById("load-json-input");
     document.getElementById("load-json").addEventListener("click", () => {
