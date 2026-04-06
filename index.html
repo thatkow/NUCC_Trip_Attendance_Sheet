@@ -972,6 +972,12 @@
           Horizontal Gear
         </label>
         <label
+          title="Check this if any members hired club camping gear (e.g. sleeping bag, mat, stove, etc.)."
+        >
+          <input type="checkbox" data-expense-key="camping-gear" checked />
+          Camping Gear
+        </label>
+        <label
           title="Check this if the club's SRT kit was used on the trip."
         >
           <input type="checkbox" data-expense-key="srt-kit" checked />
@@ -995,6 +1001,10 @@
         <label for="horizontal-gear-rate">
           Horizontal Gear per person ($)
           <input type="number" id="horizontal-gear-rate" step="0.01" value="5" />
+        </label>
+        <label for="camping-gear-rate">
+          Camping Gear per person ($)
+          <input type="number" id="camping-gear-rate" step="0.01" value="10" />
         </label>
         <label for="srt-kit-rate">
           SRT Kit per person ($)
@@ -1297,6 +1307,7 @@
 
     const baseExpenseRates = {
       "horizontal-gear": 5,
+      "camping-gear": 10,
       "srt-kit": 5
     };
 
@@ -1377,6 +1388,12 @@
         defaultConsumerState: false
       },
       {
+        key: "camping-gear",
+        name: "Camping Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      {
         key: "srt-kit",
         name: "SRT Kit",
         enabled: true,
@@ -1428,6 +1445,7 @@
 
     const baseExpenseRateInputs = {
       "horizontal-gear": document.getElementById("horizontal-gear-rate"),
+      "camping-gear": document.getElementById("camping-gear-rate"),
       "srt-kit": document.getElementById("srt-kit-rate")
     };
 
@@ -1500,7 +1518,11 @@
       if (!expense) {
         return false;
       }
-      return expense.key === "horizontal-gear" || expense.key === "srt-kit";
+      return (
+        expense.key === "horizontal-gear" ||
+        expense.key === "camping-gear" ||
+        expense.key === "srt-kit"
+      );
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -1510,6 +1532,9 @@
       if (isDirectChargeExpense(expense)) {
         if (expense.key === "horizontal-gear") {
           return "Hired Horizontal Gear?";
+        }
+        if (expense.key === "camping-gear") {
+          return "Hired Camping Gear?";
         }
         if (expense.key === "srt-kit") {
           return "Used SRT Kit?";
@@ -1973,6 +1998,10 @@
       horizontalGearParagraph.textContent =
         "Horizontal gear covers helmets, headtorches, and similar equipment issued to individuals. A standard $5 charge applies when this option is selected.";
 
+      const campingGearParagraph = targetDocument.createElement("p");
+      campingGearParagraph.textContent =
+        "Camping gear covers sleeping bags, mats, stoves, and similar items hired for overnight trips. A standard $10 depreciation charge applies when this option is selected.";
+
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
         `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
@@ -1983,6 +2012,7 @@
 
       summaryDescription.appendChild(srtKitParagraph);
       summaryDescription.appendChild(horizontalGearParagraph);
+      summaryDescription.appendChild(campingGearParagraph);
       summaryDescription.appendChild(petrolParagraph);
       summaryDescription.appendChild(versionParagraph);
 
