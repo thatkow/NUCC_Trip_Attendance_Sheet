@@ -1046,17 +1046,9 @@
           class="control-button hide-on-mobile"
           type="button"
           id="save-csv"
-          title="Download this form as a CSV file for safekeeping or later reuse."
+          title="Download this form as a CSV file and save a draft in this browser."
         >
           Save CSV
-        </button>
-        <button
-          class="control-button hide-on-mobile"
-          type="button"
-          id="save-draft"
-          title="Save the current form draft in this browser so you can continue later."
-        >
-          Save Draft
         </button>
         <button
           class="control-button hide-on-mobile"
@@ -2600,7 +2592,7 @@
       URL.revokeObjectURL(url);
     }
 
-    function saveDraftToBrowserStorage() {
+    function saveStateToBrowserStorage() {
       const state = buildApplicationState();
       const storageKey = "nucc-trip-attendance-draft";
       const draftPayload = {
@@ -2608,7 +2600,6 @@
         state
       };
       window.localStorage.setItem(storageKey, JSON.stringify(draftPayload));
-      window.alert("Draft saved in this browser.");
     }
 
     function applyExpenseSnapshot(expense, snapshotEntry) {
@@ -3990,14 +3981,9 @@
 
     document.getElementById("save-csv").addEventListener("click", () => {
       downloadAttendanceCsv();
+      saveStateToBrowserStorage();
+      window.alert("CSV downloaded and draft saved in this browser.");
     });
-
-    const saveDraftButton = document.getElementById("save-draft");
-    if (saveDraftButton) {
-      saveDraftButton.addEventListener("click", () => {
-        saveDraftToBrowserStorage();
-      });
-    }
 
     const loadCsvInput = document.getElementById("load-csv-input");
     document.getElementById("load-csv").addEventListener("click", () => {
