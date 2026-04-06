@@ -374,7 +374,9 @@
     }
 
     .bottom-add-person {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
       position: sticky;
       bottom: 0;
       z-index: 30;
@@ -386,6 +388,13 @@
         rgba(247, 247, 247, 0.9),
         rgba(247, 247, 247, 0)
       );
+    }
+
+    .summary-balance-error {
+      margin: 0;
+      color: #b00020;
+      font-weight: 700;
+      white-space: pre-line;
     }
 
     .name-input.duplicate-name {
@@ -1111,14 +1120,6 @@
         >
           Load CSV
         </button>
-        <button
-          class="control-button"
-          type="button"
-          id="summarise-button"
-          title="Generate a summary page showing the accounting breakdown for the trip — suitable for sharing with participants and storing in the NUCC Google Drive “Trip Sheets” folder."
-        >
-          Summarise
-        </button>
       </div>
       <p class="additional-expense-help">
         Additional expenses are balancing transfers: for each member, enter the
@@ -1214,6 +1215,15 @@
     >
       Add Person
     </button>
+    <button
+      class="control-button"
+      type="button"
+      id="summarise-button"
+      title="Generate a summary page showing the accounting breakdown for the trip — suitable for sharing with participants and storing in the NUCC Google Drive “Trip Sheets” folder."
+    >
+      Summarise
+    </button>
+    <p id="summarise-imbalance-message" class="summary-balance-error" hidden></p>
   </div>
 
       </div>
@@ -4641,16 +4651,25 @@
     });
 
     const summariseButton = document.getElementById("summarise-button");
+    const summariseImbalanceMessage = document.getElementById(
+      "summarise-imbalance-message"
+    );
     if (summariseButton) {
       summariseButton.addEventListener("click", () => {
         try {
+          if (summariseImbalanceMessage) {
+            summariseImbalanceMessage.hidden = true;
+            summariseImbalanceMessage.textContent = "";
+          }
           recalculate();
           const imbalanceMessages = getCustomExpenseImbalanceMessages();
           if (imbalanceMessages.length > 0) {
-            window.alert(
-              "Cannot summarise yet. Please balance these custom expenses first:\n\n" +
-                imbalanceMessages.join("\n")
-            );
+            if (summariseImbalanceMessage) {
+              summariseImbalanceMessage.hidden = false;
+              summariseImbalanceMessage.textContent =
+                "Cannot summarise yet. Please balance these custom expenses first:\n" +
+                imbalanceMessages.join("\n");
+            }
             return;
           }
           const opened = downloadAndOpenSummaryHtml();
@@ -4659,9 +4678,11 @@
           }
         } catch (error) {
           console.error("Could not generate summary", error);
-          window.alert(
-            "Could not generate summary. Please check that all fields are valid and try again."
-          );
+          if (summariseImbalanceMessage) {
+            summariseImbalanceMessage.hidden = false;
+            summariseImbalanceMessage.textContent =
+              "Could not generate summary. Please check that all fields are valid and try again.";
+          }
         }
       });
     }
