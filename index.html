@@ -29,42 +29,31 @@
 
     .top-section-right {
       flex: 1 1 420px;
-      max-width: 520px;
+      max-width: 640px;
       min-width: 320px;
       display: flex;
-      align-items: stretch;
+      align-items: center;
+      justify-content: center;
     }
 
     .top-section-right-inner {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: start;
+      display: flex;
+      align-items: center;
       justify-content: center;
-      gap: 1.25rem;
+      gap: 1.5rem;
       height: 100%;
       width: 100%;
     }
 
-    .miner-image {
-      display: block;
-      flex: 2 1 0;
-      max-width: clamp(154px, 49%, 252px);
-      max-height: 100%;
-      height: auto;
-      width: auto;
-      object-fit: contain;
-      align-self: center;
-    }
-
     .banking-info {
-      display: flex;
-      flex-direction: column;
+      display: inline-flex;
+      flex-direction: row;
       align-items: center;
       justify-content: center;
-      gap: 0.85rem;
-      text-align: center;
-      width: 100%;
-      flex: 1 1 0;
+      gap: 1.25rem;
+      text-align: left;
+      width: auto;
+      flex: 0 1 auto;
       min-width: 0;
     }
 
@@ -73,7 +62,7 @@
       flex-direction: column;
       align-items: center;
       gap: 0.4rem;
-      width: 100%;
+      width: auto;
     }
 
     .banking-logo {
@@ -92,8 +81,8 @@
       border-radius: 0.5rem;
       padding: 0.75rem 1rem;
       box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08);
-      min-width: 200px;
-      width: 100%;
+      min-width: 220px;
+      width: auto;
       box-sizing: border-box;
     }
 
@@ -138,6 +127,7 @@
       align-items: center;
       gap: 1rem;
       margin-bottom: 1rem;
+      flex-wrap: nowrap;
     }
 
     .header-logo-block {
@@ -145,20 +135,13 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 0.35rem;
+      flex: 0 0 auto;
     }
 
     .header-row img {
       height: 72px;
       width: auto;
       display: block;
-    }
-
-    .miner-image-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      width: 100%;
     }
 
     .image-upload-button {
@@ -182,6 +165,7 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
       font-size: 1.4rem;
+      white-space: nowrap;
     }
 
     table {
@@ -224,13 +208,25 @@
       font-weight: 600;
     }
 
-    .meta-table th,
-    .meta-table td {
-      border-color: #999;
+    .meta-table {
+      width: auto;
+      border-collapse: separate;
+      border-spacing: 0.6rem 0.5rem;
+      background: transparent;
     }
 
-    .meta-table thead th {
-      background: #f0f0f0;
+    .meta-table th,
+    .meta-table td {
+      border: none;
+      padding: 0;
+      vertical-align: middle;
+    }
+
+    .meta-table th {
+      text-align: right;
+      white-space: nowrap;
+      padding-right: 0.5rem;
+      font-weight: 600;
     }
 
     .expense-toggle-group {
@@ -287,6 +283,14 @@
       cursor: pointer;
     }
 
+    .attendance-table {
+      display: none;
+    }
+
+    .control-button.hide-on-mobile {
+      display: inline-flex;
+    }
+
     .control-button:hover {
       background: #00a8e8;
     }
@@ -295,6 +299,69 @@
       color: #b00020;
       font-weight: 600;
       margin: 0.5rem 0 0;
+    }
+
+    .mobile-tabs {
+      display: block;
+    }
+
+    .mobile-tab-list {
+      display: none;
+    }
+
+    .mobile-tab-panel {
+      display: block;
+    }
+
+    .mobile-person-panel {
+      display: block;
+    }
+
+    .mobile-person-panel .person-panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .mobile-person-panel label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-weight: 600;
+      background: #fff;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .mobile-person-panel input,
+    .mobile-person-panel textarea {
+      font: inherit;
+      padding: 0.4rem 0.45rem;
+      border-radius: 0.4rem;
+      border: 1px solid #bdbdbd;
+      background: #fff;
+    }
+
+    .mobile-person-panel textarea {
+      min-height: 4rem;
+      resize: vertical;
+    }
+
+    .mobile-person-panel .mobile-checkbox-field {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mobile-summary-line {
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+
+    .mobile-add-person {
+      display: none;
     }
 
     .name-input.duplicate-name {
@@ -390,6 +457,14 @@
       color: #b00020;
     }
 
+    .summary-person {
+      background: #fff;
+      border: 1px solid #d0d0d0;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+    }
+
     .summary-preview table {
       background: #fff;
     }
@@ -473,18 +548,30 @@
       display: flex;
       gap: 0.25rem;
       align-items: center;
+      width: 100%;
     }
 
     .name-select {
-      width: 1.75rem;
-      min-width: 1.75rem;
-      padding: 0.2rem;
+      flex: 0 0 auto;
+      width: 2.5rem;
+      min-width: 2.5rem;
+      padding: 0.35rem;
       border: 1px solid #bdbdbd;
       border-radius: 0.3rem;
       background: #fff;
       font: inherit;
       height: 100%;
       cursor: pointer;
+      text-align: center;
+    }
+
+    .name-input-wrapper input[type="text"],
+    .name-input-wrapper input[type="search"],
+    .name-input-wrapper input[type="email"],
+    .name-input-wrapper input[type="tel"],
+    .name-input-wrapper input[type="url"],
+    .name-input-wrapper input[type="number"] {
+      flex: 1 1 auto;
     }
 
     .name-input.bold {
@@ -669,6 +756,11 @@
         flex-basis: 100%;
       }
 
+      .header-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
       .top-section-right {
         flex-basis: 100%;
         max-width: none;
@@ -683,14 +775,9 @@
         text-align: center;
       }
 
-      .miner-image {
-        flex: 0 0 auto;
-        max-width: 240px;
-        height: auto;
-      }
-
       .banking-info {
-        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
         max-width: 100%;
       }
 
@@ -706,6 +793,10 @@
         width: 100%;
       }
 
+      .control-button.hide-on-mobile {
+        display: none;
+      }
+
       .tutorial-content {
         padding: 1.5rem;
         max-height: 90vh;
@@ -713,6 +804,44 @@
 
       .tutorial-video {
         max-height: 40vh;
+      }
+
+      .header-row {
+        flex-wrap: nowrap;
+      }
+
+      .header-row h1 {
+        margin-top: 0;
+      }
+
+      .meta-table {
+        border-spacing: 0.5rem;
+      }
+
+      .expense-toggle-group {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .base-expense-inputs {
+        flex-direction: column;
+      }
+
+      .mobile-person-panel .person-panel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-add-person {
+        display: block;
+        margin-top: 1rem;
+      }
+
+      .mobile-add-person .control-button {
+        width: 100%;
+      }
+
+      #attendance-table {
+        display: none;
       }
     }
   </style>
@@ -753,6 +882,19 @@
     </div>
   </div>
 
+  <div class="mobile-tabs" id="mobile-tabs">
+    <div
+      class="mobile-tab-list"
+      id="mobile-tab-list"
+      role="tablist"
+      aria-label="Trip sections"
+    ></div>
+    <div class="mobile-tab-panels" id="mobile-tab-panels">
+      <div
+        class="mobile-tab-panel is-active"
+        id="general-panel"
+        data-tab-id="general"
+      >
     <div class="top-section">
       <div class="top-section-left">
         <div class="header-row">
@@ -777,46 +919,50 @@
 
         <table class="meta-table">
           <tbody>
-          <tr>
-            <th scope="row">Date</th>
-            <td>
-              <input
-                type="date"
-                id="trip-date"
-                title="Starting date of the trip."
-              />
-            </td>
-            <th scope="row">Location</th>
-            <td>
-              <input
-                type="text"
-                id="trip-location"
-                title="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
-              />
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Trip Leader</th>
-            <td>
-              <input
-                type="text"
-                id="trip-leader"
-                list="trip-leader-options"
-                title="That’s you! The main organizer or leader of the trip."
-              />
-            </td>
-            <th scope="row">Clerk</th>
-            <td>
-              <input
-                type="text"
-                id="clerk"
-                list="trip-leader-options"
-                title="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <tr>
+              <th scope="row">Date</th>
+              <td>
+                <input
+                  type="date"
+                  id="trip-date"
+                  placeholder="Starting date of the trip."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Location</th>
+              <td>
+                <input
+                  type="text"
+                  id="trip-location"
+                  placeholder="Use a short, clear name for where the trip took place — this will be used for tagging in transactions (e.g. Tuglow, Yagby)."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Trip Leader</th>
+              <td>
+                <input
+                  type="text"
+                  id="trip-leader"
+                  list="trip-leader-options"
+                  placeholder="That’s you! The main organizer or leader of the trip."
+                />
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Clerk</th>
+              <td>
+                <input
+                  type="text"
+                  id="clerk"
+                  list="trip-leader-options"
+                  placeholder="The person responsible for handling payments and reimbursements (typically a committee member with access to the club bank account, e.g. the Treasurer)."
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
       <div class="expense-toggle-group" role="group" aria-label="Expense Columns">
         <label
@@ -900,7 +1046,7 @@
           Remove Expense
         </button>
         <button
-          class="control-button"
+          class="control-button hide-on-mobile"
           type="button"
           id="save-json"
           title="Download this form as a JSON file for safekeeping or later reuse."
@@ -908,7 +1054,7 @@
           Save JSON
         </button>
         <button
-          class="control-button"
+          class="control-button hide-on-mobile"
           type="button"
           id="load-json"
           title="Load a previously saved Trip Attendance JSON file."
@@ -949,7 +1095,20 @@
               hidden
             />
           </div>
-          <div class="banking-details" id="banking-details" aria-live="polite"></div>
+          <div class="banking-details" id="banking-details" aria-live="polite">
+            <p>
+              <span class="banking-label">Name:</span>
+              <span>Society Cheque Acct</span>
+            </p>
+            <p>
+              <span class="banking-label">BSB:</span>
+              <span>062903</span>
+            </p>
+            <p>
+              <span class="banking-label">Account:</span>
+              <span>10320366</span>
+            </p>
+          </div>
           <div class="banking-actions">
             <button
               type="button"
@@ -960,28 +1119,12 @@
             </button>
           </div>
         </div>
-        <div class="miner-image-container">
-          <img
-            src="taxminer.png"
-            alt="Tax Miner graphic"
-            class="miner-image"
-            id="miner-image"
-          />
-          <button
-            type="button"
-            class="image-upload-button"
-            id="replace-miner-button"
-          >
-            Replace miner image
-          </button>
-          <input
-            type="file"
-            id="miner-image-input"
-            accept="image/*"
-            hidden
-          />
-        </div>
       </div>
+    </div>
+    <div class="mobile-add-person">
+      <button type="button" class="control-button" id="add-person-mobile">
+        Add Person
+      </button>
     </div>
   </div>
 
@@ -1010,6 +1153,10 @@
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
+
+      </div>
+    </div>
+  </div>
 
   <dialog class="banking-dialog" id="banking-dialog">
     <form id="banking-form" method="dialog">
@@ -1042,6 +1189,7 @@
     const tutorialOverlay = document.getElementById("tutorial-overlay");
     const tutorialCloseButton = document.getElementById("tutorial-close");
     const tutorialVideo = document.getElementById("tutorial-video");
+    let memberNames = [];
 
     function hideTutorialOverlay() {
       if (!tutorialOverlay) return;
@@ -1099,23 +1247,25 @@
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
     const bannerImageElement = document.getElementById("banner-image");
-    const minerImageElement = document.getElementById("miner-image");
     const bankingLogoElement = document.getElementById("banking-logo");
     const replaceBannerButton = document.getElementById("replace-banner-button");
-    const replaceMinerButton = document.getElementById("replace-miner-button");
     const replaceBankingLogoButton = document.getElementById(
       "replace-banking-logo-button"
     );
     const bannerImageInput = document.getElementById("banner-image-input");
-    const minerImageInput = document.getElementById("miner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
+    const mobileTabPanels = document.getElementById("mobile-tab-panels");
+    const mobileAddPersonButton = document.getElementById("add-person-mobile");
+    const generalPanel = document.getElementById("general-panel");
 
     if (tripLeaderInput) {
       tripLeaderInput.setAttribute("list", tripLeaderListId);
+      wrapInputWithNameLookup(tripLeaderInput);
     }
 
     if (clerkInput) {
       clerkInput.setAttribute("list", tripLeaderListId);
+      wrapInputWithNameLookup(clerkInput);
     }
 
     if (tripDateInput) {
@@ -1130,17 +1280,19 @@
       });
     }
 
-    let memberNames = [];
+    const bakedBankingDefaults = {
+      Name: "Society Cheque Acct",
+      BSB: "062903",
+      Account: "10320366"
+    };
     let bankingDetailsData = null;
+    let defaultBankingDetails = normalizeBankingDetails(bakedBankingDefaults);
     let bankingDetailsEdited = false;
     const defaultBannerSource =
       bannerImageElement?.getAttribute("src") || "banner.png";
-    const defaultMinerSource =
-      minerImageElement?.getAttribute("src") || "taxminer.png";
     const defaultBankingLogoSource =
       bankingLogoElement?.getAttribute("src") || "banking_logo.png";
     let bannerImageSource = defaultBannerSource;
-    let minerImageSource = defaultMinerSource;
     let bankingLogoSource = defaultBankingLogoSource;
 
     const baseExpenseRates = {
@@ -1162,14 +1314,61 @@
       return legacyExpenseKeyMap[key] || key;
     }
 
+    function getPersonTabId(index) {
+      return `person-${index}`;
+    }
+
+    function getPersonLabel(participant, index) {
+      const name = (participant?.name || "").trim();
+      return name || `Person ${index + 1}`;
+    }
+
+    function refreshMobileTabLabels() {
+      document.querySelectorAll(".mobile-person-panel").forEach((panel) => {
+        const personIndex = Number(panel.dataset.personIndex);
+        if (!Number.isInteger(personIndex)) {
+          return;
+        }
+        const participant = participants[personIndex];
+        const heading = panel.querySelector("h2");
+        if (heading) {
+          heading.textContent = getPersonLabel(participant, personIndex);
+        }
+      });
+    }
+
+    function focusMobilePerson(personIndex) {
+      const mobilePanel = document.querySelector(
+        `.mobile-person-panel[data-person-index="${personIndex}"]`
+      );
+      const mobileNameInput = document.querySelector(
+        `.mobile-name-input[data-person-index="${personIndex}"]`
+      );
+      if (mobilePanel) {
+        mobilePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (mobileNameInput) {
+        mobileNameInput.focus();
+      }
+    }
+
+    function syncInputValueIfInactive(input, value, isCheckbox = false) {
+      if (!input || document.activeElement === input) {
+        return;
+      }
+      if (isCheckbox) {
+        input.checked = Boolean(value);
+      } else {
+        input.value = value;
+      }
+    }
+
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
     const participants = Array.from({ length: 10 }, () => ({
       name: "",
-      bold: false,
-      notes: ""
+      bold: false
     }));
-
     const baseExpenseDefinitions = [
       {
         key: "horizontal-gear",
@@ -1251,7 +1450,6 @@
 
     function syncImageSources() {
       syncImageElementSource(bannerImageElement, bannerImageSource, defaultBannerSource);
-      syncImageElementSource(minerImageElement, minerImageSource, defaultMinerSource);
       syncImageElementSource(
         bankingLogoElement,
         bankingLogoSource,
@@ -1305,6 +1503,22 @@
       return expense.key === "horizontal-gear" || expense.key === "srt-kit";
     }
 
+    function getExpenseHeaderLabel(expense) {
+      if (!expense) {
+        return "";
+      }
+      if (isDirectChargeExpense(expense)) {
+        if (expense.key === "horizontal-gear") {
+          return "Hired Horizontal Gear?";
+        }
+        if (expense.key === "srt-kit") {
+          return "Used SRT Kit?";
+        }
+        return `${expense.name}?`;
+      }
+      return expense.name;
+    }
+
     function applyBaseExpenseRateToExpense(key) {
       const expense = baseExpenses.find((item) => item.key === key);
       if (!expense) {
@@ -1338,16 +1552,14 @@
     }
 
     function updateDuplicateNameWarnings() {
-      const nameInputs = Array.from(document.querySelectorAll(".name-input"));
       const warningElement = document.getElementById("duplicate-name-warning");
       const counts = new Map();
 
-      nameInputs.forEach((input) => {
-        const normalized = input.value.trim().toLowerCase();
-        if (!normalized) {
-          return;
+      participants.forEach((participant) => {
+        const normalized = (participant.name || "").trim().toLowerCase();
+        if (normalized) {
+          counts.set(normalized, (counts.get(normalized) || 0) + 1);
         }
-        counts.set(normalized, (counts.get(normalized) || 0) + 1);
       });
 
       const duplicateKeys = new Set();
@@ -1357,8 +1569,11 @@
         }
       });
 
+      const nameInputs = Array.from(
+        document.querySelectorAll(".name-input, .mobile-name-input")
+      );
       nameInputs.forEach((input) => {
-        const normalized = input.value.trim().toLowerCase();
+        const normalized = (input.value || "").trim().toLowerCase();
         if (normalized && duplicateKeys.has(normalized)) {
           input.classList.add("duplicate-name");
           input.setAttribute("aria-invalid", "true");
@@ -1371,15 +1586,11 @@
       if (warningElement) {
         if (duplicateKeys.size > 0) {
           const labels = [];
-          duplicateKeys.forEach((key) => {
-            const matchingInput = nameInputs.find(
-              (input) => input.value.trim().toLowerCase() === key
-            );
-            if (matchingInput) {
-              const trimmed = matchingInput.value.trim();
-              if (trimmed && !labels.includes(trimmed)) {
-                labels.push(trimmed);
-              }
+          participants.forEach((participant) => {
+            const trimmed = (participant.name || "").trim();
+            const normalized = trimmed.toLowerCase();
+            if (trimmed && duplicateKeys.has(normalized) && !labels.includes(trimmed)) {
+              labels.push(trimmed);
             }
           });
           warningElement.hidden = false;
@@ -1474,6 +1685,38 @@
       selectElement.value = "";
     }
 
+    function wrapInputWithNameLookup(input, onSelect) {
+      if (!input || input.closest(".name-input-wrapper")) {
+        return null;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "name-input-wrapper";
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+
+      const nameSelect = document.createElement("select");
+      nameSelect.className = "name-select";
+      nameSelect.setAttribute("aria-label", "Select member from list");
+      nameSelect.title = "Select member";
+      populateNameSelect(nameSelect);
+
+      nameSelect.addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (value) {
+          input.value = value;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          if (typeof onSelect === "function") {
+            onSelect(value);
+          }
+        }
+        event.target.value = "";
+      });
+
+      wrapper.appendChild(nameSelect);
+      return nameSelect;
+    }
+
     function cloneNodeWithFormValues(node) {
       const clone = node.cloneNode(true);
       const originals = node.querySelectorAll("input, textarea, select");
@@ -1543,7 +1786,8 @@
         )
         .forEach((element) => element.remove());
 
-      node.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+      node
+        .querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         const replacement = node.ownerDocument.createElement("span");
         replacement.className = "summary-check";
         replacement.textContent = checkbox.checked ? "✔" : "";
@@ -1703,8 +1947,8 @@
       const leaderParagraph = targetDocument.createElement("p");
       leaderParagraph.className = "summary-line-gold";
       leaderParagraph.textContent = tripLeaderValue
-        ? `Trip leader ${tripLeaderValue} should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, a copy of the Trip Attendance Sheet should be sent to the treasurer to record dues and process reimbursements.`
-        : "Trip leader should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, a copy of the Trip Attendance Sheet should be sent to the treasurer to record dues and process reimbursements.";
+        ? `Trip leader ${tripLeaderValue} should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, save this page as a PDF and send it to all participants and the treasurer to record dues and process reimbursements.`
+        : "Trip leader should present this trip attendance summary to participants for review and confirmation of expenses. Once verified, save this page as a PDF and send it to all participants and the treasurer to record dues and process reimbursements.";
 
       const reimburseParagraph = targetDocument.createElement("p");
       reimburseParagraph.className = "summary-line-green";
@@ -1754,14 +1998,6 @@
       if (topSection) {
         sections.push(topSection);
       }
-      const attendanceTable = document.getElementById("attendance-table");
-      if (attendanceTable) {
-        sections.push(attendanceTable);
-      }
-      const summarySection = document.querySelector("section");
-      if (summarySection) {
-        sections.push(summarySection);
-      }
 
       let descriptionInserted = false;
 
@@ -1774,16 +2010,22 @@
         removeEmptySummaryNameRows(clone);
         const imported = targetDocument.importNode(clone, true);
 
+        const summaryBankingDetails = imported.querySelector(".banking-details");
+        if (summaryBankingDetails) {
+          renderBankingDetailsInto(summaryBankingDetails, targetDocument);
+        }
+
+        const summaryBankingLogo = imported.querySelector(".banking-logo");
+        if (summaryBankingLogo && bankingLogoSource) {
+          summaryBankingLogo.src = bankingLogoSource;
+        }
+
         if (!descriptionInserted && section === topSection) {
           const metaTable = imported.querySelector(".meta-table");
           if (metaTable) {
             metaTable.insertAdjacentElement("afterend", summaryDescription);
           } else {
             imported.insertBefore(summaryDescription, imported.firstChild);
-          }
-          const minerImage = imported.querySelector(".miner-image");
-          if (minerImage) {
-            summaryDescription.appendChild(minerImage);
           }
           descriptionInserted = true;
         }
@@ -1793,6 +2035,108 @@
       if (!descriptionInserted) {
         container.insertBefore(summaryDescription, container.firstChild);
       }
+
+      const calculation = calculateFinancials(false);
+      const peopleSection = targetDocument.createElement("section");
+      peopleSection.className = "summary-people-section";
+      const peopleHeading = targetDocument.createElement("h2");
+      peopleHeading.textContent = "Participant balances";
+      peopleSection.appendChild(peopleHeading);
+
+      const participantEntries = participants
+        .map((participant, index) => ({ participant, index }))
+        .filter(({ participant }) => (participant.name || "").trim());
+
+      participantEntries.forEach(({ participant, index }, displayIndex) => {
+        const name = (participant.name || "").trim();
+        const personWrapper = targetDocument.createElement("div");
+        personWrapper.className = "summary-person";
+
+        const balance = calculation.balances[index] || 0;
+        const balanceLine = targetDocument.createElement("p");
+        const amountText = `$${formatCurrency(Math.abs(balance)) || "0.00"}`;
+        const balanceLabel = balance > 0 ? "Owes" : "Reimburse";
+        const balanceClass = balance > 0 ? "amount-due" : "amount-credit";
+        balanceLine.innerHTML = `<strong>${name}</strong>: ${balanceLabel} <span class="${balanceClass}">${amountText}</span>`;
+        personWrapper.appendChild(balanceLine);
+
+        const contributionDetails = calculation.participantContributionDetails[index] || [];
+        const contributionItems = contributionDetails.filter(
+          (entry) => entry && (Number(entry.value) || entry.distance)
+        );
+        if (contributionItems.length) {
+          const contributionsHeading = targetDocument.createElement("p");
+          contributionsHeading.textContent = "Contributions:";
+          const list = targetDocument.createElement("ul");
+          contributionItems.forEach((entry) => {
+            const item = targetDocument.createElement("li");
+            const pieces = [];
+            if (Number(entry.value)) {
+              pieces.push(`${entry.name}: $${formatCurrency(entry.value) || "0.00"}`);
+            } else {
+              pieces.push(entry.name);
+            }
+            if (entry.distance) {
+              pieces.push(`${Math.round(entry.distance)} km`);
+            }
+            item.textContent = pieces.join(" – ");
+            list.appendChild(item);
+          });
+          personWrapper.appendChild(contributionsHeading);
+          personWrapper.appendChild(list);
+        }
+
+        const feeBreakdown = calculation.participantFeeBreakdowns[index] || [];
+        if (feeBreakdown.length) {
+          const breakdownHeading = targetDocument.createElement("p");
+          breakdownHeading.textContent = "Fee breakdown:";
+          const list = targetDocument.createElement("ul");
+          feeBreakdown.forEach((entry) => {
+            const item = targetDocument.createElement("li");
+            item.textContent = `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`;
+            list.appendChild(item);
+          });
+          personWrapper.appendChild(breakdownHeading);
+          personWrapper.appendChild(list);
+        }
+
+        peopleSection.appendChild(personWrapper);
+
+        const isLastEntry = displayIndex === participantEntries.length - 1;
+        const shouldBreak = (displayIndex + 1) % 3 === 0 && !isLastEntry;
+        if (shouldBreak) {
+          const pageBreak = targetDocument.createElement("div");
+          pageBreak.className = "summary-page-break";
+          peopleSection.appendChild(pageBreak);
+        }
+      });
+
+      container.appendChild(peopleSection);
+
+      const summaryTotals = targetDocument.createElement("section");
+      summaryTotals.className = "summary-totals";
+      const totalsHeading = targetDocument.createElement("h2");
+      totalsHeading.textContent = "Summary";
+      summaryTotals.appendChild(totalsHeading);
+
+      const totalsList = targetDocument.createElement("ul");
+      const totalFeesItem = targetDocument.createElement("li");
+      totalFeesItem.textContent = `Total fees: $${formatCurrency(calculation.totalFees) || "0.00"}`;
+      totalsList.appendChild(totalFeesItem);
+
+      const balanceItem = targetDocument.createElement("li");
+      const balanceLabel = calculation.totalBalance > 0 ? "Club Gear Depreciation (owed)" : "Club Gear Depreciation (credit)";
+      balanceItem.textContent = `${balanceLabel}: ${
+        calculation.totalBalance ? `$${formatCurrency(Math.abs(calculation.totalBalance))}` : "$0.00"
+      }`;
+      totalsList.appendChild(balanceItem);
+
+      const incomeItem = targetDocument.createElement("li");
+      incomeItem.textContent = `Club income: $${formatCurrency(calculation.clubIncome) || "0.00"}`;
+      totalsList.appendChild(incomeItem);
+
+      summaryTotals.appendChild(totalsList);
+      container.appendChild(summaryTotals);
 
       return container;
     }
@@ -1826,26 +2170,98 @@
           font-weight: 600;
         }
 
+        .summary-preview .top-section {
+          align-items: flex-start;
+          gap: 1.5rem;
+        }
+
+        .summary-preview .header-row {
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 1.25rem;
+        }
+
+        .summary-preview .header-logo-block {
+          align-items: flex-start;
+        }
+
+        .summary-preview .header-row h1 {
+          margin-top: 0.35rem;
+        }
+
+        .summary-preview .top-section-left {
+          width: 100%;
+          max-width: none;
+        }
+
         .summary-preview .top-section-right {
-          flex: 0 0 15%;
-          max-width: 15%;
-          min-width: 0;
+          flex: 0 0 auto;
+          max-width: none;
+          width: 100%;
+          justify-content: center;
         }
 
         .summary-preview .top-section-right-inner {
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 1rem;
+          gap: 1.25rem;
+          flex-wrap: nowrap;
         }
 
         .summary-preview .banking-info {
-          width: 100%;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+          text-align: left;
+          gap: 1rem;
+          width: auto;
+          max-width: none;
+        }
+
+        .summary-preview .banking-logo-wrapper {
+          flex: 0 0 auto;
+        }
+
+        .summary-preview .banking-logo-wrapper .image-upload-button,
+        .summary-preview .banking-logo-wrapper input[type="file"] {
+          display: none;
+        }
+
+        .summary-preview .banking-details {
+          width: auto;
+          min-width: 240px;
+          margin: 0;
         }
 
         .summary-preview .banking-actions {
           display: none;
+        }
+
+        .summary-preview .meta-table {
+          width: auto;
+          border-spacing: 0.6rem 0.5rem;
+        }
+
+        .summary-preview .meta-table tbody {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.35rem 1rem;
+          align-items: center;
+        }
+
+        .summary-preview .meta-table tr {
+          display: contents;
+        }
+
+        .summary-preview .meta-table th {
+          text-align: right;
+          white-space: nowrap;
+          padding: 0.2rem 0.4rem;
+        }
+
+        .summary-preview .meta-table td {
+          padding: 0.2rem 0.4rem;
         }
 
         .summary-preview .summary-description {
@@ -1858,10 +2274,19 @@
           flex: 1 1 0;
         }
 
-        .summary-preview .summary-description .miner-image {
-          flex: 0 0 auto;
-          max-width: clamp(160px, 25%, 220px);
-          height: auto;
+        .summary-preview .summary-people-section {
+          break-before: page;
+          page-break-before: always;
+        }
+
+        .summary-preview .summary-page-break {
+          break-before: page;
+          page-break-before: always;
+        }
+
+        .summary-preview .summary-totals {
+          break-before: page;
+          page-break-before: always;
         }
       `;
       summaryDocument.head.appendChild(extraStyle);
@@ -2098,12 +2523,10 @@
         })),
         participants: participants.map((participant) => ({
           name: participant.name,
-          bold: participant.bold,
-          notes: participant.notes
+          bold: participant.bold
         })),
         images: {
           banner: bannerImageSource,
-          miner: minerImageSource,
           banking: bankingLogoSource
         },
         srtKitAllSelected: Boolean(
@@ -2218,12 +2641,11 @@
         participantData.forEach((entry) => {
           participants.push({
             name: entry?.name || "",
-            bold: Boolean(entry?.bold),
-            notes: entry?.notes || ""
+            bold: Boolean(entry?.bold)
           });
         });
       } else {
-        participants.push({ name: "", bold: false, notes: "" });
+        participants.push({ name: "", bold: false });
       }
 
       if (rateData && typeof rateData === "object") {
@@ -2253,17 +2675,12 @@
           images.banner,
           defaultBannerSource
         );
-        minerImageSource = normalizeImageSource(
-          images.miner,
-          defaultMinerSource
-        );
         bankingLogoSource = normalizeImageSource(
           images.banking,
           defaultBankingLogoSource
         );
       } else {
         bannerImageSource = defaultBannerSource;
-        minerImageSource = defaultMinerSource;
         bankingLogoSource = defaultBankingLogoSource;
       }
 
@@ -2372,6 +2789,267 @@
       getAllExpenses().forEach(ensureExpenseSize);
     }
 
+    function createMobilePersonPanel(participant, personIndex, activeExpenses) {
+      const panel = document.createElement("div");
+      panel.className = "mobile-tab-panel mobile-person-panel";
+      panel.dataset.tabId = getPersonTabId(personIndex);
+      panel.dataset.personIndex = String(personIndex);
+
+      const heading = document.createElement("h2");
+      heading.textContent = getPersonLabel(participant, personIndex);
+      panel.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className = "person-panel-grid";
+
+      const nameLabel = document.createElement("label");
+      nameLabel.textContent = "Name";
+      const nameWrapper = document.createElement("div");
+      nameWrapper.className = "name-input-wrapper";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = participant.name;
+      nameInput.setAttribute("list", nameListId);
+      nameInput.dataset.personIndex = String(personIndex);
+      nameInput.className = "mobile-name-input";
+      nameInput.addEventListener("input", (event) => {
+        const value = event.target.value;
+        participants[personIndex].name = value;
+        const desktopInput = document.querySelector(
+          `.name-input[data-person-index="${personIndex}"]`
+        );
+        if (desktopInput) {
+          desktopInput.value = value;
+        }
+        refreshMobileTabLabels();
+        recalculate();
+        updateDuplicateNameWarnings();
+      });
+      nameWrapper.appendChild(nameInput);
+
+      const mobileNameSelect = document.createElement("select");
+      mobileNameSelect.className = "name-select";
+      mobileNameSelect.dataset.personIndex = String(personIndex);
+      mobileNameSelect.setAttribute("aria-label", "Select member from list");
+      mobileNameSelect.title = "Select member";
+      populateNameSelect(mobileNameSelect);
+      mobileNameSelect.addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (!value) {
+          return;
+        }
+        nameInput.value = value;
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+        event.target.value = "";
+      });
+
+      nameWrapper.appendChild(mobileNameSelect);
+      nameLabel.appendChild(nameWrapper);
+      grid.appendChild(nameLabel);
+
+      activeExpenses.forEach((expense) => {
+        ensureExpenseSize(expense);
+        const label = document.createElement("label");
+        label.textContent = getExpenseHeaderLabel(expense);
+
+        if (isDirectChargeExpense(expense)) {
+          label.classList.add("mobile-checkbox-field");
+          const consumeInput = document.createElement("input");
+          consumeInput.type = "checkbox";
+          consumeInput.checked = Boolean(expense.consumers[personIndex]);
+          consumeInput.dataset.expenseId = expense.id;
+          consumeInput.dataset.personIndex = String(personIndex);
+          consumeInput.className = "mobile-direct-charge";
+          consumeInput.addEventListener("change", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            const index = Number(event.target.dataset.personIndex);
+            targetExpense.consumers[index] = event.target.checked;
+            const desktopConsume = document.querySelector(
+              `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${index}"]`
+            );
+            if (desktopConsume) {
+              desktopConsume.checked = event.target.checked;
+            }
+            recalculate();
+          });
+          label.appendChild(consumeInput);
+          grid.appendChild(label);
+          return;
+        }
+
+        const amountInput = document.createElement("input");
+        amountInput.type = "number";
+        amountInput.step = "0.01";
+        amountInput.placeholder = "0.00";
+        amountInput.value =
+          expense.amounts[personIndex] !== ""
+            ? expense.amounts[personIndex]
+            : "";
+        amountInput.dataset.expenseId = expense.id;
+        amountInput.dataset.personIndex = String(personIndex);
+        amountInput.className = "mobile-amount-input";
+        if (isBaseRateControlled(expense)) {
+          const rate = baseExpenseRates[expense.key];
+          amountInput.value = rate === "" ? "" : rate;
+          amountInput.readOnly = true;
+          amountInput.tabIndex = -1;
+          amountInput.classList.add("read-only-amount");
+          amountInput.setAttribute(
+            "title",
+            `${expense.name} is managed from the controls above.`
+          );
+          amountInput.setAttribute("aria-readonly", "true");
+        }
+        amountInput.addEventListener("input", (event) => {
+          if (event.target.readOnly) {
+            return;
+          }
+          const targetExpense = findExpenseById(event.target.dataset.expenseId);
+          if (!targetExpense) {
+            return;
+          }
+          const index = Number(event.target.dataset.personIndex);
+          const value = event.target.value.trim();
+          targetExpense.amounts[index] = value === "" ? "" : Number(value);
+          const desktopAmount = document.querySelector(
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field!="true"]`
+          );
+          if (desktopAmount && !desktopAmount.readOnly) {
+            desktopAmount.value = value;
+          }
+          recalculate();
+        });
+        label.appendChild(amountInput);
+        grid.appendChild(label);
+
+        if (expense.key === "petrol") {
+          const distanceLabel = document.createElement("label");
+          distanceLabel.textContent = "Distance (km)";
+          const distanceInput = document.createElement("input");
+          distanceInput.type = "number";
+          distanceInput.step = "1";
+          distanceInput.min = "0";
+          distanceInput.inputMode = "numeric";
+          const storedDistance = expense.distances[personIndex];
+          distanceInput.value = storedDistance !== "" ? storedDistance : "";
+          distanceInput.placeholder = "0";
+          distanceInput.dataset.expenseId = expense.id;
+          distanceInput.dataset.personIndex = String(personIndex);
+          distanceInput.dataset.distanceField = "true";
+          distanceInput.className = "mobile-distance-input";
+          distanceInput.addEventListener("input", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            if (!Array.isArray(targetExpense.distances)) {
+              targetExpense.distances = [];
+            }
+            const index = Number(event.target.dataset.personIndex);
+            const rawValue = event.target.value.trim();
+            if (rawValue === "") {
+              targetExpense.distances[index] = "";
+            } else {
+              const numericValue = Number(rawValue);
+              if (Number.isFinite(numericValue)) {
+                const sanitizedValue = Math.max(0, Math.round(numericValue));
+                targetExpense.distances[index] = sanitizedValue;
+                event.target.value = String(sanitizedValue);
+              } else {
+                targetExpense.distances[index] = "";
+              }
+            }
+            const desktopDistance = document.querySelector(
+              `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field="true"]`
+            );
+            if (desktopDistance) {
+              desktopDistance.value = targetExpense.distances[index];
+            }
+            recalculate();
+          });
+          distanceLabel.appendChild(distanceInput);
+          grid.appendChild(distanceLabel);
+        }
+
+        const consumeLabel = document.createElement("label");
+        consumeLabel.className = "mobile-checkbox-field";
+        const consumeInput = document.createElement("input");
+        consumeInput.type = "checkbox";
+        consumeInput.checked = Boolean(expense.consumers[personIndex]);
+        consumeInput.dataset.expenseId = expense.id;
+        consumeInput.dataset.personIndex = String(personIndex);
+        consumeInput.className = "mobile-consume-input";
+        consumeInput.addEventListener("change", (event) => {
+          const targetExpense = findExpenseById(event.target.dataset.expenseId);
+          if (!targetExpense) {
+            return;
+          }
+          const index = Number(event.target.dataset.personIndex);
+          targetExpense.consumers[index] = event.target.checked;
+          const desktopConsume = document.querySelector(
+            `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${index}"]`
+          );
+          if (desktopConsume) {
+            desktopConsume.checked = event.target.checked;
+          }
+          recalculate();
+        });
+        const consumeText = document.createElement("span");
+        consumeText.textContent = "Include in share";
+        consumeLabel.appendChild(consumeInput);
+        consumeLabel.appendChild(consumeText);
+        grid.appendChild(consumeLabel);
+      });
+
+      panel.appendChild(grid);
+
+      const breakdown = document.createElement("div");
+      breakdown.className = "mobile-summary-line mobile-fee-breakdown";
+      breakdown.dataset.personIndex = String(personIndex);
+      panel.appendChild(breakdown);
+
+      const feeLine = document.createElement("div");
+      feeLine.className = "mobile-summary-line";
+      feeLine.innerHTML =
+        'Fee: <span class="mobile-fee-value" data-person-index="' +
+        personIndex +
+        '"></span>';
+      panel.appendChild(feeLine);
+
+      const reimbLine = document.createElement("div");
+      reimbLine.className = "mobile-summary-line";
+      reimbLine.innerHTML =
+        'Reimburse (Due): <span class="mobile-reimbursed-value" data-person-index="' +
+        personIndex +
+        '"></span>';
+      panel.appendChild(reimbLine);
+
+      return panel;
+    }
+
+    function renderMobileTabs(activeExpenses) {
+      if (!mobileTabPanels || !generalPanel) {
+        return;
+      }
+
+      mobileTabPanels
+        .querySelectorAll(".mobile-person-panel")
+        .forEach((panel) => panel.remove());
+
+      participants.forEach((participant, personIndex) => {
+        const panel = createMobilePersonPanel(
+          participant,
+          personIndex,
+          activeExpenses
+        );
+        panel.id = getPersonTabId(personIndex);
+        mobileTabPanels.appendChild(panel);
+      });
+    }
+
     function renderTable() {
       syncAllExpenseSizes();
       const activeExpenses = getActiveExpenses();
@@ -2381,22 +3059,6 @@
       const nameHeader = document.createElement("th");
       nameHeader.textContent = "Name";
       headerRow.appendChild(nameHeader);
-
-      function getExpenseHeaderLabel(expense) {
-        if (!expense) {
-          return "";
-        }
-        if (isDirectChargeExpense(expense)) {
-          if (expense.key === "horizontal-gear") {
-            return "Hired Horizontal Gear?";
-          }
-          if (expense.key === "srt-kit") {
-            return "Used SRT Kit?";
-          }
-          return `${expense.name}?`;
-        }
-        return expense.name;
-      }
 
       activeExpenses.forEach((expense) => {
         const amountHeader = document.createElement("th");
@@ -2436,12 +3098,9 @@
         '<span class="reimburse-label">Reimburse</span><span class="due-label">(Due)</span>';
       headerRow.appendChild(reimbHeader);
 
-      const notesHeader = document.createElement("th");
-      notesHeader.textContent = "Notes";
-      headerRow.appendChild(notesHeader);
-
       renderBody(activeExpenses);
       renderFooter(activeExpenses);
+      renderMobileTabs(activeExpenses);
       updateDuplicateNameWarnings();
       recalculate();
     }
@@ -2479,6 +3138,7 @@
           }
           recalculate();
           updateDuplicateNameWarnings();
+          refreshMobileTabLabels();
         });
 
         nameInput.addEventListener("keydown", (event) => {
@@ -2503,6 +3163,7 @@
           recalculate();
           event.target.value = "";
           updateDuplicateNameWarnings();
+          refreshMobileTabLabels();
         });
 
         nameWrapper.appendChild(nameInput);
@@ -2661,15 +3322,6 @@
         reimbCell.dataset.personIndex = personIndex;
         row.appendChild(reimbCell);
 
-        const notesCell = document.createElement("td");
-        const notesInput = document.createElement("textarea");
-        notesInput.value = participant.notes;
-        notesInput.addEventListener("input", (event) => {
-          participants[personIndex].notes = event.target.value;
-        });
-        notesCell.appendChild(notesInput);
-        row.appendChild(notesCell);
-
         tbody.appendChild(row);
       });
     }
@@ -2783,11 +3435,99 @@
       srtKitMasterToggle.checked = checkedCount === total;
     }
 
-    function recalculate() {
+    function syncMobileInputsFromState() {
+      participants.forEach((participant, personIndex) => {
+        const nameInput = document.querySelector(
+          `.mobile-name-input[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(nameInput, participant.name);
+
+      });
+
+      getAllExpenses().forEach((expense) => {
+        ensureExpenseSize(expense);
+        expense.consumers.forEach((consumerState, personIndex) => {
+          const directChargeInput = document.querySelector(
+            `.mobile-direct-charge[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(directChargeInput, consumerState, true);
+
+          const consumeInput = document.querySelector(
+            `.mobile-consume-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(consumeInput, consumerState, true);
+        });
+
+        expense.amounts.forEach((amount, personIndex) => {
+          const amountInput = document.querySelector(
+            `.mobile-amount-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          if (amountInput && !amountInput.readOnly) {
+            const value = amount === "" ? "" : String(amount);
+            syncInputValueIfInactive(amountInput, value);
+          }
+
+          if (expense.key === "petrol") {
+            const distanceInput = document.querySelector(
+              `.mobile-distance-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+            );
+            const distance = Array.isArray(expense.distances)
+              ? expense.distances[personIndex]
+              : "";
+            syncInputValueIfInactive(distanceInput, distance);
+          }
+        });
+      });
+    }
+
+    function syncDesktopInputsFromState() {
+      participants.forEach((participant, personIndex) => {
+        const nameInput = document.querySelector(
+          `.name-input[data-person-index="${personIndex}"]`
+        );
+        syncInputValueIfInactive(nameInput, participant.name);
+      });
+
+      getAllExpenses().forEach((expense) => {
+        ensureExpenseSize(expense);
+        expense.consumers.forEach((consumerState, personIndex) => {
+          const consumeInput = document.querySelector(
+            `.attendance-table input[type="checkbox"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(consumeInput, consumerState, true);
+        });
+
+        expense.amounts.forEach((amount, personIndex) => {
+          const amountInput = document.querySelector(
+            `.attendance-table input[type="number"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field!="true"]`
+          );
+          if (amountInput && !amountInput.readOnly) {
+            const value = amount === "" ? "" : String(amount);
+            syncInputValueIfInactive(amountInput, value);
+          }
+
+          if (expense.key === "petrol") {
+            const distanceInput = document.querySelector(
+              `.attendance-table input[type="number"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field="true"]`
+            );
+            const distance = Array.isArray(expense.distances)
+              ? expense.distances[personIndex]
+              : "";
+            syncInputValueIfInactive(distanceInput, distance);
+          }
+        });
+      });
+    }
+
+    function calculateFinancials(applyDomUpdates = true) {
       const activeExpenses = getActiveExpenses();
       const participantFeeTotals = new Array(participants.length).fill(0);
       const participantFeeBreakdowns = participants.map(() => []);
       const participantContributions = new Array(participants.length).fill(0);
+      const participantContributionDetails = participants.map(() => []);
+      const participantHasName = participants.map(
+        (participant) => Boolean(participant.name && participant.name.trim())
+      );
       let clubIncome = 0;
 
       activeExpenses.forEach((expense) => {
@@ -2800,8 +3540,7 @@
           let consumerCount = 0;
 
           participants.forEach((participant, personIndex) => {
-            const hasName = Boolean(participant.name && participant.name.trim());
-            if (!hasName) {
+            if (!participantHasName[personIndex]) {
               return;
             }
             if (expense.consumers[personIndex]) {
@@ -2821,22 +3560,24 @@
             }
           });
 
-          const totalCell = document.querySelector(
-            `.expense-total[data-expense-id="${expense.id}"]`
-          );
-          if (totalCell) {
-            const totalText = formatCurrency(total);
-            totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
-            const summary = document.createElement("div");
-            summary.textContent = `Selected: ${consumerCount}`;
-            totalCell.appendChild(summary);
-          }
+          if (applyDomUpdates) {
+            const totalCell = document.querySelector(
+              `.expense-total[data-expense-id="${expense.id}"]`
+            );
+            if (totalCell) {
+              const totalText = formatCurrency(total);
+              totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
+              const summary = document.createElement("div");
+              summary.textContent = `Selected: ${consumerCount}`;
+              totalCell.appendChild(summary);
+            }
 
-          const consumersCell = document.querySelector(
-            `.expense-consumers[data-expense-id="${expense.id}"]`
-          );
-          if (consumersCell) {
-            consumersCell.textContent = `Consumers: ${consumerCount}`;
+            const consumersCell = document.querySelector(
+              `.expense-consumers[data-expense-id="${expense.id}"]`
+            );
+            if (consumersCell) {
+              consumersCell.textContent = `Consumers: ${consumerCount}`;
+            }
           }
 
           return;
@@ -2854,12 +3595,16 @@
         }
 
         expense.amounts.forEach((amount, personIndex) => {
-          const participant = participants[personIndex];
-          const hasName = Boolean(participant.name && participant.name.trim());
+          const hasName = participantHasName[personIndex];
           if (hasName && amount !== "" && Number.isFinite(Number(amount))) {
             const numericAmount = Number(amount);
             fuelTotal += numericAmount;
             participantContributions[personIndex] += numericAmount;
+            participantContributionDetails[personIndex].push({
+              name: expense.name,
+              value: numericAmount,
+              distance: null
+            });
           }
           if (expense.key === "petrol" && hasName) {
             if (!Array.isArray(expense.distances)) {
@@ -2870,9 +3615,18 @@
               const numericDistance = Number(distanceValue);
               if (Number.isFinite(numericDistance)) {
                 totalDistance += numericDistance;
-                if (expense.key === "petrol") {
-                  driverDistances[personIndex] = numericDistance;
-                  driverHasDistance[personIndex] = true;
+                driverDistances[personIndex] = numericDistance;
+                driverHasDistance[personIndex] = true;
+                const contributionEntry = participantContributionDetails[personIndex];
+                const lastEntry = contributionEntry[contributionEntry.length - 1];
+                if (lastEntry && lastEntry.name === expense.name && lastEntry.distance === null) {
+                  lastEntry.distance = numericDistance;
+                } else {
+                  contributionEntry.push({
+                    name: expense.name,
+                    value: 0,
+                    distance: numericDistance
+                  });
                 }
               }
             }
@@ -2926,56 +3680,64 @@
           });
         }
 
-        const totalCell = document.querySelector(
-          `.expense-total[data-expense-id="${expense.id}"]`
-        );
-        if (totalCell) {
-          const totalText = formatCurrency(combinedTotal);
-          totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
-          if (expense.key === "petrol") {
-            const fuelLine = document.createElement("div");
-            fuelLine.textContent = `Fuel: $${formatCurrency(fuelTotal) || "0.00"}`;
-            const maintenanceLine = document.createElement("div");
-            const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
-            const distanceText = `${Math.round(totalDistance) || 0} km`;
-            maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
-            totalCell.appendChild(fuelLine);
-            totalCell.appendChild(maintenanceLine);
-          }
-        }
-        if (expense.key === "petrol") {
-          const distanceSummaryCell = document.querySelector(
-            `.expense-distance-summary[data-expense-id="${expense.id}"]`
+        if (applyDomUpdates) {
+          const totalCell = document.querySelector(
+            `.expense-total[data-expense-id="${expense.id}"]`
           );
-          if (distanceSummaryCell) {
-            const roundedDistance = Math.round(totalDistance) || 0;
-            distanceSummaryCell.textContent = `Distance: ${roundedDistance} km`;
+          if (totalCell) {
+            const totalText = formatCurrency(combinedTotal);
+            totalCell.innerHTML = `Total: $${totalText || "0.00"}`;
+            if (expense.key === "petrol") {
+              const fuelLine = document.createElement("div");
+              fuelLine.textContent = `Fuel: $${formatCurrency(fuelTotal) || "0.00"}`;
+              const maintenanceLine = document.createElement("div");
+              const maintenanceAmount = formatCurrency(maintenanceTotal) || "0.00";
+              const distanceText = `${Math.round(totalDistance) || 0} km`;
+              maintenanceLine.textContent = `Maintenance ($${maintenanceRateText || "0"}/km): $${maintenanceAmount} (${distanceText})`;
+              totalCell.appendChild(fuelLine);
+              totalCell.appendChild(maintenanceLine);
+            }
           }
-        }
-        const consumersCell = document.querySelector(
-          `.expense-consumers[data-expense-id="${expense.id}"]`
-        );
-        if (consumersCell) {
-          const shareText =
-            consumerCount > 0
-              ? `Share: $${formatCurrency(combinedShare) || "0.00"}`
-              : "Share: $0.00";
-          consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
+          if (expense.key === "petrol") {
+            const distanceSummaryCell = document.querySelector(
+              `.expense-distance-summary[data-expense-id="${expense.id}"]`
+            );
+            if (distanceSummaryCell) {
+              const roundedDistance = Math.round(totalDistance) || 0;
+              distanceSummaryCell.textContent = `Distance: ${roundedDistance} km`;
+            }
+          }
+          const consumersCell = document.querySelector(
+            `.expense-consumers[data-expense-id="${expense.id}"]`
+          );
+          if (consumersCell) {
+            const shareText =
+              consumerCount > 0
+                ? `Share: $${formatCurrency(combinedShare) || "0.00"}`
+                : "Share: $0.00";
+            consumersCell.innerHTML = `<div>Consumers: ${consumerCount}</div><div>${shareText}</div>`;
+          }
         }
       });
 
       let totalFees = 0;
       let totalBalance = 0;
+      const balances = new Array(participants.length).fill(0);
 
       participants.forEach((participant, personIndex) => {
-        const hasName = Boolean(participant.name && participant.name.trim());
+        const hasName = participantHasName[personIndex];
         const fee = hasName ? participantFeeTotals[personIndex] : 0;
         const contributions = hasName ? participantContributions[personIndex] : 0;
         const balance = fee - contributions;
+        balances[personIndex] = balance;
 
         if (hasName) {
           totalFees += fee;
           totalBalance += balance;
+        }
+
+        if (!applyDomUpdates) {
+          return;
         }
 
         const breakdownCell = document.querySelector(
@@ -3016,38 +3778,99 @@
             }
           }
         }
+
+        const mobileBreakdown = document.querySelector(
+          `.mobile-fee-breakdown[data-person-index="${personIndex}"]`
+        );
+        const mobileFee = document.querySelector(
+          `.mobile-fee-value[data-person-index="${personIndex}"]`
+        );
+        const mobileReimb = document.querySelector(
+          `.mobile-reimbursed-value[data-person-index="${personIndex}"]`
+        );
+
+        if (mobileBreakdown) {
+          if (hasName) {
+            const breakdown = participantFeeBreakdowns[personIndex];
+            mobileBreakdown.textContent = breakdown.length
+              ? breakdown
+                  .map((entry) => `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`)
+                  .join("; ")
+              : "";
+          } else {
+            mobileBreakdown.textContent = "";
+          }
+        }
+
+        if (mobileFee) {
+          mobileFee.textContent = hasName && fee ? `$${formatCurrency(fee)}` : "";
+        }
+
+        if (mobileReimb) {
+          mobileReimb.textContent = "";
+          mobileReimb.classList.remove("amount-due", "amount-credit");
+          if (hasName && balance) {
+            if (balance > 0) {
+              mobileReimb.textContent = `($${formatCurrency(balance)})`;
+              mobileReimb.classList.add("amount-due");
+            } else {
+              mobileReimb.textContent = `$${formatCurrency(Math.abs(balance))}`;
+              mobileReimb.classList.add("amount-credit");
+            }
+          }
+        }
       });
 
-      const totalFeeCell = document.querySelector(".total-fee");
-      if (totalFeeCell) {
-        totalFeeCell.textContent = totalFees ? `$${formatCurrency(totalFees)}` : "";
-      }
-
-      const totalReimbCell = document.querySelector(".total-reimbursed");
-      if (totalReimbCell) {
-        totalReimbCell.textContent = "";
-        totalReimbCell.classList.remove("amount-due", "amount-credit");
-        if (totalBalance) {
-          const prefix = document.createTextNode("Club Gear Depreciation: ");
-          totalReimbCell.appendChild(prefix);
-          const valueSpan = document.createElement("span");
-          if (totalBalance > 0) {
-            valueSpan.textContent = `($${formatCurrency(totalBalance)})`;
-            valueSpan.classList.add("amount-due");
-          } else {
-            valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
-            valueSpan.classList.add("amount-credit");
-          }
-          totalReimbCell.appendChild(valueSpan);
+      if (applyDomUpdates) {
+        const totalFeeCell = document.querySelector(".total-fee");
+        if (totalFeeCell) {
+          totalFeeCell.textContent = totalFees ? `$${formatCurrency(totalFees)}` : "";
         }
+
+        const totalReimbCell = document.querySelector(".total-reimbursed");
+        if (totalReimbCell) {
+          totalReimbCell.textContent = "";
+          totalReimbCell.classList.remove("amount-due", "amount-credit");
+          if (totalBalance) {
+            const prefix = document.createTextNode("Club Gear Depreciation: ");
+            totalReimbCell.appendChild(prefix);
+            const valueSpan = document.createElement("span");
+            if (totalBalance > 0) {
+              valueSpan.textContent = `($${formatCurrency(totalBalance)})`;
+              valueSpan.classList.add("amount-due");
+            } else {
+              valueSpan.textContent = `$${formatCurrency(Math.abs(totalBalance))}`;
+              valueSpan.classList.add("amount-credit");
+            }
+            totalReimbCell.appendChild(valueSpan);
+          }
+        }
+
+        const clubIncomeCell = document.getElementById("club-income-value");
+        if (clubIncomeCell) {
+          clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
+        }
+
+        syncMobileInputsFromState();
+        syncDesktopInputsFromState();
+        syncSrtKitMasterToggleState();
       }
 
-      const clubIncomeCell = document.getElementById("club-income-value");
-      if (clubIncomeCell) {
-        clubIncomeCell.textContent = clubIncome ? `$${formatCurrency(clubIncome)}` : "";
-      }
+      return {
+        activeExpenses,
+        participantFeeTotals,
+        participantFeeBreakdowns,
+        participantContributions,
+        participantContributionDetails,
+        balances,
+        totalFees,
+        totalBalance,
+        clubIncome
+      };
+    }
 
-      syncSrtKitMasterToggleState();
+    function recalculate() {
+      return calculateFinancials(true);
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
@@ -3124,8 +3947,8 @@
       });
     }
 
-    document.getElementById("add-row").addEventListener("click", () => {
-      participants.push({ name: "", bold: false, notes: "" });
+    function addParticipantRow() {
+      participants.push({ name: "", bold: false });
       if (srtKitMasterToggle && srtKitMasterToggle.checked) {
         const srtKitExpense = getSrtKitExpense();
         if (srtKitExpense && srtKitExpense.enabled) {
@@ -3134,7 +3957,19 @@
         }
       }
       renderTable();
-    });
+      window.requestAnimationFrame(() => {
+        focusMobilePerson(participants.length - 1);
+      });
+    }
+
+    const addRowButton = document.getElementById("add-row");
+    if (addRowButton) {
+      addRowButton.addEventListener("click", addParticipantRow);
+    }
+
+    if (mobileAddPersonButton) {
+      mobileAddPersonButton.addEventListener("click", addParticipantRow);
+    }
 
     document.getElementById("remove-row").addEventListener("click", () => {
       if (participants.length === 0) {
@@ -3217,7 +4052,15 @@
     }
 
     function getCurrentBankingDetails() {
-      return normalizeBankingDetails(bankingDetailsData);
+      if (bankingDetailsData) {
+        return normalizeBankingDetails(bankingDetailsData);
+      }
+
+      if (defaultBankingDetails) {
+        return normalizeBankingDetails(defaultBankingDetails);
+      }
+
+      return normalizeBankingDetails(null);
     }
 
     function populateBankingFormFields() {
@@ -3243,12 +4086,12 @@
       }
     }
 
-    function renderBankingDetails() {
-      const container = document.getElementById("banking-details");
+    function renderBankingDetailsInto(container, targetDocument = document) {
       if (!container) {
         return;
       }
 
+      const doc = targetDocument || document;
       const lines = [];
       const { name, bsb, account } = getCurrentBankingDetails();
 
@@ -3272,16 +4115,21 @@
       }
 
       lines.forEach((line) => {
-        const paragraph = document.createElement("p");
-        const labelSpan = document.createElement("span");
+        const paragraph = doc.createElement("p");
+        const labelSpan = doc.createElement("span");
         labelSpan.classList.add("banking-label");
         labelSpan.textContent = `${line.label}:`;
-        const valueSpan = document.createElement("span");
+        const valueSpan = doc.createElement("span");
         valueSpan.textContent = String(line.value);
         paragraph.appendChild(labelSpan);
         paragraph.appendChild(valueSpan);
         container.appendChild(paragraph);
       });
+    }
+
+    function renderBankingDetails() {
+      const container = document.getElementById("banking-details");
+      renderBankingDetailsInto(container, document);
     }
 
     function applyBankingFormChanges(event) {
@@ -3333,11 +4181,6 @@
         syncImageSources();
       });
 
-      setupImageReplacement(replaceMinerButton, minerImageInput, (source) => {
-        minerImageSource = source;
-        syncImageSources();
-      });
-
       setupImageReplacement(
         replaceBankingLogoButton,
         bankingLogoInput,
@@ -3366,6 +4209,7 @@
         const normalized = normalizeBankingDetails(
           data && typeof data === "object" ? data : null
         );
+        defaultBankingDetails = normalized;
         if (bankingDetailsEdited) {
           return;
         }
@@ -3373,7 +4217,7 @@
       } catch (error) {
         console.warn("Could not load banking details", error);
         if (!bankingDetailsEdited) {
-          bankingDetailsData = null;
+          bankingDetailsData = defaultBankingDetails;
         }
       }
 
