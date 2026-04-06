@@ -469,6 +469,13 @@
       margin-bottom: 0;
     }
 
+    .additional-expense-help {
+      margin: 0.75rem 0 0;
+      color: #004d40;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
     .summary-description .summary-line-gold {
       color: #b8860b;
     }
@@ -1050,7 +1057,7 @@
           class="control-button"
           type="button"
           id="add-expense"
-          title="Add a new expense category (pair of columns: Expense Name and Inc?). Use this for any additional shared costs not already included — e.g. Camping fees or Park entry tickets."
+          title="Add a balancing transfer category where member amounts must net to $0. Use positive values for members who paid and negative values for members who owe that payer."
         >
           Add Expense
         </button>
@@ -1087,6 +1094,11 @@
           Summarise
         </button>
       </div>
+      <p class="additional-expense-help">
+        Additional expenses are balancing transfers: enter positive amounts for
+        members who paid and negative amounts for members who owe. Each added
+        expense should sum to $0 so dues and reimbursements stay balanced.
+      </p>
     </div>
     <div class="top-section-right">
       <div class="top-section-right-inner">
@@ -1534,6 +1546,10 @@
         expense.key === "camping-gear" ||
         expense.key === "srt-kit"
       );
+    }
+
+    function isBalancingCustomExpense(expense) {
+      return Boolean(expense && expense.type === "custom");
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -2017,6 +2033,10 @@
       petrolParagraph.textContent =
         `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
 
+      const additionalExpenseParagraph = targetDocument.createElement("p");
+      additionalExpenseParagraph.textContent =
+        "Additional expenses are entered as balancing transfers: positive values for members who paid and negative values for members who owe. Each added expense should net to $0 so totals reconcile cleanly.";
+
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
       versionParagraph.textContent = "Version: Nov 2025 – Current";
@@ -2025,6 +2045,7 @@
       summaryDescription.appendChild(horizontalGearParagraph);
       summaryDescription.appendChild(campingGearParagraph);
       summaryDescription.appendChild(petrolParagraph);
+      summaryDescription.appendChild(additionalExpenseParagraph);
       summaryDescription.appendChild(versionParagraph);
 
       const summaryTextWrapper = targetDocument.createElement("div");
@@ -2660,6 +2681,8 @@
       expenseEntries.forEach((entry) => {
         if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
           matrixHeader.push(`Std:${entry.field}`);
+        } else if (entry.type === "custom") {
+          matrixHeader.push(`Exp:${entry.field}`);
         } else {
           matrixHeader.push(`Exp:${entry.field}`);
           matrixHeader.push(`Inc:${entry.field}`);
@@ -2680,6 +2703,9 @@
         expenseEntries.forEach((entry) => {
           if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
             row.push(entry.consumers[index] ? "true" : "false");
+          } else if (entry.type === "custom") {
+            const amount = entry.amounts[index];
+            row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
           } else {
             const amount = entry.amounts[index];
             row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
@@ -3342,6 +3368,14 @@
           }
         }
 
+        if (isBalancingCustomExpense(expense)) {
+          amountInput.placeholder = "Positive paid / negative owes";
+          if (petrolGroup) {
+            grid.appendChild(petrolGroup);
+          }
+          return;
+        }
+
         const consumeLabel = document.createElement("label");
         consumeLabel.className = "mobile-checkbox-field";
         const consumeInput = document.createElement("input");
@@ -3448,7 +3482,7 @@
           headerRow.appendChild(distanceHeader);
         }
 
-        if (!directCharge) {
+        if (!directCharge && !isBalancingCustomExpense(expense)) {
           const consumeHeader = document.createElement("th");
           consumeHeader.className = "consume-header";
           consumeHeader.dataset.expenseId = expense.id;
@@ -3656,6 +3690,10 @@
             row.appendChild(distanceCell);
           }
 
+          if (isBalancingCustomExpense(expense)) {
+            return;
+          }
+
           const consumeCell = document.createElement("td");
           consumeCell.className = "consume-cell";
           const consumeInput = document.createElement("input");
@@ -3719,6 +3757,10 @@
           row.appendChild(totalCell);
         } else {
           row.appendChild(totalCell);
+
+          if (isBalancingCustomExpense(expense)) {
+            return;
+          }
 
           if (expense.key === "petrol") {
             const distanceCell = document.createElement("td");
@@ -3950,6 +3992,57 @@
             );
             if (consumersCell) {
               consumersCell.textContent = `Consumers: ${consumerCount}`;
+            }
+          }
+
+          return;
+        }
+
+        if (isBalancingCustomExpense(expense)) {
+          let netTotal = 0;
+          let contributorCount = 0;
+          let owingCount = 0;
+
+          expense.amounts.forEach((amount, personIndex) => {
+            if (!participantHasName[personIndex]) {
+              return;
+            }
+            if (amount === "" || !Number.isFinite(Number(amount))) {
+              return;
+            }
+            const numericAmount = Number(amount);
+            if (numericAmount === 0) {
+              return;
+            }
+            netTotal += numericAmount;
+            if (numericAmount > 0) {
+              contributorCount += 1;
+              participantContributions[personIndex] += numericAmount;
+              participantContributionDetails[personIndex].push({
+                name: expense.name,
+                value: numericAmount,
+                distance: null
+              });
+            } else {
+              owingCount += 1;
+              const owedAmount = Math.abs(numericAmount);
+              participantFeeTotals[personIndex] += owedAmount;
+              participantFeeBreakdowns[personIndex].push({
+                name: expense.name,
+                value: owedAmount
+              });
+            }
+          });
+
+          if (applyDomUpdates) {
+            const totalCell = document.querySelector(
+              `.expense-total[data-expense-id="${expense.id}"]`
+            );
+            if (totalCell) {
+              totalCell.innerHTML = `Net: $${formatCurrency(netTotal) || "0.00"}`;
+              const detail = document.createElement("div");
+              detail.textContent = `Paid: ${contributorCount}, Owes: ${owingCount}`;
+              totalCell.appendChild(detail);
             }
           }
 
@@ -4247,7 +4340,9 @@
     }
 
     document.getElementById("add-expense").addEventListener("click", () => {
-      const expenseName = window.prompt("Enter a name for the new expense:");
+      const expenseName = window.prompt(
+        "Enter a name for the new balancing expense (positive = paid, negative = owes):"
+      );
       if (!expenseName) {
         return;
       }
