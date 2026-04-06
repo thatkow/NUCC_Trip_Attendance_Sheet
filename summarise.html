@@ -509,6 +509,37 @@
         : [];
     }
 
+    // ── TinyURL ──────────────────────────────────────────────────────────────
+
+    function buildTinyAlias(location, date) {
+      const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+      const parts = (date || "").split("-");
+      const dateStr = parts.length === 3
+        ? parts[2] + months[parseInt(parts[1], 10) - 1] + parts[0]
+        : "";
+      const locStr = (location || "").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 15);
+      if (!locStr && !dateStr) return "";
+      if (!locStr) return dateStr;
+      if (!dateStr) return locStr;
+      return locStr + "-" + dateStr;
+    }
+
+    async function shortenWithTinyUrl(longUrl, alias) {
+      const base = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl);
+      const withAlias = alias ? base + "&alias=" + encodeURIComponent(alias) : base;
+      // Try custom alias first, then random
+      for (const endpoint of alias ? [withAlias, base] : [base]) {
+        try {
+          const resp = await fetch(endpoint);
+          if (resp.ok) {
+            const text = (await resp.text()).trim();
+            if (text.startsWith("https://tinyurl.com/")) return text;
+          }
+        } catch (e) { /* CORS or network failure — fall through */ }
+      }
+      return null;
+    }
+
     // ── Render ───────────────────────────────────────────────────────────────
 
     function el(tag, cls, text) {
@@ -584,12 +615,19 @@
       const copyBtn = el("button", "summary-copy-link-btn", "Copy link");
       const copyNotice = el("span", "summary-copy-link-notice", "Paste into Messenger, WhatsApp, or email to share this summary.");
       copyBtn.addEventListener("click", async () => {
+        copyBtn.disabled = true;
+        copyNotice.textContent = "Shortening link…";
+        const alias = buildTinyAlias(trip.location, trip.date);
+        const shortUrl = await shortenWithTinyUrl(window.location.href, alias);
+        const urlToCopy = shortUrl || window.location.href;
+        copyBtn.disabled = false;
         try {
-          await navigator.clipboard.writeText(window.location.href);
-          copyNotice.textContent = "Link copied!";
-          setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 2500);
+          await navigator.clipboard.writeText(urlToCopy);
+          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (could not shorten — full URL copied)";
+          setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 4000);
         } catch (err) {
-          window.prompt("Copy this link:", window.location.href);
+          window.prompt("Copy this link:", urlToCopy);
+          copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary.";
         }
       });
       copyBar.appendChild(copyBtn);
