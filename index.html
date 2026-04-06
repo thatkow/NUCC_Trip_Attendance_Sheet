@@ -1280,6 +1280,7 @@
         </label>
         <div class="ai-wizard-nav">
           <button type="button" class="ai-wizard-back" id="ai-step6-back">Back</button>
+          <button type="button" class="ai-wizard-back" id="ai-step6-clear">Clear</button>
           <button type="button" class="ai-wizard-next" id="ai-step6-load">Load &amp; Summarise</button>
         </div>
       </div>
@@ -1786,6 +1787,10 @@
     document.getElementById("ai-step5-back")?.addEventListener("click", () => showAiWizardStep(4));
     document.getElementById("ai-step5-next")?.addEventListener("click", () => showAiWizardStep(6));
     document.getElementById("ai-step6-back")?.addEventListener("click", () => showAiWizardStep(5));
+    document.getElementById("ai-step6-clear")?.addEventListener("click", () => {
+      const ta = document.getElementById("ai-csv-paste");
+      if (ta) { ta.value = ""; ta.focus(); }
+    });
 
     document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", async () => {
       const location = document.getElementById("ai-location")?.value.trim() || "";
