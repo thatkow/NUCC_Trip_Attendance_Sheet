@@ -364,6 +364,7 @@
     }
 
     .bottom-add-person {
+      display: block;
       margin-top: 1rem;
     }
 
@@ -1141,6 +1142,14 @@
     <tfoot id="attendance-foot"></tfoot>
   </table>
 
+  <input
+    type="file"
+    id="load-csv-input"
+    accept=".csv,text/csv"
+    style="position: absolute; left: -10000px;"
+    aria-hidden="true"
+  />
+
   <div class="bottom-add-person">
     <button
       type="button"
@@ -1151,14 +1160,6 @@
       Add Person
     </button>
   </div>
-
-  <input
-    type="file"
-    id="load-csv-input"
-    accept=".csv,text/csv"
-    style="position: absolute; left: -10000px;"
-    aria-hidden="true"
-  />
 
       </div>
     </div>
