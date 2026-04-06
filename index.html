@@ -358,6 +358,16 @@
       gap: 0.5rem;
     }
 
+    .mobile-person-panel .petrol-expense-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+      background: #fff;
+    }
+
     .mobile-summary-line {
       margin-top: 0.25rem;
       font-weight: 600;
@@ -3245,7 +3255,16 @@
           recalculate();
         });
         label.appendChild(amountInput);
-        grid.appendChild(label);
+        const petrolGroup =
+          expense.key === "petrol"
+            ? document.createElement("div")
+            : null;
+        if (petrolGroup) {
+          petrolGroup.className = "petrol-expense-group";
+          petrolGroup.appendChild(label);
+        } else {
+          grid.appendChild(label);
+        }
 
         if (expense.key === "petrol") {
           const distanceLabel = document.createElement("label");
@@ -3293,7 +3312,11 @@
             recalculate();
           });
           distanceLabel.appendChild(distanceInput);
-          grid.appendChild(distanceLabel);
+          if (petrolGroup) {
+            petrolGroup.appendChild(distanceLabel);
+          } else {
+            grid.appendChild(distanceLabel);
+          }
         }
 
         const consumeLabel = document.createElement("label");
@@ -3320,10 +3343,15 @@
           recalculate();
         });
         const consumeText = document.createElement("span");
-        consumeText.textContent = "Include in share";
+        consumeText.textContent = "Include in shared car pool expense";
         consumeLabel.appendChild(consumeInput);
         consumeLabel.appendChild(consumeText);
-        grid.appendChild(consumeLabel);
+        if (petrolGroup) {
+          petrolGroup.appendChild(consumeLabel);
+          grid.appendChild(petrolGroup);
+        } else {
+          grid.appendChild(consumeLabel);
+        }
       });
 
       panel.appendChild(grid);
