@@ -570,7 +570,7 @@
       banner.onerror = () => { banner.style.display = "none"; };
       headerLeft.appendChild(banner);
 
-      headerLeft.appendChild(el("h1", "summary-title", "Trip Attendance Sheet"));
+      headerLeft.appendChild(el("h1", "summary-title", "Trip Fees"));
 
       // Meta tiles
       const tiles = el("div", "summary-meta-tiles");
@@ -733,8 +733,10 @@
       try {
         const state = JSON.parse(decodeURIComponent(escape(atob(encoded))));
         applyState(state);
-        const titleAlias = buildTinyAlias(trip.location, trip.date);
-        if (titleAlias) document.title = titleAlias.replace(/-/g, " ");
+        const titleParts = ["Trip fees"];
+        if (trip.location) titleParts.push("for " + trip.location);
+        if (trip.date) titleParts.push("(" + formatSummaryDate(trip.date) + ")");
+        document.title = titleParts.join(" ");
         renderSummary();
       } catch (err) {
         console.error("Could not decode summary state", err);
