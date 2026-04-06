@@ -274,6 +274,9 @@
     }
 
     .control-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 0.5rem 0.9rem;
       font-size: 0.95rem;
       border-radius: 0.4rem;
@@ -289,6 +292,11 @@
 
     .control-button.hide-on-mobile {
       display: inline-flex;
+    }
+
+    .under-load-button {
+      flex-basis: 100%;
+      max-width: 13rem;
     }
 
     .control-button:hover {
@@ -355,13 +363,58 @@
       gap: 0.5rem;
     }
 
+    .mobile-person-panel .petrol-expense-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border: 1px solid #cfd8dc;
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+      background: #fff;
+    }
+
     .mobile-summary-line {
       margin-top: 0.25rem;
       font-weight: 600;
     }
 
-    .mobile-add-person {
-      display: none;
+    .bottom-add-person {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      margin-top: 1rem;
+      padding: 0.75rem 0;
+      background: linear-gradient(
+        to top,
+        rgba(247, 247, 247, 0.98),
+        rgba(247, 247, 247, 0.9),
+        rgba(247, 247, 247, 0)
+      );
+    }
+
+    .summary-balance-error {
+      margin: 0;
+      color: #b00020;
+      font-weight: 700;
+      white-space: pre-line;
+    }
+
+    .field-info-button {
+      margin-left: 0.35rem;
+      border: 1px solid #90a4ae;
+      border-radius: 999px;
+      width: 1.1rem;
+      height: 1.1rem;
+      font-size: 0.72rem;
+      line-height: 1;
+      cursor: pointer;
+      background: #eceff1;
+      color: #263238;
+      padding: 0;
+      vertical-align: middle;
     }
 
     .name-input.duplicate-name {
@@ -443,6 +496,39 @@
 
     .summary-description p:last-child {
       margin-bottom: 0;
+    }
+
+    .additional-expense-help {
+      margin: 0.75rem 0 0;
+      color: #004d40;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .custom-expense-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .custom-expense-paid-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+    }
+
+    .custom-expense-info-button {
+      border: 1px solid #90a4ae;
+      border-radius: 999px;
+      width: 1.35rem;
+      height: 1.35rem;
+      font-size: 0.8rem;
+      line-height: 1;
+      cursor: pointer;
+      background: #eceff1;
+      color: #263238;
+      padding: 0;
     }
 
     .summary-description .summary-line-gold {
@@ -574,10 +660,6 @@
       flex: 1 1 auto;
     }
 
-    .name-input.bold {
-      font-weight: 600;
-    }
-
     .totals-row td {
       font-weight: 600;
       background: #f4f4f4;
@@ -702,6 +784,18 @@
       font: inherit;
     }
 
+    .banking-dialog textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 14rem;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid #b0bec5;
+      border-radius: 0.4rem;
+      font: inherit;
+      line-height: 1.35;
+      resize: vertical;
+    }
+
     .banking-dialog .banking-dialog-actions {
       display: flex;
       justify-content: flex-end;
@@ -794,7 +888,7 @@
       }
 
       .control-button.hide-on-mobile {
-        display: none;
+        display: inline-flex;
       }
 
       .tutorial-content {
@@ -831,12 +925,7 @@
         grid-template-columns: 1fr;
       }
 
-      .mobile-add-person {
-        display: block;
-        margin-top: 1rem;
-      }
-
-      .mobile-add-person .control-button {
+      .bottom-add-person .control-button {
         width: 100%;
       }
 
@@ -972,6 +1061,12 @@
           Horizontal Gear
         </label>
         <label
+          title="Check this if any members hired club camping gear (e.g. sleeping bag, mat, stove, etc.)."
+        >
+          <input type="checkbox" data-expense-key="camping-gear" checked />
+          Camping Gear
+        </label>
+        <label
           title="Check this if the club's SRT kit was used on the trip."
         >
           <input type="checkbox" data-expense-key="srt-kit" checked />
@@ -996,6 +1091,10 @@
           Horizontal Gear per person ($)
           <input type="number" id="horizontal-gear-rate" step="0.01" value="5" />
         </label>
+        <label for="camping-gear-rate">
+          Camping Gear per person ($)
+          <input type="number" id="camping-gear-rate" step="0.01" value="10" />
+        </label>
         <label for="srt-kit-rate">
           SRT Kit per person ($)
           <input type="number" id="srt-kit-rate" step="0.01" value="5" />
@@ -1016,14 +1115,6 @@
         <button
           class="control-button"
           type="button"
-          id="add-row"
-          title="Add a new row to the members table."
-        >
-          Add Row
-        </button>
-        <button
-          class="control-button"
-          type="button"
           id="remove-row"
           title="Remove the last row from the members table."
         >
@@ -1033,7 +1124,7 @@
           class="control-button"
           type="button"
           id="add-expense"
-          title="Add a new expense category (pair of columns: Expense Name and Inc?). Use this for any additional shared costs not already included — e.g. Camping fees or Park entry tickets."
+          title="Add a balancing transfer category. Enter amount plus Paid checkbox per member: checked means paid for others, unchecked means owes."
         >
           Add Expense
         </button>
@@ -1048,28 +1139,42 @@
         <button
           class="control-button hide-on-mobile"
           type="button"
-          id="save-json"
-          title="Download this form as a JSON file for safekeeping or later reuse."
+          id="save-csv"
+          title="Download this form as a CSV file and save a draft in this browser."
         >
-          Save JSON
+          Save CSV
         </button>
         <button
           class="control-button hide-on-mobile"
           type="button"
-          id="load-json"
-          title="Load a previously saved Trip Attendance JSON file."
+          id="load-csv"
+          title="Load a previously saved Trip Attendance CSV file."
         >
-          Load JSON
+          Load CSV
         </button>
         <button
-          class="control-button"
+          class="control-button hide-on-mobile under-load-button"
           type="button"
-          id="summarise-button"
-          title="Generate a summary page showing the accounting breakdown for the trip — suitable for sharing with participants and storing in the NUCC Google Drive “Trip Sheets” folder."
+          id="gpt-csv-prompt"
+          title="Copy a ChatGPT prompt that asks for NUCC CSV output in a CSV code block."
         >
-          Summarise
+          GPT Prompt
+        </button>
+        <button
+          class="control-button hide-on-mobile under-load-button"
+          type="button"
+          id="paste-csv-button"
+          title="Paste CSV text directly (for example from ChatGPT output) and load it."
+        >
+          Paste CSV Text
         </button>
       </div>
+      <p class="additional-expense-help">
+        Additional expenses are balancing transfers: for each member, enter the
+        amount and tick Paid if they paid for others; leave Paid unticked if
+        they owe that amount. Each added expense should net to $0 so dues and
+        reimbursements stay balanced.
+      </p>
     </div>
     <div class="top-section-right">
       <div class="top-section-right-inner">
@@ -1121,11 +1226,6 @@
         </div>
       </div>
     </div>
-    <div class="mobile-add-person">
-      <button type="button" class="control-button" id="add-person-mobile">
-        Add Person
-      </button>
-    </div>
   </div>
 
   <p
@@ -1148,11 +1248,31 @@
 
   <input
     type="file"
-    id="load-json-input"
-    accept=".json,application/json"
+    id="load-csv-input"
+    accept=".csv,text/csv"
     style="position: absolute; left: -10000px;"
     aria-hidden="true"
   />
+
+  <div class="bottom-add-person">
+    <button
+      type="button"
+      class="control-button"
+      id="add-row"
+      title="Add a new row to the members table."
+    >
+      Add Person
+    </button>
+    <button
+      class="control-button"
+      type="button"
+      id="summarise-button"
+      title="Generate a summary page showing the accounting breakdown for the trip — suitable for sharing with participants and storing in the NUCC Google Drive “Trip Sheets” folder."
+    >
+      Summarise
+    </button>
+    <p id="summarise-imbalance-message" class="summary-balance-error" hidden></p>
+  </div>
 
       </div>
     </div>
@@ -1180,7 +1300,33 @@
         <button type="button" class="banking-dialog-cancel" id="banking-cancel">
           Cancel
         </button>
+        <button type="button" class="banking-dialog-cancel" id="banking-reset">
+          Reset to defaults
+        </button>
         <button type="submit">Save banking details</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="banking-dialog" id="paste-csv-dialog">
+    <form id="paste-csv-form" method="dialog">
+      <h3>Paste CSV text</h3>
+      <p style="margin: 0; color: #444; font-size: 0.95rem; line-height: 1.4;">
+        Paste the full CSV text (including metadata rows and the Name header row), then load it into this form.
+      </p>
+      <label for="paste-csv-text">
+        CSV content
+        <textarea
+          id="paste-csv-text"
+          placeholder="Paste CSV here..."
+          spellcheck="false"
+        ></textarea>
+      </label>
+      <div class="banking-dialog-actions">
+        <button type="button" class="banking-dialog-cancel" id="paste-csv-cancel">
+          Cancel
+        </button>
+        <button type="submit">Load pasted CSV</button>
       </div>
     </form>
   </dialog>
@@ -1246,6 +1392,13 @@
     const bankingBsbInput = document.getElementById("banking-bsb");
     const bankingAccountInput = document.getElementById("banking-account");
     const bankingCancelButton = document.getElementById("banking-cancel");
+    const bankingResetButton = document.getElementById("banking-reset");
+    const gptCsvPromptButton = document.getElementById("gpt-csv-prompt");
+    const pasteCsvButton = document.getElementById("paste-csv-button");
+    const pasteCsvDialog = document.getElementById("paste-csv-dialog");
+    const pasteCsvForm = document.getElementById("paste-csv-form");
+    const pasteCsvTextArea = document.getElementById("paste-csv-text");
+    const pasteCsvCancelButton = document.getElementById("paste-csv-cancel");
     const bannerImageElement = document.getElementById("banner-image");
     const bankingLogoElement = document.getElementById("banking-logo");
     const replaceBannerButton = document.getElementById("replace-banner-button");
@@ -1255,7 +1408,6 @@
     const bannerImageInput = document.getElementById("banner-image-input");
     const bankingLogoInput = document.getElementById("banking-logo-input");
     const mobileTabPanels = document.getElementById("mobile-tab-panels");
-    const mobileAddPersonButton = document.getElementById("add-person-mobile");
     const generalPanel = document.getElementById("general-panel");
 
     if (tripLeaderInput) {
@@ -1297,6 +1449,7 @@
 
     const baseExpenseRates = {
       "horizontal-gear": 5,
+      "camping-gear": 10,
       "srt-kit": 5
     };
 
@@ -1365,14 +1518,19 @@
 
     const baseExpenseKeys = Object.keys(baseExpenseRates);
 
-    const participants = Array.from({ length: 10 }, () => ({
-      name: "",
-      bold: false
+    const participants = Array.from({ length: 2 }, () => ({
+      name: ""
     }));
     const baseExpenseDefinitions = [
       {
         key: "horizontal-gear",
         name: "Horizontal Gear",
+        enabled: true,
+        defaultConsumerState: false
+      },
+      {
+        key: "camping-gear",
+        name: "Camping Gear",
         enabled: true,
         defaultConsumerState: false
       },
@@ -1394,7 +1552,7 @@
       key = null,
       type = "custom",
       enabled = true,
-      defaultConsumerState = true
+      defaultConsumerState = false
     }) {
       const id = type === "base" ? `base-${key}` : `custom-${customExpenseCounter++}`;
       return {
@@ -1428,6 +1586,7 @@
 
     const baseExpenseRateInputs = {
       "horizontal-gear": document.getElementById("horizontal-gear-rate"),
+      "camping-gear": document.getElementById("camping-gear-rate"),
       "srt-kit": document.getElementById("srt-kit-rate")
     };
 
@@ -1500,7 +1659,200 @@
       if (!expense) {
         return false;
       }
-      return expense.key === "horizontal-gear" || expense.key === "srt-kit";
+      return (
+        expense.key === "horizontal-gear" ||
+        expense.key === "camping-gear" ||
+        expense.key === "srt-kit"
+      );
+    }
+
+    function isBalancingCustomExpense(expense) {
+      return Boolean(expense && expense.type === "custom");
+    }
+
+    function getCustomExpensePlaceholder(isPaid) {
+      return isPaid
+        ? "How much person paid for others"
+        : "How much person owes";
+    }
+
+    function getPaidCheckboxInfoText() {
+      return "Paid means this member paid this amount on behalf of others. If unchecked, the member owes this amount.";
+    }
+
+    function getInputFieldHelpText(field, labelText) {
+      if (!field) {
+        return "";
+      }
+
+      const inputIdHelpMap = {
+        "trip-date":
+          "Trip start date used in the summary and CSV export.",
+        "trip-location":
+          "Location label shown in the summary and used to tag this trip in saved records.",
+        "trip-leader":
+          "Main organizer for the trip. This helps identify who coordinated the sheet.",
+        clerk:
+          "Person who handles reimbursements and payment tracking for this sheet.",
+        "horizontal-gear-rate":
+          "Per-person depreciation charge applied to members ticked under Hired Horizontal Gear?.",
+        "camping-gear-rate":
+          "Per-person depreciation charge applied to members ticked under Hired Camping Gear?.",
+        "srt-kit-rate":
+          "Per-person depreciation charge applied to members ticked under Used SRT Kit?.",
+        "maintenance-rate":
+          "Kilometre reimbursement rate used with Petrol distance to calculate maintenance contributions."
+      };
+
+      if (field.id && inputIdHelpMap[field.id]) {
+        return inputIdHelpMap[field.id];
+      }
+
+      if (field.dataset && field.dataset.expenseKey) {
+        const expenseToggleMap = {
+          "horizontal-gear":
+            "Show or hide the Horizontal Gear columns and calculations for this trip.",
+          "camping-gear":
+            "Show or hide the Camping Gear columns and calculations for this trip.",
+          "srt-kit":
+            "Show or hide the SRT Kit columns and calculations for this trip.",
+          petrol:
+            "Show or hide Petrol amount, inclusion, and distance-based maintenance calculations."
+        };
+        return (
+          expenseToggleMap[field.dataset.expenseKey] ||
+          "Show or hide this expense category from the table and summary."
+        );
+      }
+
+      if (field.id === "srt-kit-master-toggle") {
+        return "Bulk toggle for all Used SRT Kit? checkboxes in the member table.";
+      }
+
+      if (
+        field.classList.contains("mobile-direct-charge") ||
+        labelText.startsWith("Hired ") ||
+        labelText.startsWith("Used SRT Kit?")
+      ) {
+        return "Tick this member if they used/hired this gear so the configured per-person fee is added to their total.";
+      }
+
+      if (field.classList.contains("mobile-consume-input")) {
+        return "Include this member when splitting the matching base expense across consumers.";
+      }
+
+      if (field.classList.contains("mobile-paid-input")) {
+        return getPaidCheckboxInfoText();
+      }
+
+      if (field.classList.contains("mobile-distance-input")) {
+        return "Distance in km used with the maintenance rate for petrol reimbursement calculations.";
+      }
+
+      if (
+        field.classList.contains("mobile-amount-input") ||
+        field.classList.contains("read-only-amount")
+      ) {
+        return "Amount for this member for the selected expense. For custom expenses, pair with Paid to indicate paid vs owes.";
+      }
+
+      const helpFromField =
+        field.getAttribute("title") ||
+        field.getAttribute("placeholder") ||
+        field.getAttribute("aria-label") ||
+        "";
+      if (helpFromField.trim()) {
+        return helpFromField.trim();
+      }
+
+      return labelText ? `Enter ${labelText}.` : "";
+    }
+
+    function getHeaderHelpText(thText, target) {
+      if (!thText) {
+        return "";
+      }
+
+      const helpMap = {
+        Name: "Member name used for all fee, reimbursement, and CSV rows.",
+        "Distance (km)":
+          "Per-member distance used with Maintenance rate to calculate maintenance reimbursement.",
+        "Fee Breakdown":
+          "Read-only explanation of how each member total was built from active expense columns.",
+        Fee: "Final total fee allocated to this member.",
+        Reimburse:
+          "Green values are reimbursements owed to the member; red values (Due) are amounts the member must pay back.",
+        "Reimburse(Due)":
+          "Green values are reimbursements owed to the member; red values (Due) are amounts the member must pay back.",
+        "Inc?":
+          "Include this member in sharing the adjacent base expense amount."
+      };
+      if (helpMap[thText]) {
+        return helpMap[thText];
+      }
+
+      if (thText.startsWith("Hired ") || thText.startsWith("Used SRT Kit?")) {
+        return "Checkbox column: tick members who used this gear so the corresponding per-person depreciation fee is charged.";
+      }
+
+      if (target && target.dataset && target.dataset.expenseId) {
+        return "Per-member amount column for this expense. For custom expenses, Paid marks positive contributions while unticked members owe that amount. Expense totals must balance to $0 before summarising.";
+      }
+
+      return `${thText} field details.`;
+    }
+
+    function getFieldHelpText(target) {
+      if (!target) {
+        return "";
+      }
+
+      const explicit = target.getAttribute("data-info-text");
+      if (explicit && explicit.trim()) {
+        return explicit.trim();
+      }
+
+      if (target.tagName === "LABEL") {
+        const field = target.querySelector("input, select, textarea");
+        if (!field) {
+          return "";
+        }
+        const labelText = target.textContent.replace(/\s+/g, " ").trim();
+        return getInputFieldHelpText(field, labelText);
+      }
+
+      if (target.tagName === "TH") {
+        const thText = target.textContent.replace(/\s+/g, " ").trim();
+        return getHeaderHelpText(thText, target);
+      }
+
+      return "";
+    }
+
+    function addInfoIconToTarget(target) {
+      if (!target || target.querySelector(".field-info-button")) {
+        return;
+      }
+      const helpText = getFieldHelpText(target);
+      if (!helpText) {
+        return;
+      }
+      const infoButton = document.createElement("button");
+      infoButton.type = "button";
+      infoButton.className = "field-info-button";
+      infoButton.textContent = "i";
+      infoButton.title = helpText;
+      infoButton.setAttribute("aria-label", "Field information");
+      infoButton.addEventListener("click", () => {
+        window.alert(helpText);
+      });
+      target.appendChild(infoButton);
+    }
+
+    function attachFieldInfoIcons() {
+      document
+        .querySelectorAll("label, th")
+        .forEach((element) => addInfoIconToTarget(element));
     }
 
     function getExpenseHeaderLabel(expense) {
@@ -1510,6 +1862,9 @@
       if (isDirectChargeExpense(expense)) {
         if (expense.key === "horizontal-gear") {
           return "Hired Horizontal Gear?";
+        }
+        if (expense.key === "camping-gear") {
+          return "Hired Camping Gear?";
         }
         if (expense.key === "srt-kit") {
           return "Used SRT Kit?";
@@ -1920,6 +2275,7 @@
 
       const summaryDescription = targetDocument.createElement("div");
       summaryDescription.className = "summary-description";
+      summaryDescription.classList.add("summary-detail-item");
 
       const maintenanceRateText = formatMaintenanceRateDisplay(
         getEffectiveMaintenanceRate()
@@ -1973,9 +2329,17 @@
       horizontalGearParagraph.textContent =
         "Horizontal gear covers helmets, headtorches, and similar equipment issued to individuals. A standard $5 charge applies when this option is selected.";
 
+      const campingGearParagraph = targetDocument.createElement("p");
+      campingGearParagraph.textContent =
+        "Camping gear covers sleeping bags, mats, stoves, and similar items hired for overnight trips. A standard $10 depreciation charge applies when this option is selected.";
+
       const petrolParagraph = targetDocument.createElement("p");
       petrolParagraph.textContent =
         `Petrol expenses are reported by the drivers after the trip. Distances travelled are also recorded so that a maintenance charge of $${maintenanceRateText || "0"} per kilometre can be added. The combined total is pooled and divided equally among all participants, while each driver is credited $${maintenanceRateText || "0"} per kilometre to return maintenance funds to those who supplied vehicles.`;
+
+      const additionalExpenseParagraph = targetDocument.createElement("p");
+      additionalExpenseParagraph.textContent =
+        "Additional expenses are entered as balancing transfers: record an amount per member and tick Paid when they paid for others. If Paid is unticked, that member owes the amount. Each added expense should net to $0 so totals reconcile cleanly.";
 
       const versionParagraph = targetDocument.createElement("p");
       versionParagraph.className = "summary-version";
@@ -1983,7 +2347,9 @@
 
       summaryDescription.appendChild(srtKitParagraph);
       summaryDescription.appendChild(horizontalGearParagraph);
+      summaryDescription.appendChild(campingGearParagraph);
       summaryDescription.appendChild(petrolParagraph);
+      summaryDescription.appendChild(additionalExpenseParagraph);
       summaryDescription.appendChild(versionParagraph);
 
       const summaryTextWrapper = targetDocument.createElement("div");
@@ -2037,6 +2403,25 @@
       }
 
       const calculation = calculateFinancials(false);
+      const detailsToggleWrapper = targetDocument.createElement("div");
+      detailsToggleWrapper.className = "summary-details-toggle";
+      const detailsToggleLabel = targetDocument.createElement("label");
+      const detailsToggleInput = targetDocument.createElement("input");
+      detailsToggleInput.type = "checkbox";
+      detailsToggleInput.setAttribute(
+        "aria-label",
+        "Hide summary details and show only participant owes and reimburse values"
+      );
+      const detailsToggleText = targetDocument.createElement("span");
+      detailsToggleText.textContent = "Hide details (show only owes and reimburse)";
+      detailsToggleLabel.appendChild(detailsToggleInput);
+      detailsToggleLabel.appendChild(detailsToggleText);
+      detailsToggleWrapper.appendChild(detailsToggleLabel);
+      detailsToggleInput.addEventListener("change", (event) => {
+        container.classList.toggle("summary-hide-details", event.target.checked);
+      });
+      container.appendChild(detailsToggleWrapper);
+
       const peopleSection = targetDocument.createElement("section");
       peopleSection.className = "summary-people-section";
       const peopleHeading = targetDocument.createElement("h2");
@@ -2067,7 +2452,9 @@
         if (contributionItems.length) {
           const contributionsHeading = targetDocument.createElement("p");
           contributionsHeading.textContent = "Contributions:";
+          contributionsHeading.classList.add("summary-detail-item");
           const list = targetDocument.createElement("ul");
+          list.classList.add("summary-detail-item");
           contributionItems.forEach((entry) => {
             const item = targetDocument.createElement("li");
             const pieces = [];
@@ -2090,7 +2477,9 @@
         if (feeBreakdown.length) {
           const breakdownHeading = targetDocument.createElement("p");
           breakdownHeading.textContent = "Fee breakdown:";
+          breakdownHeading.classList.add("summary-detail-item");
           const list = targetDocument.createElement("ul");
+          list.classList.add("summary-detail-item");
           feeBreakdown.forEach((entry) => {
             const item = targetDocument.createElement("li");
             item.textContent = `${entry.name}: $${formatCurrency(entry.value) || "0.00"}`;
@@ -2115,6 +2504,7 @@
 
       const summaryTotals = targetDocument.createElement("section");
       summaryTotals.className = "summary-totals";
+      summaryTotals.classList.add("summary-detail-item");
       const totalsHeading = targetDocument.createElement("h2");
       totalsHeading.textContent = "Summary";
       summaryTotals.appendChild(totalsHeading);
@@ -2274,6 +2664,27 @@
           flex: 1 1 0;
         }
 
+        .summary-preview .summary-details-toggle {
+          margin: 0.5rem 0 1rem;
+        }
+
+        .summary-preview .summary-details-toggle label {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 600;
+        }
+
+        .summary-preview .summary-details-toggle input[type="checkbox"] {
+          width: auto;
+          pointer-events: auto;
+          accent-color: #00695c;
+        }
+
+        .summary-preview.summary-hide-details .summary-detail-item {
+          display: none !important;
+        }
+
         .summary-preview .summary-people-section {
           break-before: page;
           page-break-before: always;
@@ -2315,7 +2726,7 @@
       if (!summaryWindow) {
         window.alert("Please allow pop-ups to view the summary.");
         URL.revokeObjectURL(url);
-        return;
+        return false;
       }
 
       summaryWindow.document.open();
@@ -2341,6 +2752,7 @@
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 0);
+      return true;
     }
 
     async function loadMemberOptions() {
@@ -2450,6 +2862,13 @@
       return rows.filter((row) => row.some((value) => value && value.trim() !== ""));
     }
 
+    function parseTsv(text) {
+      return String(text || "")
+        .split(/\r?\n/)
+        .map((line) => line.split("\t"))
+        .filter((row) => row.some((value) => value && value.trim() !== ""));
+    }
+
     function syncExpenseToggleStates() {
       document
         .querySelectorAll('.expense-toggle-group input[type="checkbox"]')
@@ -2522,8 +2941,7 @@
           consumers: [...expense.consumers]
         })),
         participants: participants.map((participant) => ({
-          name: participant.name,
-          bold: participant.bold
+          name: participant.name
         })),
         images: {
           banner: bannerImageSource,
@@ -2537,18 +2955,195 @@
       return snapshot;
     }
 
-    function downloadAttendanceJson() {
+    function escapeCsvCell(value) {
+      const stringValue = String(value ?? "");
+      const escaped = stringValue.replace(/"/g, '""');
+      return `"${escaped}"`;
+    }
+
+    function parseBooleanString(value) {
+      return /^true$/i.test(String(value || "").trim());
+    }
+
+    function parseNumericString(value) {
+      const trimmed = String(value ?? "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      const numeric = Number(trimmed);
+      return Number.isFinite(numeric) ? numeric : "";
+    }
+
+    function buildApplicationStateCsv() {
       const state = buildApplicationState();
-      const jsonContent = JSON.stringify(state, null, 2);
-      const blob = new Blob([jsonContent], { type: "application/json" });
+      const metadataRows = [
+        ["format", "nucc_trip_attendance_matrix_v2"],
+        ["saved_at", new Date().toISOString()],
+        ["trip_date", state.trip?.date || ""],
+        ["trip_location", state.trip?.location || ""],
+        ["trip_leader", state.trip?.leader || ""],
+        ["clerk", state.trip?.clerk || ""],
+        ["bank_name", state.bankingDetails?.Name || ""],
+        ["bank_bsb", state.bankingDetails?.BSB || ""],
+        ["bank_account", state.bankingDetails?.Account || ""],
+        ["maintenance_rate", state.maintenanceRate]
+      ];
+
+      Object.entries(state.baseExpenseRates || {}).forEach(([key, value]) => {
+        metadataRows.push([`base_rate.${key}`, value]);
+      });
+
+      const expenseEntries = [];
+      (state.baseExpenses || []).forEach((expense) => {
+        expenseEntries.push({
+          field: expense.key,
+          name: expense.name,
+          key: expense.key,
+          type: "base",
+          enabled: Boolean(expense.enabled),
+          amounts: Array.isArray(expense.amounts) ? expense.amounts : [],
+          consumers: Array.isArray(expense.consumers) ? expense.consumers : [],
+          distances: Array.isArray(expense.distances) ? expense.distances : []
+        });
+      });
+      (state.customExpenses || []).forEach((expense, index) => {
+        const field = `custom-${index + 1}`;
+        expenseEntries.push({
+          field,
+          name: expense.name || `Custom Expense ${index + 1}`,
+          key: null,
+          type: "custom",
+          enabled: Boolean(expense.enabled),
+          amounts: Array.isArray(expense.amounts) ? expense.amounts : [],
+          consumers: Array.isArray(expense.consumers) ? expense.consumers : [],
+          distances: []
+        });
+      });
+
+      expenseEntries.forEach((entry) => {
+        metadataRows.push([`expense.${entry.field}.name`, entry.name]);
+        metadataRows.push([`expense.${entry.field}.key`, entry.key || ""]);
+        metadataRows.push([`expense.${entry.field}.type`, entry.type]);
+        metadataRows.push([`expense.${entry.field}.enabled`, entry.enabled]);
+      });
+
+      const matrixHeader = ["Name"];
+      expenseEntries.forEach((entry) => {
+        if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
+          matrixHeader.push(`Std:${entry.field}`);
+        } else if (entry.type === "custom") {
+          matrixHeader.push(`Exp:${entry.field}`);
+          matrixHeader.push(`Paid:${entry.field}`);
+        } else {
+          matrixHeader.push(`Exp:${entry.field}`);
+          matrixHeader.push(`Inc:${entry.field}`);
+          if (entry.key === "petrol") {
+            matrixHeader.push(`Dist:${entry.field}`);
+          }
+        }
+      });
+
+      const participantCount = Math.max(
+        2,
+        Array.isArray(state.participants) ? state.participants.length : 0
+      );
+      const matrixRows = [];
+      for (let index = 0; index < participantCount; index += 1) {
+        const participant = state.participants?.[index] || { name: "" };
+        const row = [participant.name || ""];
+        expenseEntries.forEach((entry) => {
+          if (entry.key === "horizontal-gear" || entry.key === "camping-gear" || entry.key === "srt-kit") {
+            row.push(entry.consumers[index] ? "true" : "false");
+          } else if (entry.type === "custom") {
+            const amount = entry.amounts[index];
+            row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
+            row.push(entry.consumers[index] ? "true" : "false");
+          } else {
+            const amount = entry.amounts[index];
+            row.push(amount === "" || amount === undefined || amount === null ? "" : String(amount));
+            row.push(entry.consumers[index] ? "true" : "false");
+            if (entry.key === "petrol") {
+              const distance = entry.distances[index];
+              row.push(
+                distance === "" || distance === undefined || distance === null
+                  ? ""
+                  : String(distance)
+              );
+            }
+          }
+        });
+        matrixRows.push(row);
+      }
+
+      const allRows = [...metadataRows, matrixHeader, ...matrixRows];
+      return allRows
+        .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
+        .join("\n");
+    }
+
+    function downloadAttendanceCsv() {
+      const csvContent = buildApplicationStateCsv();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = getFileBaseName("json");
+      link.download = getFileBaseName("csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    }
+
+    function buildGptCsvPrompt() {
+      const schemaExample = buildApplicationStateCsv();
+      const bankingDefaults = normalizeBankingDetails(defaultBankingDetails);
+      return [
+        "You are converting rough trip notes into a NUCC Trip Attendance CSV.",
+        "Return ONLY a CSV in a fenced code block using ```csv.",
+        "Do not include any explanation outside the code block.",
+        "Requirements:",
+        "- Keep the same CSV structure and column ordering as the example.",
+        "- Keep metadata rows (format, trip fields, base rates, and expense.* rows).",
+        "- Keep boolean values as true/false.",
+        "- For custom balancing expenses, output Exp: and Paid: columns and keep each custom expense net balanced to 0 where possible.",
+        "- Paid:<field> MUST be boolean only (true/false), never a dollar amount.",
+        "- Exp:<field> MUST always be a non-negative number (or blank).",
+        "- If notes say '<name> paid $X for <expense>', set that person's Paid:<field>=true and Exp:<field>=X (unless netting is needed; see below).",
+        "- If notes say '<name> owes $Y for <expense>', set Paid:<field>=false and Exp:<field>=Y.",
+        "- If the same person both paid and owes for the same custom expense, net their values into one row entry:",
+        "  - net = paid_total - owes_total",
+        "  - if net > 0 => Paid=true and Exp=net",
+        "  - if net < 0 => Paid=false and Exp=absolute(net)",
+        "  - if net = 0 => Exp blank and Paid false",
+        "- For each custom expense, ensure SUM(Exp where Paid=true) equals SUM(Exp where Paid=false).",
+        `- If notes do not include bank details, default to bank_name='${bankingDefaults.name}', bank_bsb='${bankingDefaults.bsb}', bank_account='${bankingDefaults.account}'.`,
+        "- If notes do not provide a value, leave that CSV cell blank.",
+        "",
+        "CSV structure example:",
+        "```csv",
+        schemaExample,
+        "```",
+        "",
+        "Trip notes to convert:",
+        "[PASTE YOUR NOTES HERE]"
+      ].join("\n");
+    }
+
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return Promise.reject(new Error("Clipboard API unavailable"));
+    }
+
+    function saveStateToBrowserStorage() {
+      const state = buildApplicationState();
+      const storageKey = "nucc-trip-attendance-draft";
+      const draftPayload = {
+        savedAt: new Date().toISOString(),
+        state
+      };
+      window.localStorage.setItem(storageKey, JSON.stringify(draftPayload));
     }
 
     function applyExpenseSnapshot(expense, snapshotEntry) {
@@ -2601,7 +3196,7 @@
 
     function applyApplicationState(state) {
       if (!state || typeof state !== "object") {
-        window.alert("Invalid JSON data.");
+        window.alert("Invalid saved data.");
         return;
       }
 
@@ -2640,12 +3235,12 @@
       if (Array.isArray(participantData) && participantData.length > 0) {
         participantData.forEach((entry) => {
           participants.push({
-            name: entry?.name || "",
-            bold: Boolean(entry?.bold)
+            name: entry?.name || ""
           });
         });
       } else {
-        participants.push({ name: "", bold: false });
+        participants.push({ name: "" });
+        participants.push({ name: "" });
       }
 
       if (rateData && typeof rateData === "object") {
@@ -2736,13 +3331,214 @@
       renderBankingDetails();
     }
 
-    function loadTableFromJsonContent(text) {
+    function loadTableFromCsvContent(text) {
       try {
-        const parsed = JSON.parse(text);
-        applyApplicationState(parsed);
+        let rows = parseCsv(String(text || ""));
+        if (rows.length === 0) {
+          throw new Error("Missing CSV rows");
+        }
+
+        let headerRowIndex = rows.findIndex(
+          (row) => (row[0] || "").trim() === "Name"
+        );
+        if (headerRowIndex === -1) {
+          const tsvRows = parseTsv(String(text || ""));
+          const tsvHeaderRowIndex = tsvRows.findIndex(
+            (row) => (row[0] || "").trim() === "Name"
+          );
+          if (tsvHeaderRowIndex !== -1) {
+            rows = tsvRows;
+            headerRowIndex = tsvHeaderRowIndex;
+          }
+        }
+        if (headerRowIndex === -1) {
+          throw new Error("Missing expected matrix header row");
+        }
+
+        const hashValues = {};
+        rows.slice(0, headerRowIndex).forEach((row) => {
+          const key = (row[0] || "").trim();
+          if (!key) {
+            return;
+          }
+          hashValues[key] = row[1] || "";
+        });
+
+        const header = rows[headerRowIndex];
+        const participantRows = rows.slice(headerRowIndex + 1);
+
+        const participantsData = participantRows.map((row) => ({
+          name: row[0] || ""
+        }));
+
+        const expenseMeta = new Map();
+        Object.entries(hashValues).forEach(([rawKey, rawValue]) => {
+          if (!rawKey.startsWith("expense.")) {
+            return;
+          }
+          const parts = rawKey.split(".");
+          if (parts.length < 3) {
+            return;
+          }
+          const field = parts[1];
+          const property = parts.slice(2).join(".");
+          if (!expenseMeta.has(field)) {
+            expenseMeta.set(field, { field });
+          }
+          expenseMeta.get(field)[property] = rawValue;
+        });
+
+        const baseExpensesState = baseExpenses.map((expense) => ({
+          key: expense.key,
+          name: expense.name,
+          enabled: expense.enabled,
+          amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
+          consumers: Array.from(
+            { length: participantsData.length || 2 },
+            () => expense.defaultConsumerState
+          ),
+          ...(expense.key === "petrol"
+            ? {
+                distances: Array.from(
+                  { length: participantsData.length || 2 },
+                  () => ""
+                )
+              }
+            : {})
+        }));
+
+        const customExpenseEntries = Array.from(expenseMeta.values())
+          .filter((meta) => meta.type === "custom")
+          .sort((a, b) => a.field.localeCompare(b.field));
+
+        const customExpensesState = customExpenseEntries.map((meta) => ({
+          type: "custom",
+          name: meta.name || "Custom Expense",
+          enabled: parseBooleanString(meta.enabled),
+          amounts: Array.from({ length: participantsData.length || 2 }, () => ""),
+          consumers: Array.from({ length: participantsData.length || 2 }, () => false)
+        }));
+
+        const customFieldToIndex = new Map();
+        customExpenseEntries.forEach((meta, index) => {
+          customFieldToIndex.set(meta.field, index);
+        });
+
+        function getExpenseStateByField(field) {
+          const baseMatch = baseExpensesState.find((item) => item.key === field);
+          if (baseMatch) {
+            return baseMatch;
+          }
+          const customIndex = customFieldToIndex.get(field);
+          if (customIndex === undefined) {
+            return null;
+          }
+          return customExpensesState[customIndex];
+        }
+
+        const expenseColumnStartIndex =
+          (header[1] || "").trim() === "Bold" ? 2 : 1;
+        const customFieldsWithPaidColumn = new Set();
+        for (let index = expenseColumnStartIndex; index < header.length; index += 1) {
+          const [prefix, field] = String(header[index] || "").split(":");
+          if (prefix === "Paid" && field) {
+            customFieldsWithPaidColumn.add(field);
+          }
+        }
+        for (
+          let columnIndex = expenseColumnStartIndex;
+          columnIndex < header.length;
+          columnIndex += 1
+        ) {
+          const columnLabel = header[columnIndex] || "";
+          const [prefix, field] = columnLabel.split(":");
+          if (!prefix || !field) {
+            continue;
+          }
+          const targetExpense = getExpenseStateByField(field);
+          if (!targetExpense) {
+            continue;
+          }
+          participantRows.forEach((row, participantIndex) => {
+            const cell = row[columnIndex] || "";
+            if (prefix === "Std") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
+            } else if (prefix === "Exp") {
+              const numericValue = parseNumericString(cell);
+              if (
+                targetExpense.type === "custom" &&
+                numericValue !== ""
+              ) {
+                targetExpense.amounts[participantIndex] = Math.abs(Number(numericValue));
+                if (!customFieldsWithPaidColumn.has(field)) {
+                  targetExpense.consumers[participantIndex] = Number(numericValue) >= 0;
+                }
+              } else {
+                targetExpense.amounts[participantIndex] = numericValue;
+              }
+            } else if (prefix === "Paid" && targetExpense.type === "custom") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
+            } else if (prefix === "Inc") {
+              targetExpense.consumers[participantIndex] = parseBooleanString(cell);
+            } else if (prefix === "Dist" && targetExpense.key === "petrol") {
+              const numericDistance = parseNumericString(cell);
+              targetExpense.distances[participantIndex] =
+                numericDistance === ""
+                  ? ""
+                  : Math.max(0, Math.round(Number(numericDistance)));
+            }
+          });
+        }
+
+        const rebuiltState = {
+          trip: {
+            date: hashValues.trip_date || "",
+            location: hashValues.trip_location || "",
+            leader: hashValues.trip_leader || "",
+            clerk: hashValues.clerk || ""
+          },
+          bankingDetails: {
+            Name: hashValues.bank_name || "",
+            BSB: hashValues.bank_bsb || "",
+            Account: hashValues.bank_account || ""
+          },
+          baseExpenseRates: { ...baseExpenseRates },
+          maintenanceRate:
+            parseNumericString(hashValues.maintenance_rate) === ""
+              ? maintenanceRate
+              : Number(parseNumericString(hashValues.maintenance_rate)),
+          baseExpenses: baseExpensesState,
+          customExpenses: customExpensesState,
+          participants:
+            participantsData.length > 0
+              ? participantsData
+              : [
+                  { name: "" },
+                  { name: "" }
+                ]
+        };
+
+        Object.keys(baseExpenseRates).forEach((rateKey) => {
+          const rateValue = parseNumericString(hashValues[`base_rate.${rateKey}`]);
+          if (rateValue !== "") {
+            rebuiltState.baseExpenseRates[rateKey] = Number(rateValue);
+          }
+        });
+
+        baseExpensesState.forEach((expenseState) => {
+          const meta = expenseMeta.get(expenseState.key);
+          if (meta && meta.enabled !== undefined) {
+            expenseState.enabled = parseBooleanString(meta.enabled);
+          }
+        });
+        customExpenseEntries.forEach((meta, index) => {
+          customExpensesState[index].enabled = parseBooleanString(meta.enabled);
+        });
+
+        applyApplicationState(rebuiltState);
       } catch (error) {
-        console.error("Could not parse JSON", error);
-        window.alert("Could not load JSON. Please check the file format.");
+        console.error("Could not parse CSV", error);
+        window.alert("Could not load CSV. Please check the file format.");
       }
     }
 
@@ -2915,7 +3711,7 @@
           const value = event.target.value.trim();
           targetExpense.amounts[index] = value === "" ? "" : Number(value);
           const desktopAmount = document.querySelector(
-            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"][data-distance-field!="true"]`
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${index}"]:not([data-distance-field="true"])`
           );
           if (desktopAmount && !desktopAmount.readOnly) {
             desktopAmount.value = value;
@@ -2923,7 +3719,16 @@
           recalculate();
         });
         label.appendChild(amountInput);
-        grid.appendChild(label);
+        const petrolGroup =
+          expense.key === "petrol"
+            ? document.createElement("div")
+            : null;
+        if (petrolGroup) {
+          petrolGroup.className = "petrol-expense-group";
+          petrolGroup.appendChild(label);
+        } else {
+          grid.appendChild(label);
+        }
 
         if (expense.key === "petrol") {
           const distanceLabel = document.createElement("label");
@@ -2971,7 +3776,66 @@
             recalculate();
           });
           distanceLabel.appendChild(distanceInput);
-          grid.appendChild(distanceLabel);
+          if (petrolGroup) {
+            petrolGroup.appendChild(distanceLabel);
+          } else {
+            grid.appendChild(distanceLabel);
+          }
+        }
+
+        if (isBalancingCustomExpense(expense)) {
+          amountInput.min = "0";
+          amountInput.placeholder = getCustomExpensePlaceholder(
+            Boolean(expense.consumers[personIndex])
+          );
+          const controlsRow = document.createElement("div");
+          controlsRow.className = "custom-expense-paid-row";
+          const paidLabel = document.createElement("label");
+          paidLabel.className = "mobile-checkbox-field";
+          const paidInput = document.createElement("input");
+          paidInput.type = "checkbox";
+          paidInput.checked = Boolean(expense.consumers[personIndex]);
+          paidInput.dataset.expenseId = expense.id;
+          paidInput.dataset.personIndex = String(personIndex);
+          paidInput.className = "mobile-paid-input";
+          paidInput.addEventListener("change", (event) => {
+            const targetExpense = findExpenseById(event.target.dataset.expenseId);
+            if (!targetExpense) {
+              return;
+            }
+            const index = Number(event.target.dataset.personIndex);
+            targetExpense.consumers[index] = event.target.checked;
+            amountInput.placeholder = getCustomExpensePlaceholder(event.target.checked);
+            const desktopPaid = document.querySelector(
+              `.attendance-table input.custom-paid-input[data-expense-id="${expense.id}"][data-person-index="${index}"]`
+            );
+            if (desktopPaid) {
+              desktopPaid.checked = event.target.checked;
+            }
+            recalculate();
+          });
+          const paidText = document.createElement("span");
+          paidText.textContent = "Paid";
+          paidLabel.appendChild(paidInput);
+          paidLabel.appendChild(paidText);
+          controlsRow.appendChild(paidLabel);
+
+          const infoButton = document.createElement("button");
+          infoButton.type = "button";
+          infoButton.className = "custom-expense-info-button";
+          infoButton.textContent = "i";
+          infoButton.title = getPaidCheckboxInfoText();
+          infoButton.setAttribute("aria-label", "Paid checkbox info");
+          infoButton.addEventListener("click", () => {
+            window.alert(getPaidCheckboxInfoText());
+          });
+          controlsRow.appendChild(infoButton);
+          label.appendChild(controlsRow);
+
+          if (petrolGroup) {
+            grid.appendChild(petrolGroup);
+          }
+          return;
         }
 
         const consumeLabel = document.createElement("label");
@@ -2998,10 +3862,15 @@
           recalculate();
         });
         const consumeText = document.createElement("span");
-        consumeText.textContent = "Include in share";
+        consumeText.textContent = "Include in shared car pool expense";
         consumeLabel.appendChild(consumeInput);
         consumeLabel.appendChild(consumeText);
-        grid.appendChild(consumeLabel);
+        if (petrolGroup) {
+          petrolGroup.appendChild(consumeLabel);
+          grid.appendChild(petrolGroup);
+        } else {
+          grid.appendChild(consumeLabel);
+        }
       });
 
       panel.appendChild(grid);
@@ -3075,7 +3944,7 @@
           headerRow.appendChild(distanceHeader);
         }
 
-        if (!directCharge) {
+        if (!directCharge && !isBalancingCustomExpense(expense)) {
           const consumeHeader = document.createElement("th");
           consumeHeader.className = "consume-header";
           consumeHeader.dataset.expenseId = expense.id;
@@ -3102,6 +3971,7 @@
       renderFooter(activeExpenses);
       renderMobileTabs(activeExpenses);
       updateDuplicateNameWarnings();
+      attachFieldInfoIcons();
       recalculate();
     }
 
@@ -3120,7 +3990,7 @@
         nameInput.type = "text";
         nameInput.value = participant.name;
         nameInput.setAttribute("list", nameListId);
-        nameInput.className = "name-input" + (participant.bold ? " bold" : "");
+        nameInput.className = "name-input";
         nameInput.dataset.personIndex = String(personIndex);
 
         const nameSelect = document.createElement("select");
@@ -3283,6 +4153,64 @@
             row.appendChild(distanceCell);
           }
 
+          if (isBalancingCustomExpense(expense)) {
+            amountInput.min = "0";
+            amountInput.placeholder = getCustomExpensePlaceholder(
+              Boolean(expense.consumers[personIndex])
+            );
+            const customInputGroup = document.createElement("div");
+            customInputGroup.className = "custom-expense-input-group";
+            amountCell.innerHTML = "";
+            customInputGroup.appendChild(amountInput);
+
+            const controlsRow = document.createElement("div");
+            controlsRow.className = "custom-expense-paid-row";
+            const paidWrapper = document.createElement("label");
+            paidWrapper.className = "mobile-checkbox-field";
+            const paidInput = document.createElement("input");
+            paidInput.type = "checkbox";
+            paidInput.checked = Boolean(expense.consumers[personIndex]);
+            paidInput.className = "custom-paid-input";
+            paidInput.dataset.expenseId = expense.id;
+            paidInput.dataset.personIndex = String(personIndex);
+            paidInput.setAttribute("aria-label", `${expense.name} paid`);
+            paidInput.addEventListener("change", (event) => {
+              const targetExpense = findExpenseById(event.target.dataset.expenseId);
+              if (!targetExpense) {
+                return;
+              }
+              const index = Number(event.target.dataset.personIndex);
+              targetExpense.consumers[index] = event.target.checked;
+              amountInput.placeholder = getCustomExpensePlaceholder(event.target.checked);
+              const mobilePaid = document.querySelector(
+                `.mobile-paid-input[data-expense-id="${expense.id}"][data-person-index="${index}"]`
+              );
+              if (mobilePaid) {
+                mobilePaid.checked = event.target.checked;
+              }
+              recalculate();
+            });
+            const paidText = document.createElement("span");
+            paidText.textContent = "Paid";
+            paidWrapper.appendChild(paidInput);
+            paidWrapper.appendChild(paidText);
+            controlsRow.appendChild(paidWrapper);
+
+            const infoButton = document.createElement("button");
+            infoButton.type = "button";
+            infoButton.className = "custom-expense-info-button";
+            infoButton.textContent = "i";
+            infoButton.title = getPaidCheckboxInfoText();
+            infoButton.setAttribute("aria-label", "Paid checkbox info");
+            infoButton.addEventListener("click", () => {
+              window.alert(getPaidCheckboxInfoText());
+            });
+            controlsRow.appendChild(infoButton);
+            customInputGroup.appendChild(controlsRow);
+            amountCell.appendChild(customInputGroup);
+            return;
+          }
+
           const consumeCell = document.createElement("td");
           consumeCell.className = "consume-cell";
           const consumeInput = document.createElement("input");
@@ -3346,6 +4274,10 @@
           row.appendChild(totalCell);
         } else {
           row.appendChild(totalCell);
+
+          if (isBalancingCustomExpense(expense)) {
+            return;
+          }
 
           if (expense.key === "petrol") {
             const distanceCell = document.createElement("td");
@@ -3456,6 +4388,11 @@
             `.mobile-consume-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
           );
           syncInputValueIfInactive(consumeInput, consumerState, true);
+
+          const paidInput = document.querySelector(
+            `.mobile-paid-input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]`
+          );
+          syncInputValueIfInactive(paidInput, consumerState, true);
         });
 
         expense.amounts.forEach((amount, personIndex) => {
@@ -3465,6 +4402,11 @@
           if (amountInput && !amountInput.readOnly) {
             const value = amount === "" ? "" : String(amount);
             syncInputValueIfInactive(amountInput, value);
+            if (isBalancingCustomExpense(expense)) {
+              amountInput.placeholder = getCustomExpensePlaceholder(
+                Boolean(expense.consumers[personIndex])
+              );
+            }
           }
 
           if (expense.key === "petrol") {
@@ -3499,11 +4441,16 @@
 
         expense.amounts.forEach((amount, personIndex) => {
           const amountInput = document.querySelector(
-            `.attendance-table input[type="number"][data-expense-id="${expense.id}"][data-person-index="${personIndex}"][data-distance-field!="true"]`
+            `.attendance-table input[data-expense-id="${expense.id}"][data-person-index="${personIndex}"]:not([data-distance-field="true"])`
           );
           if (amountInput && !amountInput.readOnly) {
             const value = amount === "" ? "" : String(amount);
             syncInputValueIfInactive(amountInput, value);
+            if (isBalancingCustomExpense(expense)) {
+              amountInput.placeholder = getCustomExpensePlaceholder(
+                Boolean(expense.consumers[personIndex])
+              );
+            }
           }
 
           if (expense.key === "petrol") {
@@ -3577,6 +4524,59 @@
             );
             if (consumersCell) {
               consumersCell.textContent = `Consumers: ${consumerCount}`;
+            }
+          }
+
+          return;
+        }
+
+        if (isBalancingCustomExpense(expense)) {
+          let netTotal = 0;
+          let contributorCount = 0;
+          let owingCount = 0;
+
+          expense.amounts.forEach((amount, personIndex) => {
+            if (!participantHasName[personIndex]) {
+              return;
+            }
+            if (amount === "" || !Number.isFinite(Number(amount))) {
+              return;
+            }
+            const rawAmount = Number(amount);
+            const magnitude = Math.abs(rawAmount);
+            if (magnitude === 0) {
+              return;
+            }
+            const isPaid = Boolean(expense.consumers[personIndex]);
+            if (isPaid) {
+              netTotal += magnitude;
+              contributorCount += 1;
+              participantContributions[personIndex] += magnitude;
+              participantContributionDetails[personIndex].push({
+                name: expense.name,
+                value: magnitude,
+                distance: null
+              });
+            } else {
+              netTotal -= magnitude;
+              owingCount += 1;
+              participantFeeTotals[personIndex] += magnitude;
+              participantFeeBreakdowns[personIndex].push({
+                name: expense.name,
+                value: magnitude
+              });
+            }
+          });
+
+          if (applyDomUpdates) {
+            const totalCell = document.querySelector(
+              `.expense-total[data-expense-id="${expense.id}"]`
+            );
+            if (totalCell) {
+              totalCell.innerHTML = `Net: $${formatCurrency(netTotal) || "0.00"}`;
+              const detail = document.createElement("div");
+              detail.textContent = `Paid: ${contributorCount}, Owes: ${owingCount}`;
+              totalCell.appendChild(detail);
             }
           }
 
@@ -3873,8 +4873,63 @@
       return calculateFinancials(true);
     }
 
+    function getCustomExpenseImbalanceMessages() {
+      const messages = [];
+      const tolerance = 0.005;
+      const activeExpenses = getActiveExpenses();
+      const participantHasName = participants.map(
+        (participant) => Boolean(participant.name && participant.name.trim())
+      );
+
+      activeExpenses.forEach((expense) => {
+        if (!isBalancingCustomExpense(expense)) {
+          return;
+        }
+        ensureExpenseSize(expense);
+        let net = 0;
+        let paidTotal = 0;
+        let owesTotal = 0;
+        expense.amounts.forEach((amount, personIndex) => {
+          if (!participantHasName[personIndex]) {
+            return;
+          }
+          if (amount === "" || !Number.isFinite(Number(amount))) {
+            return;
+          }
+          const magnitude = Math.abs(Number(amount));
+          if (!magnitude) {
+            return;
+          }
+          if (expense.consumers[personIndex]) {
+            paidTotal += magnitude;
+            net += magnitude;
+          } else {
+            owesTotal += magnitude;
+            net -= magnitude;
+          }
+        });
+
+        if (Math.abs(net) > tolerance) {
+          const adjustmentAmount = Math.abs(net);
+          const adjustmentHint =
+            net > 0
+              ? `Add $${formatCurrency(adjustmentAmount)} to Owes or remove from Paid`
+              : `Add $${formatCurrency(adjustmentAmount)} to Paid or remove from Owes`;
+          messages.push(
+            `A difference of $${formatCurrency(net)} is outstanding for expense "${expense.name}" (Paid $${formatCurrency(
+              paidTotal
+            )} vs Owes $${formatCurrency(owesTotal)}). ${adjustmentHint}.`
+          );
+        }
+      });
+
+      return messages;
+    }
+
     document.getElementById("add-expense").addEventListener("click", () => {
-      const expenseName = window.prompt("Enter a name for the new expense:");
+      const expenseName = window.prompt(
+        "Enter a name for the new balancing expense (set amount + Paid checkbox per member):"
+      );
       if (!expenseName) {
         return;
       }
@@ -3910,17 +4965,19 @@
       renderTable();
     });
 
-    document.getElementById("save-json").addEventListener("click", () => {
-      downloadAttendanceJson();
+    document.getElementById("save-csv").addEventListener("click", () => {
+      downloadAttendanceCsv();
+      saveStateToBrowserStorage();
+      window.alert("CSV downloaded and draft saved in this browser.");
     });
 
-    const loadJsonInput = document.getElementById("load-json-input");
-    document.getElementById("load-json").addEventListener("click", () => {
-      loadJsonInput.value = "";
-      loadJsonInput.click();
+    const loadCsvInput = document.getElementById("load-csv-input");
+    document.getElementById("load-csv").addEventListener("click", () => {
+      loadCsvInput.value = "";
+      loadCsvInput.click();
     });
 
-    loadJsonInput.addEventListener("change", (event) => {
+    loadCsvInput.addEventListener("change", (event) => {
       const [file] = event.target.files;
       if (!file) {
         return;
@@ -3931,24 +4988,122 @@
           const result = reader.result;
           const textContent =
             typeof result === "string" ? result : new TextDecoder().decode(result);
-          loadTableFromJsonContent(textContent);
+          loadTableFromCsvContent(textContent);
         } catch (error) {
-          console.error("Could not load JSON", error);
-          window.alert("Could not load JSON. Please check the file format.");
+          console.error("Could not load CSV", error);
+          window.alert("Could not load CSV. Please check the file format.");
         }
       };
       reader.readAsText(file);
     });
 
+    if (gptCsvPromptButton) {
+      gptCsvPromptButton.addEventListener("click", async () => {
+        const promptText = buildGptCsvPrompt();
+        try {
+          await copyTextToClipboard(promptText);
+          window.alert(
+            "GPT prompt copied to clipboard. Paste it into ChatGPT, then paste your notes where indicated."
+          );
+        } catch (error) {
+          console.error("Could not copy GPT prompt", error);
+          window.alert(
+            `Could not copy automatically. Please copy this prompt manually:\n\n${promptText}`
+          );
+        }
+      });
+    }
+
+    if (pasteCsvButton && pasteCsvDialog) {
+      pasteCsvButton.addEventListener("click", () => {
+        if (pasteCsvTextArea) {
+          pasteCsvTextArea.value = "";
+        }
+        pasteCsvDialog.showModal();
+      });
+    }
+
+    if (pasteCsvCancelButton && pasteCsvDialog) {
+      pasteCsvCancelButton.addEventListener("click", () => {
+        pasteCsvDialog.close();
+      });
+    }
+
+    if (pasteCsvForm && pasteCsvDialog) {
+      pasteCsvForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const csvText = String(pasteCsvTextArea?.value || "").trim();
+        if (!csvText) {
+          window.alert("Please paste CSV text before loading.");
+          return;
+        }
+        try {
+          loadTableFromCsvContent(csvText);
+          pasteCsvDialog.close();
+          window.alert("CSV text loaded successfully.");
+        } catch (error) {
+          console.error("Could not load pasted CSV", error);
+          window.alert(
+            `Could not load pasted CSV. ${
+              error && error.message ? error.message : "Please check the format."
+            }`
+          );
+        }
+      });
+    }
+
     const summariseButton = document.getElementById("summarise-button");
+    const summariseImbalanceMessage = document.getElementById(
+      "summarise-imbalance-message"
+    );
     if (summariseButton) {
       summariseButton.addEventListener("click", () => {
-        downloadAndOpenSummaryHtml();
+        try {
+          if (summariseImbalanceMessage) {
+            summariseImbalanceMessage.hidden = true;
+            summariseImbalanceMessage.textContent = "";
+          }
+          recalculate();
+          const imbalanceMessages = getCustomExpenseImbalanceMessages();
+          if (imbalanceMessages.length > 0) {
+            if (summariseImbalanceMessage) {
+              summariseImbalanceMessage.hidden = false;
+              summariseImbalanceMessage.textContent =
+                "Cannot summarise yet. Please balance these custom expenses first:\n" +
+                imbalanceMessages.join("\n");
+            }
+            return;
+          }
+          const opened = downloadAndOpenSummaryHtml();
+          if (!opened) {
+            return;
+          }
+        } catch (error) {
+          console.error("Could not generate summary", error);
+          if (summariseImbalanceMessage) {
+            const imbalanceMessages = getCustomExpenseImbalanceMessages();
+            const errorDetail =
+              error && typeof error.message === "string" && error.message.trim()
+                ? `Details: ${error.message.trim()}`
+                : "";
+            summariseImbalanceMessage.hidden = false;
+            summariseImbalanceMessage.textContent =
+              [
+                "Could not generate summary.",
+                errorDetail,
+                imbalanceMessages.length
+                  ? `Outstanding balances:\n${imbalanceMessages.join("\n")}`
+                  : "Please check that all fields are valid and try again."
+              ]
+                .filter(Boolean)
+                .join("\n");
+          }
+        }
       });
     }
 
     function addParticipantRow() {
-      participants.push({ name: "", bold: false });
+      participants.push({ name: "" });
       if (srtKitMasterToggle && srtKitMasterToggle.checked) {
         const srtKitExpense = getSrtKitExpense();
         if (srtKitExpense && srtKitExpense.enabled) {
@@ -3965,10 +5120,6 @@
     const addRowButton = document.getElementById("add-row");
     if (addRowButton) {
       addRowButton.addEventListener("click", addParticipantRow);
-    }
-
-    if (mobileAddPersonButton) {
-      mobileAddPersonButton.addEventListener("click", addParticipantRow);
     }
 
     document.getElementById("remove-row").addEventListener("click", () => {
@@ -4086,6 +5237,19 @@
       }
     }
 
+    function resetBankingFormFieldsToDefaults() {
+      const defaults = normalizeBankingDetails(defaultBankingDetails);
+      if (bankingNameInput) {
+        bankingNameInput.value = defaults.name;
+      }
+      if (bankingBsbInput) {
+        bankingBsbInput.value = defaults.bsb;
+      }
+      if (bankingAccountInput) {
+        bankingAccountInput.value = defaults.account;
+      }
+    }
+
     function renderBankingDetailsInto(container, targetDocument = document) {
       if (!container) {
         return;
@@ -4171,6 +5335,12 @@
           if (bankingDialog?.open) {
             bankingDialog.close();
           }
+        });
+      }
+
+      if (bankingResetButton) {
+        bankingResetButton.addEventListener("click", () => {
+          resetBankingFormFieldsToDefaults();
         });
       }
     }
