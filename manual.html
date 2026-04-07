@@ -5373,7 +5373,7 @@
 
       const query = new URLSearchParams(window.location.search);
       if (query.get("from") === "ai") {
-        const shouldSummarise = window.confirm("Your form has been filled, go to summary?");
+        const shouldSummarise = window.confirm("Form has been filled, go to summary?");
         if (shouldSummarise) {
           document.getElementById("summarise-button")?.click();
         }

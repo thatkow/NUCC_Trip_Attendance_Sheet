@@ -116,6 +116,14 @@
       margin-top: 0.35rem;
     }
 
+    .summary-banking-logo {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto 0.65rem;
+    }
+
     .banking-label {
       font-weight: 600;
       margin-right: 0.35rem;
@@ -590,6 +598,13 @@
 
       // Banking
       const headerRight = el("div", "summary-header-right");
+      const bankingLogo = document.createElement("img");
+      bankingLogo.src = "banking_logo.png";
+      bankingLogo.alt = "Banking logo";
+      bankingLogo.className = "summary-banking-logo";
+      bankingLogo.onerror = () => { bankingLogo.style.display = "none"; };
+      headerRight.appendChild(bankingLogo);
+
       const bankingEl = el("div", "banking-details");
       const tag = trip.date && trip.location
         ? trip.date.replace(/-/g, "_") + "_" + trip.location.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
