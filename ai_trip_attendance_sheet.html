@@ -76,6 +76,7 @@
       </label>
       <div class="actions">
         <button type="button" class="btn btn-clear" id="ai-clear-json-btn">Clear</button>
+        <button type="button" class="btn btn-open" id="ai-preview-owe-btn">Preview Name/Owe table</button>
         <button type="button" class="btn btn-download" id="ai-download-docx-btn">Download trip attendance docx</button>
       </div>
     </section>
@@ -87,6 +88,15 @@
   <script>
     function cleanJsonText(value) {
       return String(value || "").trim().replace(/^```[a-zA-Z]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
     let tooltipTimer = null;
@@ -391,6 +401,52 @@
       data.feeCodes = feeCodes;
     }
 
+    function buildNameOweRows(data) {
+      const participants = Array.isArray(data?.participants) ? data.participants : [];
+      return participants.map((person) => {
+        const feeText = ensureExpressionHasTotal(person?.fee || "");
+        const contributionsText = ensureExpressionHasTotal(person?.contributions || "");
+        const feeTotal = parseExpressionTotal(feeText);
+        const contributionsTotal = parseExpressionTotal(contributionsText);
+        const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
+        return {
+          name: person?.name || "",
+          owe: oweValue
+        };
+      });
+    }
+
+    function previewNameOweTable() {
+      const data = parseAiJson();
+      if (!data) {
+        return;
+      }
+      ensureMaintenanceCredit(data);
+      const rows = buildNameOweRows(data);
+      const tableRows = rows.map((row) => {
+        const numeric = Number(row.owe);
+        const color = row.owe && numeric > 0 ? "#b00020" : row.owe && numeric < 0 ? "#1b5e20" : "#222";
+        return `<tr><td>${escapeHtml(row.name)}</td><td style="color:${color};font-weight:700;">${escapeHtml(row.owe)}</td></tr>`;
+      }).join("");
+
+      const popup = window.open("", "name-owe-preview", "width=560,height=700");
+      if (!popup) {
+        window.alert("Popup blocked. Please allow popups for this site.");
+        return;
+      }
+      popup.document.write(`<!doctype html><html><head><title>Name / Owe(-Owed)</title><style>
+        body{font-family:Segoe UI,Arial,sans-serif;margin:1rem;color:#222}
+        table{border-collapse:collapse;width:100%}
+        th,td{border:1px solid #cfd8dc;padding:.45rem .55rem;text-align:left}
+        th{background:#eceff1}
+      </style></head><body>
+      <h2>Name and Owe(-Owed)</h2>
+      <table><thead><tr><th>Name</th><th>Owe(-Owed)</th></tr></thead><tbody>${tableRows}</tbody></table>
+      </body></html>`);
+      popup.document.close();
+      popup.focus();
+    }
+
     function updateTemplateDocumentXml(documentXml, data) {
       const parser = new DOMParser();
       const xml = parser.parseFromString(documentXml, "application/xml");
@@ -514,6 +570,8 @@
         textarea.focus();
       }
     });
+
+    document.getElementById("ai-preview-owe-btn")?.addEventListener("click", previewNameOweTable);
 
     document.getElementById("ai-download-docx-btn")?.addEventListener("click", () => {
       generateDocx().catch((error) => {
