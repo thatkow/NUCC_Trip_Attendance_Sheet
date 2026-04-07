@@ -171,6 +171,12 @@
       const leader = document.getElementById("ai-leader")?.value.trim() || "<leader>";
       const distance = document.getElementById("ai-distance")?.value.trim() || "<distance>";
       const notes = document.getElementById("ai-notes")?.value.trim() || "<textarea from Provide details>";
+      const standardCosts = {
+        maintenanceRatePerKmPerCar: 0.025,
+        horizontalGear: 5,
+        campingGear: 10,
+        srtKit: 5
+      };
 
       return [
         "Convert these rough trip notes into JSON that can render a NUCC Trip Attendance Sheet matching the example layout and notation style.",
@@ -188,13 +194,21 @@
         '  "signature": "string"',
         "}",
         "Formatting requirements (important):",
+        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee Contributions | Reimbursed | Notes.",
+        "- Generate fee code rows using EXACT columns and order: Code | Description | Total Calculation | Per person.",
         "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G) in feeContributions.",
         "- Use driver column as 'Y' for drivers, otherwise empty string ''.",
         "- reimbursed should be a number string like '188.90' when applicable, otherwise ''.",
         "- Keep notes short; usually ''.",
         "- Use fee code rows similar to the example table and include petrol + maintenance lines when data allows:",
-        "  P=Petrol, D=Distance (Maint.), C=Maint. Credit, H=Horizontal Gear, T=Camping Gear, G=Goulash, Z=Pizza.",
+        "  P=Petrol, D=Distance (Maint.), C=Maint. Credit, H=Horizontal Gear, T=Camping Gear, S=SRT Kit, G=Goulash, Z=Pizza.",
+        "- Use these standard NUCC rates unless notes override them:",
+        `  maintenance_rate=${standardCosts.maintenanceRatePerKmPerCar} per km per car`,
+        `  horizontal_gear=${standardCosts.horizontalGear}`,
+        `  camping_gear=${standardCosts.campingGear}`,
+        `  srt_kit=${standardCosts.srtKit}`,
         "- For petrol in feeContributions, use both parts where possible: amount paid P and maintenance share M.",
+        "- Maintenance calculations should use maintenance_rate × return_distance × number_of_cars.",
         "- If values are missing, infer reasonable values only when clearly implied; otherwise leave blank.",
         "- Include all participants mentioned in Trip participants list.",
         "- Do not output markdown in any field values.",
