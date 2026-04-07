@@ -533,20 +533,37 @@
       return locStr + "-" + dateStr;
     }
 
-    async function shortenWithTinyUrl(longUrl, alias) {
-      const base = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl);
-      const withAlias = alias ? base + "&alias=" + encodeURIComponent(alias) : base;
-      // Try custom alias first, then random
-      for (const endpoint of alias ? [withAlias, base] : [base]) {
-        try {
-          const resp = await fetch(endpoint);
-          if (resp.ok) {
-            const text = (await resp.text()).trim();
-            if (text.startsWith("https://tinyurl.com/")) return text;
-          }
-        } catch (e) { /* CORS or network failure — fall through */ }
+    async function shortenWithBitly(longUrl) {
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromQuery = params.get("bitly_token");
+      const tokenFromStorage = window.localStorage.getItem("nucc_bitly_token");
+      const token = tokenFromQuery || tokenFromStorage || "";
+
+      if (!token) {
+        return null;
       }
-      return null;
+
+      if (tokenFromQuery) {
+        window.localStorage.setItem("nucc_bitly_token", tokenFromQuery);
+      }
+
+      try {
+        const resp = await fetch("https://api-ssl.bitly.com/v4/shorten", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ long_url: longUrl })
+        });
+        if (!resp.ok) {
+          return null;
+        }
+        const data = await resp.json();
+        return typeof data?.link === "string" ? data.link : null;
+      } catch (e) {
+        return null;
+      }
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -632,14 +649,13 @@
       const copyNotice = el("span", "summary-copy-link-notice", "Paste into Messenger, WhatsApp, or email to share this summary.");
       copyBtn.addEventListener("click", async () => {
         copyBtn.disabled = true;
-        copyNotice.textContent = "Shortening link…";
-        const alias = buildTinyAlias(trip.location, trip.date);
-        const shortUrl = await shortenWithTinyUrl(window.location.href, alias);
+        copyNotice.textContent = "Shortening link with Bitly…";
+        const shortUrl = await shortenWithBitly(window.location.href);
         const urlToCopy = shortUrl || window.location.href;
         copyBtn.disabled = false;
         try {
           await navigator.clipboard.writeText(urlToCopy);
-          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (could not shorten — full URL copied)";
+          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (Bitly unavailable — full URL copied)";
           setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 4000);
         } catch (err) {
           window.prompt("Copy this link:", urlToCopy);
