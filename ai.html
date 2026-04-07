@@ -84,39 +84,20 @@
     }
 
     function buildPrompt() {
-      const location = document.getElementById("ai-location")?.value.trim() || "";
-      const date = document.getElementById("ai-date")?.value || "";
-      const leader = document.getElementById("ai-leader")?.value.trim() || "";
-      const distance = document.getElementById("ai-distance")?.value.trim() || "";
-      const notes = document.getElementById("ai-notes")?.value.trim() || "";
-      const distanceLine = distance ? `Return trip distance: ${distance} km\n` : "";
+      const location = document.getElementById("ai-location")?.value.trim() || "<location>";
+      const date = document.getElementById("ai-date")?.value || "<date>";
+      const leader = document.getElementById("ai-leader")?.value.trim() || "<leader>";
+      const distance = document.getElementById("ai-distance")?.value.trim() || "<distance>";
+      const notes = document.getElementById("ai-notes")?.value.trim() || "<text from Provide details input text area>";
 
       return [
-        "You are converting rough trip notes into a NUCC Trip Attendance CSV.",
-        "Return ONLY a CSV in a fenced code block using ```csv.",
-        "Do not include any explanation outside the code block.",
-        "Requirements:",
-        "- Keep the same CSV structure and column ordering as the example.",
-        "- Keep metadata rows (format, trip fields, base rates, and expense.* rows).",
-        "- Keep boolean values as true/false.",
-        "- For custom balancing expenses, output Exp: and Paid: columns and keep each custom expense net balanced to 0 where possible.",
-        "- Paid:<field> MUST be boolean only (true/false), never a dollar amount.",
-        "- Exp:<field> MUST always be a non-negative number (or blank).",
-        "- If notes say '<name> paid $X for <expense>', set that person's Paid:<field>=true and Exp:<field>=X (unless netting is needed; see below).",
-        "- If notes say '<name> owes $Y for <expense>', set Paid:<field>=false and Exp:<field>=Y.",
-        "- If the same person both paid and owes for the same custom expense, net their values into one row entry:",
-        "  - net = paid_total - owes_total",
-        "  - if net > 0 => Paid=true and Exp=net",
-        "  - if net < 0 => Paid=false and Exp=absolute(net)",
-        "  - if net = 0 => Exp blank and Paid false",
-        "- For each custom expense, ensure SUM(Exp where Paid=true) equals SUM(Exp where Paid=false).",
-        "- If notes do not provide a value, leave that CSV cell blank.",
-        "",
+        "You are converting rough trip notes into a NUCC Trip Attendance CSV. Return ONLY a CSV in a fenced code block using ```csv.",
         "Trip notes to convert:",
         `Location: ${location}`,
         `Date: ${date}`,
         `Trip Leader: ${leader}`,
-        `${distanceLine}${notes}`.trim()
+        `Return trip distance: ${distance}`,
+        notes
       ].join("\n");
     }
 
