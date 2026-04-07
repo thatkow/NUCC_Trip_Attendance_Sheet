@@ -256,6 +256,33 @@
       cell.appendChild(paragraph);
     }
 
+    function setCellRunColor(cell, colorHex) {
+      if (!cell) {
+        return;
+      }
+      const namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const runs = cell.getElementsByTagNameNS(namespace, "r");
+      for (const run of runs) {
+        let runProps = run.getElementsByTagNameNS(namespace, "rPr")[0];
+        if (!runProps) {
+          runProps = cell.ownerDocument.createElementNS(namespace, "w:rPr");
+          run.insertBefore(runProps, run.firstChild || null);
+        }
+        const existingColor = runProps.getElementsByTagNameNS(namespace, "color")[0];
+        if (colorHex) {
+          if (existingColor) {
+            existingColor.setAttributeNS(namespace, "w:val", colorHex);
+          } else {
+            const color = cell.ownerDocument.createElementNS(namespace, "w:color");
+            color.setAttributeNS(namespace, "w:val", colorHex);
+            runProps.appendChild(color);
+          }
+        } else if (existingColor) {
+          existingColor.parentNode.removeChild(existingColor);
+        }
+      }
+    }
+
     function setLabelValueRow(table, label, value) {
       const rows = getDirectChildrenByTagName(table, "tr");
       for (const row of rows) {
@@ -396,6 +423,14 @@
           setCellText(cells[2], feeText);
           setCellText(cells[3], contributionsText);
           setCellText(cells[4], oweValue);
+          const oweNumber = Number(oweValue);
+          if (oweValue && oweNumber > 0) {
+            setCellRunColor(cells[4], "B00020");
+          } else if (oweValue && oweNumber < 0) {
+            setCellRunColor(cells[4], "1B5E20");
+          } else {
+            setCellRunColor(cells[4], null);
+          }
           setCellText(cells[5], person?.notes || "");
         }
       }
