@@ -162,7 +162,7 @@
         "{",
         '  "trip": { "date": "DD/MM/YYYY", "location": "string", "tripLeader": "string" },',
         '  "participants": [',
-        '    { "name": "string", "driver": "Y|", "fee": "string", "contributions": "string", "reimbursed": "string", "notes": "string" }',
+        '    { "name": "string", "driver": "Y|", "fee": "string", "contributions": "string", "notes": "string" }',
         "  ],",
         '  "feeCodes": [',
         '    { "code": "P|D|C|H|T|G|Z|other short code", "description": "string", "calculation": "string", "perPerson": "string" }',
@@ -171,12 +171,13 @@
         '  "signature": "string"',
         "}",
         "Formatting requirements (important):",
-        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee | Contributions | Reimbursed | Notes.",
+        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee | Contributions | Owe(-Owed) | Notes.",
         "- Generate fee code rows using EXACT columns and order: Code | Description | Total Calculation | Per person.",
-        "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G).",
+        "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G)=40.40.",
         "- Keep Fee and Contributions separate: fee contains what each person owes; contributions contains what they paid.",
         "- Use driver column as 'Y' for drivers, otherwise empty string ''.",
-        "- reimbursed should be a number string like '188.90' when applicable, otherwise ''.",
+        "- Include totals in both fee and contributions expressions using '=total' (2 decimal places), e.g. 30(P)+2.4(M)=32.40.",
+        "- Owe(-Owed) is calculated later as fee_total - contributions_total; do not add a separate JSON field for it.",
         "- Keep notes short; usually ''.",
         "- Use fee code rows similar to the example table and include petrol + maintenance lines when data allows:",
         "  P=Petrol, D=Distance (Maint.), C=Maint. Credit, H=Horizontal Gear, T=Camping Gear, S=SRT Kit, G=Goulash, Z=Pizza.",
@@ -283,6 +284,34 @@
       }
     }
 
+    function parseExpressionTotal(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return 0;
+      }
+      const explicitMatch = raw.match(/=\s*(-?\d+(?:\.\d+)?)\s*$/);
+      if (explicitMatch) {
+        return Number(explicitMatch[1]) || 0;
+      }
+      const numbers = raw.match(/-?\d+(?:\.\d+)?/g) || [];
+      return numbers.reduce((sum, token) => sum + (Number(token) || 0), 0);
+    }
+
+    function formatAmount(value) {
+      return Number(value || 0).toFixed(2);
+    }
+
+    function ensureExpressionHasTotal(expression) {
+      const trimmed = String(expression || "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      if (/=\s*-?\d+(?:\.\d+)?\s*$/.test(trimmed)) {
+        return trimmed.replace(/=\s*(-?\d+(?:\.\d+)?)\s*$/, (_, n) => `=${formatAmount(Number(n))}`);
+      }
+      return `${trimmed}=${formatAmount(parseExpressionTotal(trimmed))}`;
+    }
+
     function updateTemplateDocumentXml(documentXml, data) {
       const parser = new DOMParser();
       const xml = parser.parseFromString(documentXml, "application/xml");
@@ -299,15 +328,22 @@
 
       if (tables[1]) {
         const rows = getDirectChildrenByTagName(tables[1], "tr");
+        const headerCells = getDirectChildrenByTagName(rows[0], "tc");
+        setCellText(headerCells[4], "Owe(-Owed)");
         const dataRows = rows.slice(1);
         for (let i = 0; i < dataRows.length; i += 1) {
           const person = participants[i] || {};
+          const feeText = ensureExpressionHasTotal(person?.fee || "");
+          const contributionsText = ensureExpressionHasTotal(person?.contributions || "");
+          const feeTotal = parseExpressionTotal(feeText);
+          const contributionsTotal = parseExpressionTotal(contributionsText);
+          const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
           const cells = getDirectChildrenByTagName(dataRows[i], "tc");
           setCellText(cells[0], person?.name || "");
           setCellText(cells[1], person?.driver || "");
-          setCellText(cells[2], person?.fee || "");
-          setCellText(cells[3], person?.contributions || "");
-          setCellText(cells[4], person?.reimbursed || "");
+          setCellText(cells[2], feeText);
+          setCellText(cells[3], contributionsText);
+          setCellText(cells[4], oweValue);
           setCellText(cells[5], person?.notes || "");
         }
       }
