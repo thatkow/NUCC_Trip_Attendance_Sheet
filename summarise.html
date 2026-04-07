@@ -655,7 +655,7 @@
         copyBtn.disabled = false;
         try {
           await navigator.clipboard.writeText(urlToCopy);
-          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (Bitly unavailable — full URL copied)";
+          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (full URL copied)";
           setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 4000);
         } catch (err) {
           window.prompt("Copy this link:", urlToCopy);
