@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Fees Form - AI Form</title>
+  <style>
+    body { margin: 0; padding: 1.5rem; background: #f7f7f7; color: #222; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .wrap { max-width: 820px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #d6e0e3; border-radius: 12px; padding: 1.2rem; box-shadow: 0 0.5rem 1.25rem rgba(0,0,0,.08); }
+    h1 { margin: 0 0 .3rem; text-transform: uppercase; letter-spacing: .08em; font-size: 1.4rem; }
+    .muted { color: #546e7a; margin: 0 0 1rem; }
+    label { display: block; margin: .85rem 0; font-weight: 600; }
+    input, textarea { width: 100%; box-sizing: border-box; margin-top: .35rem; padding: .6rem .7rem; border: 1px solid #b0bec5; border-radius: .5rem; font: inherit; }
+    textarea { min-height: 130px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }
+    .btn { padding: .55rem .95rem; border-radius: .5rem; border: 1px solid transparent; font-weight: 700; cursor: pointer; }
+    .btn-copy { background: #00796b; color: #fff; }
+    .btn-open { background: #fff; color: #006064; border-color: #006064; }
+    .btn-load { background: #1565c0; color: #fff; }
+    .btn-clear { background: #f5f5f5; border-color: #cfd8dc; }
+    .top-links { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem; gap:.5rem; }
+    .top-links a { color:#006064; text-decoration:none; font-weight:600; }
+    .tooltip { position: fixed; right: 1rem; bottom: 1rem; background: #263238; color: #fff; padding: .55rem .75rem; border-radius: .45rem; box-shadow: 0 8px 20px rgba(0,0,0,.2); font-size: .9rem; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 50; }
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top-links">
+      <a href="index.html">← Back to form chooser</a>
+      <a href="manual.html">Open manual form</a>
+    </div>
+    <section class="card">
+      <h1>Trip Fees Form</h1>
+      <p class="muted">AI Form</p>
+
+      <label>
+        Location
+        <input type="text" id="ai-location" placeholder="e.g. Tuglow, Yagby" autocomplete="off" />
+      </label>
+
+      <div class="row">
+        <label>
+          Date
+          <input type="date" id="ai-date" />
+        </label>
+        <label>
+          Trip Leader
+          <input type="text" id="ai-leader" placeholder="Name of the trip leader" autocomplete="off" />
+        </label>
+      </div>
+
+      <label>
+        Return distance (km)
+        <input type="number" id="ai-distance" placeholder="e.g. 240" min="0" step="1" />
+      </label>
+
+      <label>
+        Provide details
+        <textarea id="ai-notes" placeholder="Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear/camping gear/SRT kits? Any additional expenses?"></textarea>
+      </label>
+
+      <div class="actions">
+        <button type="button" class="btn btn-copy" id="ai-copy-prompt-btn">Click to copy prompt</button>
+        <button type="button" class="btn btn-open" id="ai-open-chatgpt-btn">Open ChatGPT</button>
+      </div>
+
+      <h2>Paste the CSV from ChatGPT</h2>
+      <label>
+        CSV output
+        <textarea id="ai-csv-paste" placeholder="Paste the CSV code block content here..." spellcheck="false"></textarea>
+      </label>
+      <div class="actions">
+        <button type="button" class="btn btn-clear" id="ai-clear-csv-btn">Clear</button>
+        <button type="button" class="btn btn-load" id="ai-step6-load">Load &amp; summarise</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="copy-tooltip" role="status" aria-live="polite"></div>
+
+  <script>
+    function cleanCsvText(value) {
+      return String(value || "").trim().replace(/^```[^\n]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+    }
+
+
+    let tooltipTimer = null;
+    function showTooltip(message) {
+      const tooltip = document.getElementById("copy-tooltip");
+      if (!tooltip) {
+        return;
+      }
+      tooltip.textContent = message;
+      tooltip.classList.add("show");
+      if (tooltipTimer) {
+        window.clearTimeout(tooltipTimer);
+      }
+      tooltipTimer = window.setTimeout(() => {
+        tooltip.classList.remove("show");
+      }, 1800);
+    }
+
+    function buildPrompt() {
+      const location = document.getElementById("ai-location")?.value.trim() || "<location>";
+      const date = document.getElementById("ai-date")?.value || "<date>";
+      const leader = document.getElementById("ai-leader")?.value.trim() || "<leader>";
+      const distance = document.getElementById("ai-distance")?.value.trim() || "<distance>";
+      const notes = document.getElementById("ai-notes")?.value.trim() || "<textarea from  Provide details >";
+
+      return [
+        "You are converting rough trip notes into a NUCC Trip Attendance CSV. Return ONLY a CSV in a fenced code block using",
+        "csv.",
+        "Do not include any explanation outside the code block.",
+        "Requirements:",
+        "- Keep the same CSV structure and column ordering as the example.",
+        "- Keep metadata rows (format, trip fields, base rates, and expense.* rows).",
+        "- Keep boolean values as true/false.",
+        "- For custom balancing expenses, output Exp: and Paid: columns and keep each custom expense net balanced to 0 where possible.",
+        "- Paid:<field> MUST be boolean only (true/false), never a dollar amount.",
+        "- Exp:<field> MUST always be a non-negative number (or blank).",
+        "- If notes say '<name> paid $X for <expense>', set that person's Paid:<field>=true and Exp:<field>=X (unless netting is needed; see below).",
+        "- If notes say '<name> owes $Y for <expense>', set Paid:<field>=false and Exp:<field>=Y.",
+        "- If the same person both paid and owes for the same custom expense, net their values into one row entry:",
+        "  - net = paid_total - owes_total",
+        "  - if net > 0 => Paid=true and Exp=net",
+        "  - if net < 0 => Paid=false and Exp=absolute(net)",
+        "  - if net = 0 => Exp blank and Paid false",
+        "- For each custom expense, ensure SUM(Exp where Paid=true) equals SUM(Exp where Paid=false).",
+        "- If notes do not include bank details, default to bank_name='Society Cheque Acct', bank_bsb='062903', bank_account='10320366'.",
+        "- If notes do not provide a value, leave that CSV cell blank.",
+        "",
+        "CSV structure example:",
+        "```csv",
+        '"format","nucc_trip_attendance_matrix_v2"',
+        '"saved_at","2026-04-06T11:00:00.000Z"',
+        '"trip_date","2026-03-27"',
+        '"trip_location","Cooleman"',
+        '"trip_leader","Lauren Jolliffe"',
+        '"clerk",""',
+        '"bank_name","Society Cheque Acct"',
+        '"bank_bsb","062903"',
+        '"bank_account","10320366"',
+        '"maintenance_rate","0.025"',
+        '"base_rate.horizontal-gear","5"',
+        '"base_rate.camping-gear","10"',
+        '"base_rate.srt-kit","5"',
+        '"expense.horizontal-gear.name","Horizontal Gear"',
+        '"expense.horizontal-gear.key","horizontal-gear"',
+        '"expense.horizontal-gear.type","base"',
+        '"expense.horizontal-gear.enabled","true"',
+        '"expense.camping-gear.name","Camping Gear"',
+        '"expense.camping-gear.key","camping-gear"',
+        '"expense.camping-gear.type","base"',
+        '"expense.camping-gear.enabled","true"',
+        '"expense.srt-kit.name","SRT Kit"',
+        '"expense.srt-kit.key","srt-kit"',
+        '"expense.srt-kit.type","base"',
+        '"expense.srt-kit.enabled","true"',
+        '"expense.petrol.name","Petrol"',
+        '"expense.petrol.key","petrol"',
+        '"expense.petrol.type","base"',
+        '"expense.petrol.enabled","true"',
+        '"expense.pizza.name","Pizza"',
+        '"expense.pizza.key","pizza"',
+        '"expense.pizza.type","custom"',
+        '"expense.pizza.enabled","true"',
+        '"expense.goulash.name","Goulash"',
+        '"expense.goulash.key","goulash"',
+        '"expense.goulash.type","custom"',
+        '"expense.goulash.enabled","true"',
+        '"Name","Std:horizontal-gear","Std:camping-gear","Std:srt-kit","Exp:petrol","Inc:petrol","Dist:petrol","Exp:pizza","Paid:pizza","Exp:goulash","Paid:goulash"',
+        '"","false","false","false","","true","","","false","","false"',
+        '"","false","false","false","","true","","","false","","false"',
+        "```",
+        "Trip notes to convert:",
+        `Location: ${location}`,
+        `Date: ${date}`,
+        `Trip Leader: ${leader}`,
+        `Return trip distance: ${distance}`,
+        notes
+      ].join("\n");
+    }
+
+    async function copyPrompt() {
+      const promptText = buildPrompt();
+      try {
+        await navigator.clipboard.writeText(promptText);
+        showTooltip("Prompt copied to clipboard.");
+      } catch (error) {
+        console.error("Could not copy prompt", error);
+        showTooltip("Could not copy automatically.");
+        window.alert(`Could not copy automatically. Please copy manually:\n\n${promptText}`);
+      }
+    }
+
+    document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", copyPrompt);
+
+    document.getElementById("ai-open-chatgpt-btn")?.addEventListener("click", () => {
+      window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+    });
+
+    document.getElementById("ai-clear-csv-btn")?.addEventListener("click", () => {
+      const textarea = document.getElementById("ai-csv-paste");
+      if (textarea) {
+        textarea.value = "";
+        textarea.focus();
+      }
+    });
+
+    document.getElementById("ai-step6-load")?.addEventListener("click", () => {
+      const csvText = cleanCsvText(document.getElementById("ai-csv-paste")?.value || "");
+      if (!csvText) {
+        window.alert("Please paste the CSV text first.");
+        return;
+      }
+
+      const payload = {
+        csv: csvText,
+        trip: {
+          location: document.getElementById("ai-location")?.value.trim() || "",
+          date: document.getElementById("ai-date")?.value || "",
+          leader: document.getElementById("ai-leader")?.value.trim() || ""
+        },
+        distance: document.getElementById("ai-distance")?.value.trim() || "",
+        createdAt: new Date().toISOString()
+      };
+
+      window.localStorage.setItem("nucc-ai-transfer", JSON.stringify(payload));
+      window.location.href = "manual.html?from=ai";
+    });
+  </script>
+</body>
+</html>

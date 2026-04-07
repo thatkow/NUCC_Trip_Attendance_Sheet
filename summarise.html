@@ -116,6 +116,14 @@
       margin-top: 0.35rem;
     }
 
+    .summary-banking-logo {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto 0.65rem;
+    }
+
     .banking-label {
       font-weight: 600;
       margin-right: 0.35rem;
@@ -525,20 +533,59 @@
       return locStr + "-" + dateStr;
     }
 
-    async function shortenWithTinyUrl(longUrl, alias) {
-      const base = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl);
-      const withAlias = alias ? base + "&alias=" + encodeURIComponent(alias) : base;
-      // Try custom alias first, then random
-      for (const endpoint of alias ? [withAlias, base] : [base]) {
-        try {
-          const resp = await fetch(endpoint);
-          if (resp.ok) {
-            const text = (await resp.text()).trim();
-            if (text.startsWith("https://tinyurl.com/")) return text;
-          }
-        } catch (e) { /* CORS or network failure — fall through */ }
+    async function shortenWithShortIo(longUrl) {
+      const params = new URLSearchParams(window.location.search);
+      const domainFromQuery = params.get("shortio_domain");
+      const keyFromQuery = params.get("shortio_key");
+      const domainFromStorage = window.localStorage.getItem("nucc_shortio_domain");
+      const keyFromStorage = window.localStorage.getItem("nucc_shortio_key");
+
+      const domain = domainFromQuery || domainFromStorage || "";
+      const apiKey = keyFromQuery || keyFromStorage || "";
+
+      if (!domain) {
+        return null;
       }
-      return null;
+
+      if (domainFromQuery) {
+        window.localStorage.setItem("nucc_shortio_domain", domainFromQuery);
+      }
+      if (keyFromQuery) {
+        window.localStorage.setItem("nucc_shortio_key", keyFromQuery);
+      }
+
+      try {
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        if (apiKey) {
+          headers.Authorization = apiKey;
+        }
+
+        const resp = await fetch("https://api.short.io/links/public", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            domain,
+            originalURL: longUrl
+          })
+        });
+
+        if (!resp.ok) {
+          return null;
+        }
+
+        const data = await resp.json();
+        if (typeof data?.shortURL === "string") {
+          return data.shortURL;
+        }
+        if (typeof data?.shortUrl === "string") {
+          return data.shortUrl;
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -590,6 +637,13 @@
 
       // Banking
       const headerRight = el("div", "summary-header-right");
+      const bankingLogo = document.createElement("img");
+      bankingLogo.src = "banking_logo.png";
+      bankingLogo.alt = "Banking logo";
+      bankingLogo.className = "summary-banking-logo";
+      bankingLogo.onerror = () => { bankingLogo.style.display = "none"; };
+      headerRight.appendChild(bankingLogo);
+
       const bankingEl = el("div", "banking-details");
       const tag = trip.date && trip.location
         ? trip.date.replace(/-/g, "_") + "_" + trip.location.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
@@ -617,14 +671,13 @@
       const copyNotice = el("span", "summary-copy-link-notice", "Paste into Messenger, WhatsApp, or email to share this summary.");
       copyBtn.addEventListener("click", async () => {
         copyBtn.disabled = true;
-        copyNotice.textContent = "Shortening link…";
-        const alias = buildTinyAlias(trip.location, trip.date);
-        const shortUrl = await shortenWithTinyUrl(window.location.href, alias);
+        copyNotice.textContent = "Shortening link with Short.io…";
+        const shortUrl = await shortenWithShortIo(window.location.href);
         const urlToCopy = shortUrl || window.location.href;
         copyBtn.disabled = false;
         try {
           await navigator.clipboard.writeText(urlToCopy);
-          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (could not shorten — full URL copied)";
+          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (Short.io unavailable — full URL copied)";
           setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 4000);
         } catch (err) {
           window.prompt("Copy this link:", urlToCopy);
