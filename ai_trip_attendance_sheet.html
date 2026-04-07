@@ -89,29 +89,6 @@
       return String(value || "").trim().replace(/^```[a-zA-Z]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
     }
 
-    function xmlEscape(value) {
-      return String(value == null ? "" : value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-    }
-
-    function textParagraph(text) {
-      return `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r></w:p>`;
-    }
-
-    function tableCell(text, width) {
-      const widthXml = width ? `<w:tcW w:w="${width}" w:type="dxa"/>` : "";
-      return `<w:tc><w:tcPr>${widthXml}</w:tcPr>${textParagraph(text)}</w:tc>`;
-    }
-
-    function tableRow(values, isHeader) {
-      const headerShade = isHeader ? "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"EAEAEA\"/>" : "";
-      return `<w:tr>${values.map((item) => `<w:tc><w:tcPr>${headerShade}<w:tcW w:w="1700" w:type="dxa"/></w:tcPr>${textParagraph(item)}</w:tc>`).join("")}</w:tr>`;
-    }
-
     let tooltipTimer = null;
     function showTooltip(message) {
       const tooltip = document.getElementById("copy-tooltip");
@@ -185,7 +162,7 @@
         "{",
         '  "trip": { "date": "DD/MM/YYYY", "location": "string", "tripLeader": "string" },',
         '  "participants": [',
-        '    { "name": "string", "driver": "Y|", "feeContributions": "string", "reimbursed": "string", "notes": "string" }',
+        '    { "name": "string", "driver": "Y|", "fee": "string", "contributions": "string", "reimbursed": "string", "notes": "string" }',
         "  ],",
         '  "feeCodes": [',
         '    { "code": "P|D|C|H|T|G|Z|other short code", "description": "string", "calculation": "string", "perPerson": "string" }',
@@ -194,9 +171,10 @@
         '  "signature": "string"',
         "}",
         "Formatting requirements (important):",
-        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee Contributions | Reimbursed | Notes.",
+        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee | Contributions | Reimbursed | Notes.",
         "- Generate fee code rows using EXACT columns and order: Code | Description | Total Calculation | Per person.",
-        "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G) in feeContributions.",
+        "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G).",
+        "- Keep Fee and Contributions separate: fee contains what each person owes; contributions contains what they paid.",
         "- Use driver column as 'Y' for drivers, otherwise empty string ''.",
         "- reimbursed should be a number string like '188.90' when applicable, otherwise ''.",
         "- Keep notes short; usually ''.",
@@ -207,7 +185,7 @@
         `  horizontal_gear=${standardCosts.horizontalGear}`,
         `  camping_gear=${standardCosts.campingGear}`,
         `  srt_kit=${standardCosts.srtKit}`,
-        "- For petrol in feeContributions, use both parts where possible: amount paid P and maintenance share M.",
+        "- For petrol in fee, include maintenance share M where appropriate; for contributions, include paid petrol/expenses.",
         "- Maintenance calculations should use maintenance_rate × return_distance × number_of_cars.",
         "- If values are missing, infer reasonable values only when clearly implied; otherwise leave blank.",
         "- Include all participants mentioned in Trip participants list.",
@@ -248,56 +226,114 @@
       }
     }
 
-    function buildDocumentXml(data) {
+    function getDirectChildrenByTagName(parent, localName) {
+      return Array.from(parent?.children || []).filter((child) => child.localName === localName);
+    }
+
+    function setCellText(cell, value) {
+      if (!cell) {
+        return;
+      }
+      const textNodes = cell.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t");
+      if (textNodes.length > 0) {
+        textNodes[0].textContent = String(value || "");
+        for (let i = 1; i < textNodes.length; i += 1) {
+          textNodes[i].textContent = "";
+        }
+        return;
+      }
+      const namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const paragraph = cell.ownerDocument.createElementNS(namespace, "w:p");
+      const run = cell.ownerDocument.createElementNS(namespace, "w:r");
+      const text = cell.ownerDocument.createElementNS(namespace, "w:t");
+      text.textContent = String(value || "");
+      run.appendChild(text);
+      paragraph.appendChild(run);
+      cell.appendChild(paragraph);
+    }
+
+    function setLabelValueRow(table, label, value) {
+      const rows = getDirectChildrenByTagName(table, "tr");
+      for (const row of rows) {
+        const cells = getDirectChildrenByTagName(row, "tc");
+        if (cells.length < 2) {
+          continue;
+        }
+        const labelText = cells[0].textContent.replace(/\s+/g, " ").trim();
+        if (labelText === label) {
+          setCellText(cells[1], value);
+          return;
+        }
+      }
+    }
+
+    function setParagraphText(paragraph, value) {
+      if (!paragraph) {
+        return;
+      }
+      const textNodes = paragraph.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t");
+      if (!textNodes.length) {
+        return;
+      }
+      textNodes[0].textContent = String(value || "");
+      for (let i = 1; i < textNodes.length; i += 1) {
+        textNodes[i].textContent = "";
+      }
+    }
+
+    function updateTemplateDocumentXml(documentXml, data) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(documentXml, "application/xml");
+      const tables = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "tbl"));
+      const trip = data?.trip || {};
       const participants = Array.isArray(data?.participants) ? data.participants : [];
       const feeCodes = Array.isArray(data?.feeCodes) ? data.feeCodes : [];
-      const trip = data?.trip || {};
 
-      const attendanceRows = [
-        tableRow(["Name", "Driver", "Fee Contributions", "Reimbursed", "Notes"], true),
-        ...participants.map((row) => tableRow([
-          row?.name || "",
-          row?.driver || "",
-          row?.feeContributions || "",
-          row?.reimbursed || "",
-          row?.notes || ""
-        ]))
-      ].join("");
+      if (tables[0]) {
+        setLabelValueRow(tables[0], "Dates", trip?.date || formatDisplayDate(getDateInput()));
+        setLabelValueRow(tables[0], "Location", trip?.location || getLocation());
+        setLabelValueRow(tables[0], "Trip Leader", trip?.tripLeader || document.getElementById("ai-leader")?.value.trim() || "");
+      }
 
-      const codeRows = [
-        tableRow(["Code", "Description", "Total Calculation", "Per person"], true),
-        ...feeCodes.map((row) => tableRow([
-          row?.code || "",
-          row?.description || "",
-          row?.calculation || "",
-          row?.perPerson || ""
-        ]))
-      ].join("");
+      if (tables[1]) {
+        const rows = getDirectChildrenByTagName(tables[1], "tr");
+        const dataRows = rows.slice(1);
+        for (let i = 0; i < dataRows.length; i += 1) {
+          const person = participants[i] || {};
+          const cells = getDirectChildrenByTagName(dataRows[i], "tc");
+          setCellText(cells[0], person?.name || "");
+          setCellText(cells[1], person?.driver || "");
+          setCellText(cells[2], person?.fee || "");
+          setCellText(cells[3], person?.contributions || "");
+          setCellText(cells[4], person?.reimbursed || "");
+          setCellText(cells[5], person?.notes || "");
+        }
+      }
 
-      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" mc:Ignorable="w14 wp14">
-  <w:body>
-    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Trip Attendance Sheet</w:t></w:r></w:p>
-    ${textParagraph("Date: " + (trip?.date || formatDisplayDate(getDateInput())))}
-    ${textParagraph("Location: " + (trip?.location || getLocation()))}
-    ${textParagraph("Trip Leader: " + (trip?.tripLeader || document.getElementById("ai-leader")?.value.trim() || ""))}
-    <w:p/>
-    <w:tbl>
-      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr>
-      ${attendanceRows}
-    </w:tbl>
-    <w:p/>
-    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Calculation of Trip Fee</w:t></w:r></w:p>
-    <w:tbl>
-      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr>
-      ${codeRows}
-    </w:tbl>
-    <w:p/>
-    ${textParagraph("Club Income (fees - costs): " + (data?.clubIncome || ""))}
-    ${textParagraph("Signature: " + (data?.signature || ""))}
-    <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>
-  </w:body>
-</w:document>`;
+      if (tables[2]) {
+        const rows = getDirectChildrenByTagName(tables[2], "tr");
+        const dataRows = rows.slice(1);
+        for (let i = 0; i < dataRows.length; i += 1) {
+          const feeCode = feeCodes[i] || {};
+          const cells = getDirectChildrenByTagName(dataRows[i], "tc");
+          setCellText(cells[0], feeCode?.code || "");
+          setCellText(cells[1], feeCode?.description || "");
+          setCellText(cells[2], feeCode?.calculation || "");
+          setCellText(cells[3], feeCode?.perPerson || "");
+        }
+      }
+
+      const allParagraphs = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "p"));
+      const clubIncomeParagraph = allParagraphs.find((p) => p.textContent.includes("Club Income (fees - costs)"));
+      if (clubIncomeParagraph) {
+        setParagraphText(clubIncomeParagraph, `Club Income (fees - costs): ${data?.clubIncome || ""}`);
+      }
+      const signatureParagraph = allParagraphs.find((p) => p.textContent.includes("Signature"));
+      if (signatureParagraph) {
+        setParagraphText(signatureParagraph, `Signature: ${data?.signature || ""}`);
+      }
+
+      return new XMLSerializer().serializeToString(xml);
     }
 
     async function generateDocx() {
@@ -311,30 +347,19 @@
         return;
       }
 
-      const zip = new window.JSZip();
-      zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-</Types>`);
-
-      zip.folder("_rels")?.file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
-
-      zip.folder("word")?.file("document.xml", buildDocumentXml(data));
-      zip.folder("word")?.file("styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
-    <w:name w:val="Normal"/>
-    <w:qFormat/>
-  </w:style>
-</w:styles>`);
-      zip.folder("word")?.folder("_rels")?.file("document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`);
+      const templateResponse = await fetch("TripAttendanceSheetExample.docx");
+      if (!templateResponse.ok) {
+        window.alert("Could not load TripAttendanceSheetExample.docx template.");
+        return;
+      }
+      const templateBuffer = await templateResponse.arrayBuffer();
+      const zip = await window.JSZip.loadAsync(templateBuffer);
+      const templateXml = await zip.file("word/document.xml")?.async("string");
+      if (!templateXml) {
+        window.alert("Template document is missing word/document.xml.");
+        return;
+      }
+      zip.file("word/document.xml", updateTemplateDocumentXml(templateXml, data));
 
       const blob = await zip.generateAsync({ type: "blob" });
       const chosenDate = getDateInput();
