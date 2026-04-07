@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Fees Form - AI Trip Attendance Sheet</title>
+  <style>
+    body { margin: 0; padding: 1.5rem; background: #f7f7f7; color: #222; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #d6e0e3; border-radius: 12px; padding: 1.2rem; box-shadow: 0 0.5rem 1.25rem rgba(0,0,0,.08); }
+    h1 { margin: 0 0 .3rem; text-transform: uppercase; letter-spacing: .08em; font-size: 1.35rem; }
+    h2 { margin-top: 1.1rem; }
+    .muted { color: #546e7a; margin: 0 0 1rem; }
+    label { display: block; margin: .85rem 0; font-weight: 600; }
+    input, textarea { width: 100%; box-sizing: border-box; margin-top: .35rem; padding: .6rem .7rem; border: 1px solid #b0bec5; border-radius: .5rem; font: inherit; }
+    textarea { min-height: 130px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }
+    .btn { padding: .55rem .95rem; border-radius: .5rem; border: 1px solid transparent; font-weight: 700; cursor: pointer; }
+    .btn-copy { background: #00796b; color: #fff; }
+    .btn-open { background: #fff; color: #006064; border-color: #006064; }
+    .btn-download { background: #1565c0; color: #fff; }
+    .btn-clear { background: #f5f5f5; border-color: #cfd8dc; }
+    .top-links { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem; gap:.5rem; }
+    .top-links a { color:#006064; text-decoration:none; font-weight:600; }
+    .tooltip { position: fixed; right: 1rem; bottom: 1rem; background: #263238; color: #fff; padding: .55rem .75rem; border-radius: .45rem; box-shadow: 0 8px 20px rgba(0,0,0,.2); font-size: .9rem; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 50; }
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top-links">
+      <a href="index.html">← Back to form chooser</a>
+      <a href="ai.html">Open AI CSV form</a>
+    </div>
+    <section class="card">
+      <h1>Trip Fees Form</h1>
+      <p class="muted">AI Trip Attendance Sheet</p>
+
+      <label>
+        Location
+        <input type="text" id="ai-location" placeholder="e.g. Tuglow, Yagby" autocomplete="off" />
+      </label>
+
+      <div class="row">
+        <label>
+          Date
+          <input type="date" id="ai-date" />
+        </label>
+        <label>
+          Trip Leader
+          <input type="text" id="ai-leader" placeholder="Name of the trip leader" autocomplete="off" />
+        </label>
+      </div>
+
+      <label>
+        Return distance (km)
+        <input type="number" id="ai-distance" placeholder="e.g. 240" min="0" step="1" />
+      </label>
+
+      <label>
+        Provide details
+        <textarea id="ai-notes" placeholder="Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear/camping gear/SRT kits? Any additional expenses?"></textarea>
+      </label>
+
+      <div class="actions">
+        <button type="button" class="btn btn-copy" id="ai-copy-prompt-btn">Copy docx prompt</button>
+        <button type="button" class="btn btn-open" id="ai-open-chatgpt-btn">Open ChatGPT</button>
+      </div>
+
+      <h2>Paste JSON from ChatGPT</h2>
+      <label>
+        JSON output
+        <textarea id="ai-json-paste" placeholder="Paste the JSON code block content here..." spellcheck="false"></textarea>
+      </label>
+      <div class="actions">
+        <button type="button" class="btn btn-clear" id="ai-clear-json-btn">Clear</button>
+        <button type="button" class="btn btn-download" id="ai-download-docx-btn">Download trip attendance docx</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="copy-tooltip" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    function cleanJsonText(value) {
+      return String(value || "").trim().replace(/^```[a-zA-Z]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+    }
+
+    function xmlEscape(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    }
+
+    function textParagraph(text) {
+      return `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r></w:p>`;
+    }
+
+    function tableCell(text, width) {
+      const widthXml = width ? `<w:tcW w:w="${width}" w:type="dxa"/>` : "";
+      return `<w:tc><w:tcPr>${widthXml}</w:tcPr>${textParagraph(text)}</w:tc>`;
+    }
+
+    function tableRow(values, isHeader) {
+      const headerShade = isHeader ? "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"EAEAEA\"/>" : "";
+      return `<w:tr>${values.map((item) => `<w:tc><w:tcPr>${headerShade}<w:tcW w:w="1700" w:type="dxa"/></w:tcPr>${textParagraph(item)}</w:tc>`).join("")}</w:tr>`;
+    }
+
+    let tooltipTimer = null;
+    function showTooltip(message) {
+      const tooltip = document.getElementById("copy-tooltip");
+      if (!tooltip) {
+        return;
+      }
+      tooltip.textContent = message;
+      tooltip.classList.add("show");
+      if (tooltipTimer) {
+        window.clearTimeout(tooltipTimer);
+      }
+      tooltipTimer = window.setTimeout(() => {
+        tooltip.classList.remove("show");
+      }, 1800);
+    }
+
+    function getLocation() {
+      return document.getElementById("ai-location")?.value.trim() || "Location";
+    }
+
+    function getDateInput() {
+      const dateValue = document.getElementById("ai-date")?.value || "";
+      if (dateValue) {
+        const date = new Date(`${dateValue}T00:00:00`);
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+      return new Date();
+    }
+
+    function formatYyyymmdd(date) {
+      return [
+        String(date.getFullYear()),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0")
+      ].join("");
+    }
+
+    function formatDisplayDate(date) {
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    function sanitizeFilePart(value) {
+      return String(value || "Location")
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "") || "Location";
+    }
+
+    function buildPrompt() {
+      const location = document.getElementById("ai-location")?.value.trim() || "<location>";
+      const date = document.getElementById("ai-date")?.value || "<date>";
+      const leader = document.getElementById("ai-leader")?.value.trim() || "<leader>";
+      const distance = document.getElementById("ai-distance")?.value.trim() || "<distance>";
+      const notes = document.getElementById("ai-notes")?.value.trim() || "<textarea from Provide details>";
+
+      return [
+        "Convert the trip notes into JSON for a NUCC Trip Attendance Sheet docx.",
+        "Return ONLY JSON inside one fenced json code block. No extra commentary.",
+        "JSON schema:",
+        "{",
+        '  "trip": { "date": "DD/MM/YYYY", "location": "string", "tripLeader": "string" },',
+        '  "participants": [',
+        '    { "name": "string", "driver": "Y|N|", "feeContributions": "string", "reimbursed": "string", "notes": "string" }',
+        "  ],",
+        '  "feeCodes": [',
+        '    { "code": "string", "description": "string", "calculation": "string", "perPerson": "string" }',
+        "  ],",
+        '  "clubIncome": "string",',
+        '  "signature": "string"',
+        "}",
+        "Rules:",
+        "- Use concise plain text only (no markdown in fields).",
+        "- Include all participants found in notes.",
+        "- Keep feeContributions and reimbursed in the exact compact style from notes/calculations.",
+        "- If a field is unknown, use an empty string.",
+        "Trip notes:",
+        `Location: ${location}`,
+        `Date: ${date}`,
+        `Trip Leader: ${leader}`,
+        `Return trip distance: ${distance}`,
+        notes
+      ].join("\n");
+    }
+
+    async function copyPrompt() {
+      const promptText = buildPrompt();
+      try {
+        await navigator.clipboard.writeText(promptText);
+        showTooltip("Prompt copied to clipboard.");
+      } catch (error) {
+        console.error("Could not copy prompt", error);
+        showTooltip("Could not copy automatically.");
+        window.alert(`Could not copy automatically. Please copy manually:\n\n${promptText}`);
+      }
+    }
+
+    function parseAiJson() {
+      const raw = cleanJsonText(document.getElementById("ai-json-paste")?.value || "");
+      if (!raw) {
+        window.alert("Please paste the JSON text first.");
+        return null;
+      }
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        console.error("Invalid JSON", error);
+        window.alert("The pasted content is not valid JSON.");
+        return null;
+      }
+    }
+
+    function buildDocumentXml(data) {
+      const participants = Array.isArray(data?.participants) ? data.participants : [];
+      const feeCodes = Array.isArray(data?.feeCodes) ? data.feeCodes : [];
+      const trip = data?.trip || {};
+
+      const attendanceRows = [
+        tableRow(["Name", "Driver", "Fee Contributions", "Reimbursed", "Notes"], true),
+        ...participants.map((row) => tableRow([
+          row?.name || "",
+          row?.driver || "",
+          row?.feeContributions || "",
+          row?.reimbursed || "",
+          row?.notes || ""
+        ]))
+      ].join("");
+
+      const codeRows = [
+        tableRow(["Code", "Description", "Total Calculation", "Per person"], true),
+        ...feeCodes.map((row) => tableRow([
+          row?.code || "",
+          row?.description || "",
+          row?.calculation || "",
+          row?.perPerson || ""
+        ]))
+      ].join("");
+
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" mc:Ignorable="w14 wp14">
+  <w:body>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Trip Attendance Sheet</w:t></w:r></w:p>
+    ${textParagraph("Date: " + (trip?.date || formatDisplayDate(getDateInput())))}
+    ${textParagraph("Location: " + (trip?.location || getLocation()))}
+    ${textParagraph("Trip Leader: " + (trip?.tripLeader || document.getElementById("ai-leader")?.value.trim() || ""))}
+    <w:p/>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr>
+      ${attendanceRows}
+    </w:tbl>
+    <w:p/>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Calculation of Trip Fee</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideH w:val="single" w:sz="6" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="6" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr>
+      ${codeRows}
+    </w:tbl>
+    <w:p/>
+    ${textParagraph("Club Income (fees - costs): " + (data?.clubIncome || ""))}
+    ${textParagraph("Signature: " + (data?.signature || ""))}
+    <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>
+  </w:body>
+</w:document>`;
+    }
+
+    async function generateDocx() {
+      if (typeof window.JSZip === "undefined") {
+        window.alert("JSZip failed to load. Please refresh and try again.");
+        return;
+      }
+
+      const data = parseAiJson();
+      if (!data) {
+        return;
+      }
+
+      const zip = new window.JSZip();
+      zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+
+      zip.folder("_rels")?.file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+      zip.folder("word")?.file("document.xml", buildDocumentXml(data));
+      zip.folder("word")?.file("styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:qFormat/>
+  </w:style>
+</w:styles>`);
+      zip.folder("word")?.folder("_rels")?.file("document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`);
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const chosenDate = getDateInput();
+      const location = sanitizeFilePart(data?.trip?.location || getLocation());
+      const filename = `${formatYyyymmdd(chosenDate)}_${location}_Trip_Attendance_Sheet.docx`;
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    }
+
+    document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", copyPrompt);
+
+    document.getElementById("ai-open-chatgpt-btn")?.addEventListener("click", () => {
+      window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+    });
+
+    document.getElementById("ai-clear-json-btn")?.addEventListener("click", () => {
+      const textarea = document.getElementById("ai-json-paste");
+      if (textarea) {
+        textarea.value = "";
+        textarea.focus();
+      }
+    });
+
+    document.getElementById("ai-download-docx-btn")?.addEventListener("click", () => {
+      generateDocx().catch((error) => {
+        console.error("Failed to generate docx", error);
+        window.alert("Failed to generate docx. Check pasted JSON and try again.");
+      });
+    });
+  </script>
+</body>
+</html>
