@@ -203,6 +203,7 @@
         "- Maintenance calculations should use maintenance_rate × return_distance × number_of_cars.",
         "- Include maintenance credit code C for drivers (a negative per-driver amount credited back to each driver).",
         "- Place maintenance credit C in the Contributions column only (never in the Fee column).",
+        "- In Contributions text, maintenance credit C amounts should be written as positive values (e.g. 9.60(C), not -9.60(C)).",
         "- If values are missing, infer reasonable values only when clearly implied; otherwise leave blank.",
         "- Include all participants mentioned in Trip participants list.",
         "- Do not output markdown in any field values.",
@@ -367,6 +368,15 @@
       return `${noTotal}+${token}`;
     }
 
+    function normalizeContributionMaintenanceCredit(expression) {
+      const trimmed = String(expression || "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      const noTotal = trimmed.replace(/=\s*-?\d+(?:\.\d+)?\s*$/, "").trim();
+      return noTotal.replace(/(-?\d+(?:\.\d+)?)\s*\(C\)/g, (_, amount) => `${formatAmount(Math.abs(Number(amount) || 0))}(C)`);
+    }
+
     function ensureMaintenanceCredit(data) {
       const tripDistance = Number(document.getElementById("ai-distance")?.value || 0);
       if (!tripDistance || tripDistance <= 0) {
@@ -383,6 +393,7 @@
       const creditToken = `${formatAmount(creditPerDriver)}(C)`;
 
       participants.forEach((person) => {
+        person.contributions = normalizeContributionMaintenanceCredit(person?.contributions || "");
         if (String(person?.driver || "").trim().toUpperCase() === "Y") {
           person.contributions = appendTokenToExpression(person?.contributions || "", creditToken);
         }
@@ -410,7 +421,7 @@
       const participants = Array.isArray(data?.participants) ? data.participants : [];
       return participants.map((person) => {
         const feeText = ensureExpressionHasTotal(person?.fee || "");
-        const contributionsText = ensureExpressionHasTotal(person?.contributions || "");
+        const contributionsText = ensureExpressionHasTotal(normalizeContributionMaintenanceCredit(person?.contributions || ""));
         const feeTotal = parseExpressionTotal(feeText);
         const contributionsTotal = parseExpressionTotal(contributionsText);
         const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
@@ -474,7 +485,7 @@
         for (let i = 0; i < dataRows.length; i += 1) {
           const person = participants[i] || {};
           const feeText = ensureExpressionHasTotal(person?.fee || "");
-          const contributionsText = ensureExpressionHasTotal(person?.contributions || "");
+          const contributionsText = ensureExpressionHasTotal(normalizeContributionMaintenanceCredit(person?.contributions || ""));
           const feeTotal = parseExpressionTotal(feeText);
           const contributionsTotal = parseExpressionTotal(contributionsText);
           const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
