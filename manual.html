@@ -2983,11 +2983,7 @@
       }
       const base = document.baseURI.split("?")[0].split("#")[0].replace(/[^/]*$/, "");
       const url = base + "summarise.html?share=" + encoded;
-      const opened = window.open(url, "_blank");
-      if (!opened) {
-        window.alert("Please allow pop-ups to view the summary.");
-        return false;
-      }
+      window.location.href = url;
       return true;
     }
 
