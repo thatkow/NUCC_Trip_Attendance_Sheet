@@ -5335,6 +5335,8 @@
       });
     }
 
+    let shouldAutoSummariseFromAi = false;
+
     function consumeAiTransferPayload() {
       const storageKey = "nucc-ai-transfer";
       const raw = window.localStorage.getItem(storageKey);
@@ -5370,13 +5372,9 @@
       if (tripLeaderInput && !tripLeaderInput.value && trip.leader) {
         tripLeaderInput.value = trip.leader;
       }
-
       const query = new URLSearchParams(window.location.search);
       if (query.get("from") === "ai") {
-        const shouldSummarise = window.confirm("Form has been filled, go to summary?");
-        if (shouldSummarise) {
-          document.getElementById("summarise-button")?.click();
-        }
+        shouldAutoSummariseFromAi = true;
         if (window.history && typeof window.history.replaceState === "function") {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -5433,6 +5431,11 @@
           }
         }
       });
+    }
+
+    if (shouldAutoSummariseFromAi && summariseButton) {
+      shouldAutoSummariseFromAi = false;
+      summariseButton.click();
     }
 
     function addParticipantRow() {
