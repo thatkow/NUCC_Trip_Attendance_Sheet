@@ -533,34 +533,56 @@
       return locStr + "-" + dateStr;
     }
 
-    async function shortenWithBitly(longUrl) {
+    async function shortenWithShortIo(longUrl) {
       const params = new URLSearchParams(window.location.search);
-      const tokenFromQuery = params.get("bitly_token");
-      const tokenFromStorage = window.localStorage.getItem("nucc_bitly_token");
-      const token = tokenFromQuery || tokenFromStorage || "";
+      const domainFromQuery = params.get("shortio_domain");
+      const keyFromQuery = params.get("shortio_key");
+      const domainFromStorage = window.localStorage.getItem("nucc_shortio_domain");
+      const keyFromStorage = window.localStorage.getItem("nucc_shortio_key");
 
-      if (!token) {
+      const domain = domainFromQuery || domainFromStorage || "";
+      const apiKey = keyFromQuery || keyFromStorage || "";
+
+      if (!domain) {
         return null;
       }
 
-      if (tokenFromQuery) {
-        window.localStorage.setItem("nucc_bitly_token", tokenFromQuery);
+      if (domainFromQuery) {
+        window.localStorage.setItem("nucc_shortio_domain", domainFromQuery);
+      }
+      if (keyFromQuery) {
+        window.localStorage.setItem("nucc_shortio_key", keyFromQuery);
       }
 
       try {
-        const resp = await fetch("https://api-ssl.bitly.com/v4/shorten", {
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        if (apiKey) {
+          headers.Authorization = apiKey;
+        }
+
+        const resp = await fetch("https://api.short.io/links/public", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ long_url: longUrl })
+          headers,
+          body: JSON.stringify({
+            domain,
+            originalURL: longUrl
+          })
         });
+
         if (!resp.ok) {
           return null;
         }
+
         const data = await resp.json();
-        return typeof data?.link === "string" ? data.link : null;
+        if (typeof data?.shortURL === "string") {
+          return data.shortURL;
+        }
+        if (typeof data?.shortUrl === "string") {
+          return data.shortUrl;
+        }
+        return null;
       } catch (e) {
         return null;
       }
@@ -649,13 +671,13 @@
       const copyNotice = el("span", "summary-copy-link-notice", "Paste into Messenger, WhatsApp, or email to share this summary.");
       copyBtn.addEventListener("click", async () => {
         copyBtn.disabled = true;
-        copyNotice.textContent = "Shortening link with Bitly…";
-        const shortUrl = await shortenWithBitly(window.location.href);
+        copyNotice.textContent = "Shortening link with Short.io…";
+        const shortUrl = await shortenWithShortIo(window.location.href);
         const urlToCopy = shortUrl || window.location.href;
         copyBtn.disabled = false;
         try {
           await navigator.clipboard.writeText(urlToCopy);
-          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (full URL copied)";
+          copyNotice.textContent = shortUrl ? "Link copied! " + shortUrl : "Link copied! (Short.io unavailable — full URL copied)";
           setTimeout(() => { copyNotice.textContent = "Paste into Messenger, WhatsApp, or email to share this summary."; }, 4000);
         } catch (err) {
           window.prompt("Copy this link:", urlToCopy);
