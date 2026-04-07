@@ -187,6 +187,7 @@
         "- Keep Fee and Contributions separate: fee contains what each person owes; contributions contains what they paid.",
         "- Use driver column as 'Y' for drivers, otherwise empty string ''.",
         "- Include totals in both fee and contributions expressions using '=total' (2 decimal places), e.g. 30(P)+2.4(M)=32.40.",
+        "- If a participant has no contributions, set contributions to an empty string (not 0).",
         "- Owe(-Owed) is calculated later as fee_total - contributions_total; do not add a separate JSON field for it.",
         "- Keep notes short; usually ''.",
         "- Use fee code rows similar to the example table and include petrol + maintenance lines when data allows:",
@@ -343,6 +344,9 @@
     function ensureExpressionHasTotal(expression) {
       const trimmed = String(expression || "").trim();
       if (!trimmed) {
+        return "";
+      }
+      if (/^0+(?:\.0+)?$/.test(trimmed)) {
         return "";
       }
       if (/=\s*-?\d+(?:\.\d+)?\s*$/.test(trimmed)) {
