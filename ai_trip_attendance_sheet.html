@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Fees Form - AI Trip Attendance Sheet</title>
+  <style>
+    body { margin: 0; padding: 1.5rem; background: #f7f7f7; color: #222; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #d6e0e3; border-radius: 12px; padding: 1.2rem; box-shadow: 0 0.5rem 1.25rem rgba(0,0,0,.08); }
+    h1 { margin: 0 0 .3rem; text-transform: uppercase; letter-spacing: .08em; font-size: 1.35rem; }
+    h2 { margin-top: 1.1rem; }
+    .muted { color: #546e7a; margin: 0 0 1rem; }
+    label { display: block; margin: .85rem 0; font-weight: 600; }
+    input, textarea { width: 100%; box-sizing: border-box; margin-top: .35rem; padding: .6rem .7rem; border: 1px solid #b0bec5; border-radius: .5rem; font: inherit; }
+    textarea { min-height: 130px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: .85rem; }
+    .btn { padding: .55rem .95rem; border-radius: .5rem; border: 1px solid transparent; font-weight: 700; cursor: pointer; }
+    .btn-copy { background: #00796b; color: #fff; }
+    .btn-open { background: #fff; color: #006064; border-color: #006064; }
+    .btn-download { background: #1565c0; color: #fff; }
+    .btn-clear { background: #f5f5f5; border-color: #cfd8dc; }
+    .top-links { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem; gap:.5rem; }
+    .top-links a { color:#006064; text-decoration:none; font-weight:600; }
+    .tooltip { position: fixed; right: 1rem; bottom: 1rem; background: #263238; color: #fff; padding: .55rem .75rem; border-radius: .45rem; box-shadow: 0 8px 20px rgba(0,0,0,.2); font-size: .9rem; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 50; }
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top-links">
+      <a href="index.html">← Back to form chooser</a>
+      <a href="ai.html">Open AI CSV form</a>
+    </div>
+    <section class="card">
+      <h1>Trip Fees Form</h1>
+      <p class="muted">AI Trip Attendance Sheet</p>
+
+      <label>
+        Location
+        <input type="text" id="ai-location" placeholder="e.g. Tuglow, Yagby" autocomplete="off" />
+      </label>
+
+      <div class="row">
+        <label>
+          Date
+          <input type="date" id="ai-date" />
+        </label>
+        <label>
+          Trip Leader
+          <input type="text" id="ai-leader" placeholder="Name of the trip leader" autocomplete="off" />
+        </label>
+      </div>
+
+      <label>
+        Return distance (km)
+        <input type="number" id="ai-distance" placeholder="e.g. 240" min="0" step="1" />
+      </label>
+
+      <label>
+        Provide details
+        <textarea id="ai-notes" placeholder="Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear/camping gear/SRT kits? Any additional expenses?"></textarea>
+      </label>
+
+      <div class="actions">
+        <button type="button" class="btn btn-copy" id="ai-copy-prompt-btn">Copy docx prompt</button>
+        <button type="button" class="btn btn-open" id="ai-open-chatgpt-btn">Open ChatGPT</button>
+      </div>
+
+      <h2>Paste JSON from ChatGPT</h2>
+      <label>
+        JSON output
+        <textarea id="ai-json-paste" placeholder="Paste the JSON code block content here..." spellcheck="false"></textarea>
+      </label>
+      <div class="actions">
+        <button type="button" class="btn btn-clear" id="ai-clear-json-btn">Clear</button>
+        <button type="button" class="btn btn-open" id="ai-preview-owe-btn">Preview Name/Owe table</button>
+        <button type="button" class="btn btn-download" id="ai-download-docx-btn">Download trip attendance docx</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="copy-tooltip" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    function cleanJsonText(value) {
+      return String(value || "").trim().replace(/^```[a-zA-Z]*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    let tooltipTimer = null;
+    function showTooltip(message) {
+      const tooltip = document.getElementById("copy-tooltip");
+      if (!tooltip) {
+        return;
+      }
+      tooltip.textContent = message;
+      tooltip.classList.add("show");
+      if (tooltipTimer) {
+        window.clearTimeout(tooltipTimer);
+      }
+      tooltipTimer = window.setTimeout(() => {
+        tooltip.classList.remove("show");
+      }, 1800);
+    }
+
+    function getLocation() {
+      return document.getElementById("ai-location")?.value.trim() || "Location";
+    }
+
+    function getDateInput() {
+      const dateValue = document.getElementById("ai-date")?.value || "";
+      if (dateValue) {
+        const date = new Date(`${dateValue}T00:00:00`);
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+      return new Date();
+    }
+
+    function formatYyyymmdd(date) {
+      return [
+        String(date.getFullYear()),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0")
+      ].join("");
+    }
+
+    function formatDisplayDate(date) {
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    function sanitizeFilePart(value) {
+      return String(value || "Location")
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "") || "Location";
+    }
+
+    function buildPrompt() {
+      const location = document.getElementById("ai-location")?.value.trim() || "<location>";
+      const date = document.getElementById("ai-date")?.value || "<date>";
+      const leader = document.getElementById("ai-leader")?.value.trim() || "<leader>";
+      const distance = document.getElementById("ai-distance")?.value.trim() || "<distance>";
+      const notes = document.getElementById("ai-notes")?.value.trim() || "<textarea from Provide details>";
+      const standardCosts = {
+        maintenanceRatePerKmPerCar: 0.025,
+        horizontalGear: 5,
+        campingGear: 10,
+        srtKit: 5
+      };
+
+      return [
+        "Convert these rough trip notes into JSON that can render a NUCC Trip Attendance Sheet matching the example layout and notation style.",
+        "Return ONLY JSON inside one fenced json code block. No extra commentary.",
+        "JSON schema (must match exactly):",
+        "{",
+        '  "trip": { "date": "DD/MM/YYYY", "location": "string", "tripLeader": "string" },',
+        '  "participants": [',
+        '    { "name": "string", "driver": "Y|", "fee": "string", "contributions": "string", "notes": "string" }',
+        "  ],",
+        '  "feeCodes": [',
+        '    { "code": "P|D|C|H|T|G|Z|other short code", "description": "string", "calculation": "string", "perPerson": "string" }',
+        "  ],",
+        '  "clubIncome": "string",',
+        '  "signature": "string"',
+        "}",
+        "Formatting requirements (important):",
+        "- Generate participant rows using EXACT columns and order: Name | Driver | Fee | Contributions | Owe(-Owed) | Notes.",
+        "- Generate fee code rows using EXACT columns and order: Code | Description | Total Calculation | Per person.",
+        "- Match the example style: compact formulas like 30(P)+2.4(M)+8(G)=40.40.",
+        "- Keep Fee and Contributions separate: fee contains what each person owes; contributions contains what they paid.",
+        "- Use driver column as 'Y' for drivers, otherwise empty string ''.",
+        "- Include totals in both fee and contributions expressions using '=total' (2 decimal places), e.g. 30(P)+2.4(M)=32.40.",
+        "- If a participant has no contributions, set contributions to an empty string (not 0).",
+        "- Owe(-Owed) is calculated later as fee_total - contributions_total; do not add a separate JSON field for it.",
+        "- Keep notes short; usually ''.",
+        "- Use fee code rows similar to the example table and include petrol + maintenance lines when data allows:",
+        "  P=Petrol, D=Distance (Maint.), C=Maint. Credit, H=Horizontal Gear, T=Camping Gear, S=SRT Kit, G=Goulash, Z=Pizza.",
+        "- Use these standard NUCC rates unless notes override them:",
+        `  maintenance_rate=${standardCosts.maintenanceRatePerKmPerCar} per km per car`,
+        `  horizontal_gear=${standardCosts.horizontalGear}`,
+        `  camping_gear=${standardCosts.campingGear}`,
+        `  srt_kit=${standardCosts.srtKit}`,
+        "- Club income should only come from club-owned hire items (horizontal gear, camping gear, SRT kit).",
+        "- Do NOT treat food, petrol, or pass-through shared expenses as club income.",
+        "- For petrol in fee, include maintenance share M where appropriate; for contributions, include paid petrol/expenses.",
+        "- Maintenance calculations should use maintenance_rate × return_distance × number_of_cars.",
+        "- Include maintenance credit code C for drivers (a negative per-driver amount credited back to each driver).",
+        "- Place maintenance credit C in the Contributions column only (never in the Fee column).",
+        "- In Contributions text, maintenance credit C amounts should be written as positive values (e.g. 9.60(C), not -9.60(C)).",
+        "- If values are missing, infer reasonable values only when clearly implied; otherwise leave blank.",
+        "- Include all participants mentioned in Trip participants list.",
+        "- Do not output markdown in any field values.",
+        "Trip context:",
+        `Location: ${location}`,
+        `Date: ${date}`,
+        `Trip Leader: ${leader}`,
+        `Return trip distance: ${distance}`,
+        notes
+      ].join("\n");
+    }
+
+    async function copyPrompt() {
+      const promptText = buildPrompt();
+      try {
+        await navigator.clipboard.writeText(promptText);
+        showTooltip("Prompt copied to clipboard.");
+      } catch (error) {
+        console.error("Could not copy prompt", error);
+        showTooltip("Could not copy automatically.");
+        window.alert(`Could not copy automatically. Please copy manually:\n\n${promptText}`);
+      }
+    }
+
+    function parseAiJson() {
+      const raw = cleanJsonText(document.getElementById("ai-json-paste")?.value || "");
+      if (!raw) {
+        window.alert("Please paste the JSON text first.");
+        return null;
+      }
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        console.error("Invalid JSON", error);
+        window.alert("The pasted content is not valid JSON.");
+        return null;
+      }
+    }
+
+    function getDirectChildrenByTagName(parent, localName) {
+      return Array.from(parent?.children || []).filter((child) => child.localName === localName);
+    }
+
+    function setCellText(cell, value) {
+      if (!cell) {
+        return;
+      }
+      const textNodes = cell.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t");
+      if (textNodes.length > 0) {
+        textNodes[0].textContent = String(value || "");
+        for (let i = 1; i < textNodes.length; i += 1) {
+          textNodes[i].textContent = "";
+        }
+        return;
+      }
+      const namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const paragraph = cell.ownerDocument.createElementNS(namespace, "w:p");
+      const run = cell.ownerDocument.createElementNS(namespace, "w:r");
+      const text = cell.ownerDocument.createElementNS(namespace, "w:t");
+      text.textContent = String(value || "");
+      run.appendChild(text);
+      paragraph.appendChild(run);
+      cell.appendChild(paragraph);
+    }
+
+    function setCellRunColor(cell, colorHex) {
+      if (!cell) {
+        return;
+      }
+      const namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const runs = cell.getElementsByTagNameNS(namespace, "r");
+      for (const run of runs) {
+        let runProps = run.getElementsByTagNameNS(namespace, "rPr")[0];
+        if (!runProps) {
+          runProps = cell.ownerDocument.createElementNS(namespace, "w:rPr");
+          run.insertBefore(runProps, run.firstChild || null);
+        }
+        const existingColor = runProps.getElementsByTagNameNS(namespace, "color")[0];
+        if (colorHex) {
+          if (existingColor) {
+            existingColor.setAttributeNS(namespace, "w:val", colorHex);
+          } else {
+            const color = cell.ownerDocument.createElementNS(namespace, "w:color");
+            color.setAttributeNS(namespace, "w:val", colorHex);
+            runProps.appendChild(color);
+          }
+        } else if (existingColor) {
+          existingColor.parentNode.removeChild(existingColor);
+        }
+      }
+    }
+
+    function setLabelValueRow(table, label, value) {
+      const rows = getDirectChildrenByTagName(table, "tr");
+      for (const row of rows) {
+        const cells = getDirectChildrenByTagName(row, "tc");
+        if (cells.length < 2) {
+          continue;
+        }
+        const labelText = cells[0].textContent.replace(/\s+/g, " ").trim();
+        if (labelText === label) {
+          setCellText(cells[1], value);
+          return;
+        }
+      }
+    }
+
+    function setParagraphText(paragraph, value) {
+      if (!paragraph) {
+        return;
+      }
+      const textNodes = paragraph.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t");
+      if (!textNodes.length) {
+        return;
+      }
+      textNodes[0].textContent = String(value || "");
+      for (let i = 1; i < textNodes.length; i += 1) {
+        textNodes[i].textContent = "";
+      }
+    }
+
+    function parseExpressionTotal(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return 0;
+      }
+      const explicitMatch = raw.match(/=\s*(-?\d+(?:\.\d+)?)\s*$/);
+      if (explicitMatch) {
+        return Number(explicitMatch[1]) || 0;
+      }
+      const numbers = raw.match(/-?\d+(?:\.\d+)?/g) || [];
+      return numbers.reduce((sum, token) => sum + (Number(token) || 0), 0);
+    }
+
+    function formatAmount(value) {
+      return Number(value || 0).toFixed(2);
+    }
+
+    function ensureExpressionHasTotal(expression) {
+      const trimmed = String(expression || "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      if (/^0+(?:\.0+)?$/.test(trimmed)) {
+        return "";
+      }
+      if (/=\s*-?\d+(?:\.\d+)?\s*$/.test(trimmed)) {
+        return trimmed.replace(/=\s*(-?\d+(?:\.\d+)?)\s*$/, (_, n) => `=${formatAmount(Number(n))}`);
+      }
+      return `${trimmed}=${formatAmount(parseExpressionTotal(trimmed))}`;
+    }
+
+    function appendTokenToExpression(expression, token) {
+      const trimmed = String(expression || "").trim();
+      if (!trimmed) {
+        return token;
+      }
+      const noTotal = trimmed.replace(/=\s*-?\d+(?:\.\d+)?\s*$/, "").trim();
+      if (/\([A-Z]\)/.test(token) && noTotal.includes(token.slice(token.indexOf("(")))) {
+        return noTotal;
+      }
+      return `${noTotal}+${token}`;
+    }
+
+    function normalizeContributionMaintenanceCredit(expression) {
+      const trimmed = String(expression || "").trim();
+      if (!trimmed) {
+        return "";
+      }
+      const noTotal = trimmed.replace(/=\s*-?\d+(?:\.\d+)?\s*$/, "").trim();
+      return noTotal.replace(/(-?\d+(?:\.\d+)?)\s*\(C\)/g, (_, amount) => `${formatAmount(Math.abs(Number(amount) || 0))}(C)`);
+    }
+
+    function ensureMaintenanceCredit(data) {
+      const tripDistance = Number(document.getElementById("ai-distance")?.value || 0);
+      if (!tripDistance || tripDistance <= 0) {
+        return;
+      }
+      const participants = Array.isArray(data?.participants) ? data.participants : [];
+      const drivers = participants.filter((person) => String(person?.driver || "").trim().toUpperCase() === "Y");
+      if (!drivers.length) {
+        return;
+      }
+      const maintenanceRate = 0.025;
+      const maintenanceTotal = tripDistance * maintenanceRate * drivers.length;
+      const creditPerDriver = maintenanceTotal / drivers.length;
+      const creditToken = `${formatAmount(creditPerDriver)}(C)`;
+
+      participants.forEach((person) => {
+        person.contributions = normalizeContributionMaintenanceCredit(person?.contributions || "");
+        if (String(person?.driver || "").trim().toUpperCase() === "Y") {
+          person.contributions = appendTokenToExpression(person?.contributions || "", creditToken);
+        }
+      });
+
+      const feeCodes = Array.isArray(data?.feeCodes) ? data.feeCodes : [];
+      const existingCredit = feeCodes.find((code) => String(code?.code || "").trim().toUpperCase() === "C");
+      const creditCalc = `${drivers.length} drivers x ${formatAmount(creditPerDriver)} = ${formatAmount(maintenanceTotal)}`;
+      if (existingCredit) {
+        existingCredit.description = existingCredit.description || "Maint. Credit";
+        existingCredit.calculation = existingCredit.calculation || creditCalc;
+        existingCredit.perPerson = existingCredit.perPerson || `-${formatAmount(creditPerDriver)}`;
+      } else {
+        feeCodes.push({
+          code: "C",
+          description: "Maint. Credit",
+          calculation: creditCalc,
+          perPerson: `-${formatAmount(creditPerDriver)}`
+        });
+      }
+      data.feeCodes = feeCodes;
+    }
+
+    function buildNameOweRows(data) {
+      const participants = Array.isArray(data?.participants) ? data.participants : [];
+      return participants.map((person) => {
+        const feeText = ensureExpressionHasTotal(person?.fee || "");
+        const contributionsText = ensureExpressionHasTotal(normalizeContributionMaintenanceCredit(person?.contributions || ""));
+        const feeTotal = parseExpressionTotal(feeText);
+        const contributionsTotal = parseExpressionTotal(contributionsText);
+        const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
+        return {
+          name: person?.name || "",
+          owe: oweValue
+        };
+      });
+    }
+
+    function previewNameOweTable() {
+      const data = parseAiJson();
+      if (!data) {
+        return;
+      }
+      ensureMaintenanceCredit(data);
+      const rows = buildNameOweRows(data);
+      const tableRows = rows.map((row) => {
+        const numeric = Number(row.owe);
+        const color = row.owe && numeric > 0 ? "#b00020" : row.owe && numeric < 0 ? "#1b5e20" : "#222";
+        return `<tr><td>${escapeHtml(row.name)}</td><td style="color:${color};font-weight:700;">${escapeHtml(row.owe)}</td></tr>`;
+      }).join("");
+
+      const popup = window.open("", "name-owe-preview", "width=560,height=700");
+      if (!popup) {
+        window.alert("Popup blocked. Please allow popups for this site.");
+        return;
+      }
+      popup.document.write(`<!doctype html><html><head><title>Name / Owe(-Owed)</title><style>
+        body{font-family:Segoe UI,Arial,sans-serif;margin:1rem;color:#222}
+        table{border-collapse:collapse;width:100%}
+        th,td{border:1px solid #cfd8dc;padding:.45rem .55rem;text-align:left}
+        th{background:#eceff1}
+      </style></head><body>
+      <h2>Name and Owe(-Owed)</h2>
+      <table><thead><tr><th>Name</th><th>Owe(-Owed)</th></tr></thead><tbody>${tableRows}</tbody></table>
+      </body></html>`);
+      popup.document.close();
+      popup.focus();
+    }
+
+    function updateTemplateDocumentXml(documentXml, data) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(documentXml, "application/xml");
+      const tables = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "tbl"));
+      const trip = data?.trip || {};
+      const participants = Array.isArray(data?.participants) ? data.participants : [];
+      const feeCodes = Array.isArray(data?.feeCodes) ? data.feeCodes : [];
+
+      if (tables[0]) {
+        setLabelValueRow(tables[0], "Dates", trip?.date || formatDisplayDate(getDateInput()));
+        setLabelValueRow(tables[0], "Location", trip?.location || getLocation());
+        setLabelValueRow(tables[0], "Trip Leader", trip?.tripLeader || document.getElementById("ai-leader")?.value.trim() || "");
+      }
+
+      if (tables[1]) {
+        const rows = getDirectChildrenByTagName(tables[1], "tr");
+        const headerCells = getDirectChildrenByTagName(rows[0], "tc");
+        setCellText(headerCells[4], "Owe(-Owed)");
+        const dataRows = rows.slice(1);
+        for (let i = 0; i < dataRows.length; i += 1) {
+          const person = participants[i] || {};
+          const feeText = ensureExpressionHasTotal(person?.fee || "");
+          const contributionsText = ensureExpressionHasTotal(normalizeContributionMaintenanceCredit(person?.contributions || ""));
+          const feeTotal = parseExpressionTotal(feeText);
+          const contributionsTotal = parseExpressionTotal(contributionsText);
+          const oweValue = feeText || contributionsText ? formatAmount(feeTotal - contributionsTotal) : "";
+          const cells = getDirectChildrenByTagName(dataRows[i], "tc");
+          setCellText(cells[0], person?.name || "");
+          setCellText(cells[1], person?.driver || "");
+          setCellText(cells[2], feeText);
+          setCellText(cells[3], contributionsText);
+          setCellText(cells[4], oweValue);
+          const oweNumber = Number(oweValue);
+          if (oweValue && oweNumber > 0) {
+            setCellRunColor(cells[4], "B00020");
+          } else if (oweValue && oweNumber < 0) {
+            setCellRunColor(cells[4], "1B5E20");
+          } else {
+            setCellRunColor(cells[4], null);
+          }
+          setCellText(cells[5], person?.notes || "");
+        }
+      }
+
+      if (tables[2]) {
+        const rows = getDirectChildrenByTagName(tables[2], "tr");
+        const dataRows = rows.slice(1);
+        for (let i = 0; i < dataRows.length; i += 1) {
+          const feeCode = feeCodes[i] || {};
+          const cells = getDirectChildrenByTagName(dataRows[i], "tc");
+          setCellText(cells[0], feeCode?.code || "");
+          setCellText(cells[1], feeCode?.description || "");
+          setCellText(cells[2], feeCode?.calculation || "");
+          setCellText(cells[3], feeCode?.perPerson || "");
+        }
+      }
+
+      const allParagraphs = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "p"));
+      const clubIncomeParagraph = allParagraphs.find((p) => p.textContent.includes("Club Income (fees - costs)"));
+      if (clubIncomeParagraph) {
+        setParagraphText(clubIncomeParagraph, `Club Income (fees - costs): ${data?.clubIncome || ""}`);
+      }
+      const signatureParagraph = allParagraphs.find((p) => p.textContent.includes("Signature"));
+      if (signatureParagraph) {
+        setParagraphText(signatureParagraph, `Signature: ${data?.signature || ""}`);
+      }
+
+      return new XMLSerializer().serializeToString(xml);
+    }
+
+    async function generateDocx() {
+      if (typeof window.JSZip === "undefined") {
+        window.alert("JSZip failed to load. Please refresh and try again.");
+        return;
+      }
+
+      const data = parseAiJson();
+      if (!data) {
+        return;
+      }
+      ensureMaintenanceCredit(data);
+
+      const templateResponse = await fetch("TripAttendanceSheetExample.docx");
+      if (!templateResponse.ok) {
+        window.alert("Could not load TripAttendanceSheetExample.docx template.");
+        return;
+      }
+      const templateBuffer = await templateResponse.arrayBuffer();
+      const zip = await window.JSZip.loadAsync(templateBuffer);
+      const templateXml = await zip.file("word/document.xml")?.async("string");
+      if (!templateXml) {
+        window.alert("Template document is missing word/document.xml.");
+        return;
+      }
+      zip.file("word/document.xml", updateTemplateDocumentXml(templateXml, data));
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const chosenDate = getDateInput();
+      const location = sanitizeFilePart(data?.trip?.location || getLocation());
+      const filename = `${formatYyyymmdd(chosenDate)}_${location}_Trip_Attendance_Sheet.docx`;
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    }
+
+    document.getElementById("ai-copy-prompt-btn")?.addEventListener("click", copyPrompt);
+
+    document.getElementById("ai-open-chatgpt-btn")?.addEventListener("click", () => {
+      window.open("https://chatgpt.com/?temporary-chat=true", "_blank");
+    });
+
+    document.getElementById("ai-clear-json-btn")?.addEventListener("click", () => {
+      const textarea = document.getElementById("ai-json-paste");
+      if (textarea) {
+        textarea.value = "";
+        textarea.focus();
+      }
+    });
+
+    document.getElementById("ai-preview-owe-btn")?.addEventListener("click", previewNameOweTable);
+
+    document.getElementById("ai-download-docx-btn")?.addEventListener("click", () => {
+      generateDocx().catch((error) => {
+        console.error("Failed to generate docx", error);
+        window.alert("Failed to generate docx. Check pasted JSON and try again.");
+      });
+    });
+  </script>
+</body>
+</html>
