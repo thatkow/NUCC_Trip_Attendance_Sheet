@@ -151,12 +151,12 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       return new Date();
     }
 
-    function formatYyyymmdd(date) {
+    function formatYyyyMmDdUnderscore(date) {
       return [
         String(date.getFullYear()),
         String(date.getMonth() + 1).padStart(2, "0"),
         String(date.getDate()).padStart(2, "0")
-      ].join("");
+      ].join("_");
     }
 
     function formatDisplayDate(date) {
@@ -583,7 +583,7 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       const blob = await zip.generateAsync({ type: "blob" });
       const chosenDate = getDateInput();
       const location = sanitizeFilePart(data?.trip?.location || getLocation());
-      const filename = `${formatYyyymmdd(chosenDate)}_${location}_Trip_Attendance_Sheet.docx`;
+      const filename = `${formatYyyyMmDdUnderscore(chosenDate)}_${location}.docx`;
 
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
