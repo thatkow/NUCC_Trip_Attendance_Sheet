@@ -25,7 +25,13 @@
     .top-links a { color:#006064; text-decoration:none; font-weight:600; }
     .tooltip { position: fixed; right: 1rem; bottom: 1rem; background: #263238; color: #fff; padding: .55rem .75rem; border-radius: .45rem; box-shadow: 0 8px 20px rgba(0,0,0,.2); font-size: .9rem; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 50; }
     .tooltip.show { opacity: 1; transform: translateY(0); }
-    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+    .json-paste-row { display: grid; grid-template-columns: 1fr 220px; gap: .75rem; align-items: start; }
+    .json-hint-image { width: 100%; max-width: 220px; border: 1px solid #d6e0e3; border-radius: .5rem; background: #fff; }
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+      .json-paste-row { grid-template-columns: 1fr; }
+      .json-hint-image { max-width: 180px; justify-self: end; }
+    }
   </style>
 </head>
 <body>
@@ -61,7 +67,19 @@
 
       <label>
         Provide details
-        <textarea id="ai-notes" placeholder="Who came? Who drove and how much did they spend on petrol? Who hired horizontal gear/camping gear/SRT kits? Any additional expenses?"></textarea>
+        <textarea id="ai-notes" placeholder="Tom paid $130 in fuel
+Laurie paid $110 in fuel
+Laurie paid $96.60 for group pizza.
+Laurie owe $26.90 for pizza
+Michelle owes $19.90 for pizza
+Ally owes $24.90 for pizza
+Lily owes $24.90 for pizza
+Laurie paid like $40 for group goulash
+Laurie owe $8 for goulash
+Cole, Lily, Ally, & Tom all owe $8 for goulash
+Trip participants: Lauren Jolliffe, Alice Kelly, Thomas Hill, Cole Neering, Mutiara Wibowo, Rowan Owen, Lily Shaw, Michelle Liu
+Tom, Tia, Rowan, Lily, & Michelle should all get charged for horizontal gear hire
+Michelle also needs to be charged for hiring camping gear"></textarea>
       </label>
 
       <div class="actions">
@@ -72,7 +90,10 @@
       <h2>Paste JSON from ChatGPT</h2>
       <label>
         JSON output
-        <textarea id="ai-json-paste" placeholder="Paste the JSON code block content here..." spellcheck="false"></textarea>
+        <div class="json-paste-row">
+          <textarea id="ai-json-paste" placeholder="Copy JSON response from ChatGPT and paste it here" spellcheck="false"></textarea>
+          <img class="json-hint-image" src="json-copy-hint.svg" alt="Example showing the ChatGPT JSON copy icon" />
+        </div>
       </label>
       <div class="actions">
         <button type="button" class="btn btn-clear" id="ai-clear-json-btn">Clear</button>
