@@ -332,6 +332,29 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       }
     }
 
+    function ensureTableDataRowCount(table, desiredCount) {
+      const rows = getDirectChildrenByTagName(table, "tr");
+      if (rows.length <= 1) {
+        return;
+      }
+      const dataRows = rows.slice(1);
+      if (!dataRows.length || dataRows.length >= desiredCount) {
+        return;
+      }
+
+      let templateRow = dataRows[dataRows.length - 1];
+      for (let i = dataRows.length; i < desiredCount; i += 1) {
+        const clone = templateRow.cloneNode(true);
+        const cloneCells = getDirectChildrenByTagName(clone, "tc");
+        cloneCells.forEach((cell) => {
+          setCellText(cell, "");
+          setCellRunColor(cell, null);
+        });
+        table.appendChild(clone);
+        templateRow = clone;
+      }
+    }
+
     function setParagraphText(paragraph, value) {
       if (!paragraph) {
         return;
@@ -499,6 +522,7 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       }
 
       if (tables[1]) {
+        ensureTableDataRowCount(tables[1], participants.length);
         const rows = getDirectChildrenByTagName(tables[1], "tr");
         const headerCells = getDirectChildrenByTagName(rows[0], "tc");
         setCellText(headerCells[4], "Owe(-Owed)");
@@ -529,6 +553,7 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       }
 
       if (tables[2]) {
+        ensureTableDataRowCount(tables[2], feeCodes.length);
         const rows = getDirectChildrenByTagName(tables[2], "tr");
         const dataRows = rows.slice(1);
         for (let i = 0; i < dataRows.length; i += 1) {
