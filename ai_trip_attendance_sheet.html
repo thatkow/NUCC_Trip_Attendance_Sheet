@@ -319,13 +319,20 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
 
     function setLabelValueRow(table, label, value) {
       const rows = getDirectChildrenByTagName(table, "tr");
+      const normalizeLabel = (text) => String(text || "")
+        .replace(/\s+/g, " ")
+        .replace(/:+$/g, "")
+        .trim()
+        .toLowerCase();
+      const targetLabel = normalizeLabel(label);
+
       for (const row of rows) {
         const cells = getDirectChildrenByTagName(row, "tc");
         if (cells.length < 2) {
           continue;
         }
-        const labelText = cells[0].textContent.replace(/\s+/g, " ").trim();
-        if (labelText === label) {
+        const labelText = normalizeLabel(cells[0].textContent);
+        if (labelText === targetLabel) {
           setCellText(cells[1], value);
           return;
         }
