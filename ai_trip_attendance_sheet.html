@@ -522,10 +522,12 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       const participants = Array.isArray(data?.participants) ? data.participants : [];
       const feeCodes = Array.isArray(data?.feeCodes) ? data.feeCodes : [];
 
+      const resolvedLocation = trip?.location || trip?.trip_location || getLocation();
+
       if (tables[0]) {
         setLabelValueRow(tables[0], "Dates", trip?.date || formatDisplayDate(getDateInput()));
-        setLabelValueRow(tables[0], "Location", trip?.location || getLocation());
-        setLabelValueRow(tables[0], "Trip Leader", trip?.tripLeader || document.getElementById("ai-leader")?.value.trim() || "");
+        setLabelValueRow(tables[0], "Location", resolvedLocation);
+        setLabelValueRow(tables[0], "Trip Leader", trip?.tripLeader || trip?.trip_leader || document.getElementById("ai-leader")?.value.trim() || "");
       }
 
       if (tables[1]) {
@@ -583,6 +585,15 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
         setParagraphText(signatureParagraph, `Signature: ${data?.signature || ""}`);
       }
 
+      if (resolvedLocation) {
+        const textNodes = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "t"));
+        for (const textNode of textNodes) {
+          if (textNode.textContent === "Cooleman") {
+            textNode.textContent = resolvedLocation;
+          }
+        }
+      }
+
       return new XMLSerializer().serializeToString(xml);
     }
 
@@ -614,7 +625,7 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
 
       const blob = await zip.generateAsync({ type: "blob" });
       const chosenDate = getDateInput();
-      const location = sanitizeFilePart(data?.trip?.location || getLocation());
+      const location = sanitizeFilePart(data?.trip?.location || data?.trip?.trip_location || getLocation());
       const filename = `${formatYyyyMmDdUnderscore(chosenDate)}_${location}.docx`;
 
       const link = document.createElement("a");
