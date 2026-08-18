@@ -483,38 +483,99 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
       });
     }
 
-    function previewNameOweTable() {
+    async function getBankingDetails() {
+      try {
+        const response = await fetch("banking.json");
+        if (!response.ok) {
+          return "";
+        }
+        const banking = await response.json();
+        return Object.entries(banking || {})
+          .filter(([, value]) => value)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n");
+      } catch (error) {
+        console.error("Could not load banking.json", error);
+        return "";
+      }
+    }
+
+    function buildFeesBlurb(tripLocation, tripDate, bankingDetails) {
+      const lines = [
+        `Hey! Just chasing up trip fees for ${tripLocation} on ${tripDate} — the amount next to your name below is what you still owe (if it's negative, we owe you a refund instead).`,
+        "Whenever you get a chance, please pay to:",
+        ""
+      ];
+      if (bankingDetails) {
+        lines.push(bankingDetails);
+      }
+      return lines.join("\n");
+    }
+
+    async function previewNameOweTable() {
       const data = parseAiJson();
       if (!data) {
         return;
       }
       ensureMaintenanceCredit(data);
       const rows = buildNameOweRows(data);
-      const tableRows = rows.map((row) => {
-        const numeric = Number(row.owe);
-        const color = row.owe && numeric > 0 ? "#b00020" : row.owe && numeric < 0 ? "#1b5e20" : "#222";
-        return `<tr><td>${escapeHtml(row.name)}</td><td style="color:${color};font-weight:700;">${escapeHtml(row.owe)}</td></tr>`;
-      }).join("");
 
-      const popup = window.open("", "name-owe-preview", "width=560,height=700");
+      const tripLocation = data?.trip?.location || data?.trip?.trip_location || getLocation();
+      const tripDate = data?.trip?.date || formatDisplayDate(getDateInput());
+      const bankingDetails = await getBankingDetails();
+      const nameOweText = rows.map((row) => `${row.name}: ${row.owe || "0.00"}`).join("\n");
+      const blurb = `${buildFeesBlurb(tripLocation, tripDate, bankingDetails)}\n\n${nameOweText}`;
+
+      const popup = window.open("", "name-owe-preview", "width=560,height=760");
       if (!popup) {
         window.alert("Popup blocked. Please allow popups for this site.");
         return;
       }
       popup.document.write(`<!doctype html><html><head><title>Name / Owe(-Owed)</title><style>
         body{font-family:Segoe UI,Arial,sans-serif;margin:1rem;color:#222}
-        table{border-collapse:collapse;width:100%}
-        th,td{border:1px solid #cfd8dc;padding:.45rem .55rem;text-align:left}
-        th{background:#eceff1}
+        .blurb-wrap{margin-bottom:1rem}
+        .blurb{white-space:pre-wrap;background:#f4f7fb;border:1px solid #cfd8dc;border-radius:6px;padding:.75rem 1rem;font-size:.95rem;line-height:1.4}
+        .copy-btn{margin-top:.5rem;padding:.4rem .8rem;border:1px solid #90a4ae;border-radius:4px;background:#fff;cursor:pointer;font-size:.9rem}
+        .copy-btn:hover{background:#eceff1}
       </style></head><body>
-      <h2>Name and Owe(-Owed)</h2>
-      <table><thead><tr><th>Name</th><th>Owe(-Owed)</th></tr></thead><tbody>${tableRows}</tbody></table>
+      <div class="blurb-wrap">
+        <div class="blurb" id="fees-blurb">${escapeHtml(blurb)}</div>
+        <button type="button" class="copy-btn" id="copy-blurb-btn">Copy text</button>
+      </div>
+      <script>
+        document.getElementById("copy-blurb-btn").addEventListener("click", () => {
+          const text = document.getElementById("fees-blurb").textContent;
+          navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById("copy-blurb-btn");
+            btn.textContent = "Copied!";
+            setTimeout(() => { btn.textContent = "Copy text"; }, 1500);
+          });
+        });
+      <\/script>
       </body></html>`);
       popup.document.close();
       popup.focus();
     }
 
-    function updateTemplateDocumentXml(documentXml, data) {
+    function createMultilineParagraph(xmlDoc, text) {
+      const namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const paragraph = xmlDoc.createElementNS(namespace, "w:p");
+      const run = xmlDoc.createElementNS(namespace, "w:r");
+      const lines = String(text || "").split("\n");
+      lines.forEach((line, index) => {
+        if (index > 0) {
+          run.appendChild(xmlDoc.createElementNS(namespace, "w:br"));
+        }
+        const textEl = xmlDoc.createElementNS(namespace, "w:t");
+        textEl.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+        textEl.textContent = line;
+        run.appendChild(textEl);
+      });
+      paragraph.appendChild(run);
+      return paragraph;
+    }
+
+    function updateTemplateDocumentXml(documentXml, data, bankingDetails) {
       const parser = new DOMParser();
       const xml = parser.parseFromString(documentXml, "application/xml");
       const tables = Array.from(xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "tbl"));
@@ -594,6 +655,12 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
         }
       }
 
+      if (bankingDetails && tables.length) {
+        const lastTable = tables[tables.length - 1];
+        const bankingParagraph = createMultilineParagraph(xml, `Please pay fees to:\n${bankingDetails}`);
+        lastTable.parentNode.insertBefore(bankingParagraph, lastTable.nextSibling);
+      }
+
       return new XMLSerializer().serializeToString(xml);
     }
 
@@ -621,7 +688,8 @@ Michelle also needs to be charged for hiring camping gear"></textarea>
         window.alert("Template document is missing word/document.xml.");
         return;
       }
-      zip.file("word/document.xml", updateTemplateDocumentXml(templateXml, data));
+      const bankingDetails = await getBankingDetails();
+      zip.file("word/document.xml", updateTemplateDocumentXml(templateXml, data, bankingDetails));
 
       const blob = await zip.generateAsync({ type: "blob" });
       const chosenDate = getDateInput();
