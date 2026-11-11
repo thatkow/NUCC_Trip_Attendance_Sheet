@@ -9,6 +9,8 @@ Run:
 """
 
 import base64
+import csv
+import io
 import json
 import html
 import mimetypes
@@ -28,6 +30,7 @@ import formula
 import auth
 import config
 import db
+import markdown
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -219,7 +222,7 @@ PAGE_TEMPLATE = """<!doctype html>
 {test_banner}
 <div class="topbar">
   <a class="brand" href="/">{club_name}</a>
-  <div>{user_nav}</div>
+  <div>{page_links}{user_nav}</div>
 </div>
 <div class="page">
 {body}
@@ -261,6 +264,27 @@ def avatar(name, picture_url=None, size=36):
     )
 
 
+# Content pages marked show_in_nav, cached in-process so render_page (which
+# isn't a method and has no conn) doesn't need a DB round-trip on every
+# single page render. Refreshed by _refresh_nav_links_cache whenever an
+# admin creates/edits/deletes a page; lazily populated on first use
+# otherwise (e.g. right after a restart). Fine for a prototype -- lost on
+# restart, not shared across workers, same tradeoff as the other in-process
+# caches in this file (_pending_import_summary and friends).
+_NAV_LINKS_CACHE = None
+
+
+def _refresh_nav_links_cache(conn):
+    global _NAV_LINKS_CACHE
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT slug, title, nav_label FROM content_pages WHERE show_in_nav = 1 ORDER BY nav_order, title"
+        )
+        _NAV_LINKS_CACHE = [
+            {"slug": r["slug"], "label": r["nav_label"] or r["title"]} for r in cur.fetchall()
+        ]
+
+
 def render_page(title, body, user=None):
     if user:
         pic = avatar(user["name"], user.get("profile_picture_url"), size=28)
@@ -276,6 +300,12 @@ def render_page(title, body, user=None):
         )
     else:
         user_nav = '<a href="/login">Log in</a> &middot; <a href="/register">Register</a>'
+    if _NAV_LINKS_CACHE is None:
+        _refresh_nav_links_cache(db.get_connection())
+    page_links = "".join(
+        f'<a href="/pages/{html.escape(link["slug"])}">{html.escape(link["label"])}</a>'
+        for link in (_NAV_LINKS_CACHE or [])
+    )
     test_banner = ""
     if config.TEST_MODE:
         role_switch = ""
@@ -297,7 +327,7 @@ def render_page(title, body, user=None):
         )
     return PAGE_TEMPLATE.format(
         title=html.escape(title), body=body, user_nav=user_nav, club_name=html.escape(CLUB_NAME),
-        test_banner=test_banner,
+        test_banner=test_banner, page_links=page_links,
     )
 
 
@@ -480,6 +510,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/":
                 return self.handle_events_list(conn, user)
+
+            m = re.fullmatch(r"/pages/([a-z0-9-]+)/edit", path)
+            if m:
+                return self.handle_content_page_edit_form(conn, user, m.group(1))
+
+            m = re.fullmatch(r"/pages/([a-z0-9-]+)", path)
+            if m:
+                return self.handle_content_page(conn, user, m.group(1))
             if path == "/login":
                 return self.handle_login_form(user)
             if path == "/register":
@@ -500,6 +538,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_accounting_transactions_page(conn, user)
             if path == "/accounting/export":
                 return self.handle_accounting_export(conn, user)
+            if path == "/accounting/export-fees":
+                return self.handle_accounting_export_fees(conn, user)
             m = re.fullmatch(r"/accounting/balances/(\d+)", path)
             if m:
                 return self.handle_accounting_user_balance_page(conn, user, int(m.group(1)))
@@ -569,6 +609,35 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/admin/gear/(\d+)/delete", path)
             if m:
                 return self.handle_gear_type_delete(conn, user, int(m.group(1)))
+
+            if path == "/admin/checklist-items":
+                return self.handle_checklist_item_add(conn, user, form)
+
+            m = re.fullmatch(r"/admin/checklist-items/(\d+)/delete", path)
+            if m:
+                return self.handle_checklist_item_delete(conn, user, int(m.group(1)))
+
+            m = re.fullmatch(r"/pages/([a-z0-9-]+)/edit", path)
+            if m:
+                return self.handle_content_page_edit_submit(conn, user, m.group(1), form)
+
+            m = re.fullmatch(r"/pages/([a-z0-9-]+)/upload-image", path)
+            if m:
+                return self.handle_content_page_image_upload(conn, user, m.group(1), form)
+
+            if path == "/admin/upload-image":
+                return self.handle_admin_image_upload(conn, user, form)
+
+            if path == "/admin/pages":
+                return self.handle_admin_page_create(conn, user, form)
+
+            m = re.fullmatch(r"/admin/pages/([a-z0-9-]+)/nav", path)
+            if m:
+                return self.handle_admin_page_nav_update(conn, user, m.group(1), form)
+
+            m = re.fullmatch(r"/admin/pages/([a-z0-9-]+)/delete", path)
+            if m:
+                return self.handle_admin_page_delete(conn, user, m.group(1))
 
             m = re.fullmatch(r"/admin/users/(\d+)/toggle-admin", path)
             if m:
@@ -662,6 +731,10 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/events/(\d+)/fees/amend", path)
             if m:
                 return self.handle_fees_amend(conn, user, int(m.group(1)))
+
+            m = re.fullmatch(r"/events/(\d+)/checklist", path)
+            if m:
+                return self.handle_event_checklist_submit(conn, user, int(m.group(1)), form)
 
             m = re.fullmatch(r"/events/(\d+)/guests", path)
             if m:
@@ -828,6 +901,42 @@ class Handler(BaseHTTPRequestHandler):
         banner_url = (settings_row or {}).get("banner_url") or "/static/banner.jpg"
         distance_formula = (settings_row or {}).get("distance_formula") or "km * 0.88"
         gear_types = self._get_gear_types(conn)
+        checklist_items = self._get_checklist_items(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug, title, show_in_nav, nav_label, nav_order FROM content_pages ORDER BY title")
+            content_pages = list(cur.fetchall())
+
+        content_page_rows = "".join(
+            f"""<tr>
+              <td>
+                <form id="page-nav-form-{p['slug']}" class="inline" method="post" action="/admin/pages/{p['slug']}/nav"></form>
+                <a href="/pages/{p['slug']}">{html.escape(p['title'])}</a> <span class="muted">/pages/{p['slug']}</span>
+                <a class="btn" style="padding:0.1em 0.5em; margin-left:0.4em;" href="/pages/{p['slug']}/edit">Edit content</a></td>
+              <td><input type="checkbox" name="show_in_nav" value="1" form="page-nav-form-{p['slug']}" style="width:auto;"{" checked" if p['show_in_nav'] else ""}></td>
+              <td><input name="nav_label" form="page-nav-form-{p['slug']}" placeholder="{html.escape(p['title'])}" value="{html.escape(p['nav_label'] or '')}" style="width:140px;"></td>
+              <td><input name="nav_order" form="page-nav-form-{p['slug']}" type="number" value="{p['nav_order']}" style="width:70px;"></td>
+              <td style="display:flex; gap:0.4em;">
+                <button type="submit" form="page-nav-form-{p['slug']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
+                <form class="inline" method="post" action="/admin/pages/{p['slug']}/delete" onsubmit="return confirm('Delete the page \\'{html.escape(p['title'])}\\'? This can\\'t be undone.');">
+                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </form>
+              </td>
+            </tr>"""
+            for p in content_pages
+        )
+
+        checklist_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(c['name'])}</td>
+              <td>{"Skill" if c['kind'] == 'skill' else "Item"}</td>
+              <td>
+                <form class="inline" method="post" action="/admin/checklist-items/{c['id']}/delete" onsubmit="return confirm('Delete this checklist entry? It will be removed from any trip that currently requires it.');">
+                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </form>
+              </td>
+            </tr>"""
+            for c in checklist_items
+        )
 
         gear_rows = "".join(
             f"""<tr>
@@ -878,6 +987,21 @@ class Handler(BaseHTTPRequestHandler):
         </div>
 
         <div class="card">
+        <h3>Upload image</h3>
+        <p class="muted">Upload any image to get a permanent <code>/static/pages/...</code> URL for it, to use in a
+        content page's Markdown, a trip description, or anywhere else that takes a URL.</p>
+        <input type="file" id="admin-upload-image-file" accept="image/*">
+        <div id="admin-upload-image-result" style="display:none; margin-top:0.8em;">
+          <img id="admin-upload-image-preview" style="max-width:200px; max-height:150px; border-radius:6px; display:block; margin-bottom:0.6em;">
+          <div style="display:flex; gap:0.5em;">
+            <input id="admin-upload-image-url" readonly style="flex:1;">
+            <button type="button" class="btn" id="admin-upload-image-copy">Copy URL</button>
+          </div>
+        </div>
+        <p id="admin-upload-image-status" class="muted" style="margin-top:0.6em;"></p>
+        </div>
+
+        <div class="card">
         <h3>Driven distance pricing</h3>
         <p class="muted">The formula used to price a <code>driven_distance</code> contribution. Use the
         variable <code>km</code>, numbers, <code>+ - *</code> (or <code>x</code> for multiply), and
@@ -911,6 +1035,51 @@ class Handler(BaseHTTPRequestHandler):
         </div>
 
         <div class="card">
+        <h3>Required skills &amp; items</h3>
+        <p class="muted">Club-wide catalog a trip leader can pick from when building their trip's checklist
+        (e.g. skill "Vertical sign-off", item "Wetsuit").</p>
+        <table>
+          <tr><th>Name</th><th>Kind</th><th></th></tr>
+          {checklist_rows or '<tr><td colspan="3" class="muted">None yet.</td></tr>'}
+        </table>
+        <form method="post" action="/admin/checklist-items" style="display:flex; gap:0.5em; margin-top:1em;">
+          <input name="name" placeholder="e.g. Vertical sign-off" required style="flex:1; width:auto;">
+          <select name="kind" style="flex:0 0 120px; width:auto;">
+            <option value="skill">Skill</option>
+            <option value="item">Item</option>
+          </select>
+          <button type="submit" class="btn-primary" style="flex:0 0 auto;">Add</button>
+        </form>
+        </div>
+
+        <div class="card">
+        <h3>Pages</h3>
+        <p class="muted">Admin-editable content pages (Markdown). Any page can optionally get a link in the
+        site header -- set its label and where it sits in the link order below.</p>
+        <table>
+          <tr><th>Page</th><th>In header</th><th>Link label</th><th>Order</th><th></th></tr>
+          {content_page_rows or '<tr><td colspan="5" class="muted">None yet.</td></tr>'}
+        </table>
+        <form method="post" action="/admin/pages" style="display:flex; gap:0.5em; margin-top:1em; flex-wrap:wrap;">
+          <input name="title" id="new-page-title" placeholder="Page title, e.g. About Us" required style="flex:1; min-width:160px; width:auto;">
+          <input name="slug" id="new-page-slug" placeholder="url-slug" required style="width:160px;">
+          <label style="display:flex; align-items:center; gap:0.4em; font-weight:normal; width:auto;">
+            <input type="checkbox" name="show_in_nav" value="1" style="width:auto;"> Show in header
+          </label>
+          <input name="nav_label" placeholder="Link label (optional)" style="width:160px;">
+          <button type="submit" class="btn-primary" style="flex:0 0 auto;">+ New page</button>
+        </form>
+        <script>
+        document.getElementById('new-page-title').addEventListener('input', function() {{
+          var slugField = document.getElementById('new-page-slug');
+          if (slugField.dataset.touched) return;
+          slugField.value = this.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        }});
+        document.getElementById('new-page-slug').addEventListener('input', function() {{ this.dataset.touched = '1'; }});
+        </script>
+        </div>
+
+        <div class="card">
         <h3>Members</h3>
         <table>
           <tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr>
@@ -927,6 +1096,39 @@ class Handler(BaseHTTPRequestHandler):
             document.getElementById('banner-data').value = e.target.result;
           }};
           reader.readAsDataURL(file);
+        }});
+
+        document.getElementById('admin-upload-image-file').addEventListener('change', function() {{
+          var file = this.files[0];
+          if (!file) return;
+          var status = document.getElementById('admin-upload-image-status');
+          var result = document.getElementById('admin-upload-image-result');
+          status.textContent = 'Uploading...';
+          result.style.display = 'none';
+          var reader = new FileReader();
+          reader.onload = function(e) {{
+            fetch('/admin/upload-image', {{
+              method: 'POST',
+              headers: {{'Content-Type': 'application/x-www-form-urlencoded'}},
+              body: 'image_data=' + encodeURIComponent(e.target.result)
+            }}).then(function(r) {{ return r.json(); }}).then(function(data) {{
+              if (data.url) {{
+                document.getElementById('admin-upload-image-preview').src = data.url;
+                document.getElementById('admin-upload-image-url').value = window.location.origin + data.url;
+                result.style.display = 'block';
+                status.textContent = 'Uploaded.';
+              }} else {{
+                status.textContent = 'Upload failed.';
+              }}
+            }}).catch(function() {{ status.textContent = 'Upload failed.'; }});
+          }};
+          reader.readAsDataURL(file);
+        }});
+
+        document.getElementById('admin-upload-image-copy').addEventListener('click', function() {{
+          var input = document.getElementById('admin-upload-image-url');
+          navigator.clipboard.writeText(input.value);
+          showToast('Copied: ' + input.value);
         }});
 
         (function() {{
@@ -1052,6 +1254,327 @@ class Handler(BaseHTTPRequestHandler):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM gear_types WHERE id = %s", (gear_type_id,))
         redirect(self, "/admin")
+
+    def _get_checklist_items(self, conn):
+        """The club-wide catalog of required skills/items a trip leader can
+        pick from when building a trip's checklist (see
+        event_checklist_items), managed by an admin."""
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, kind FROM checklist_items ORDER BY kind, name")
+            return list(cur.fetchall())
+
+    def _render_checklist_form_section(self, catalog_checklist_items, required_ids, dom_id="checklist"):
+        """"Required skills & items" widget embedded in the trip create/edit
+        form and the trip-detail checklist dialog: the trip's current
+        selections as a removable chip list, with an "Add" button that
+        either picks an existing club-wide catalog entry (a <select>, kept
+        in sync so an already-added one can't be picked twice) or types a
+        brand new one (added to the catalog on save, parsed by
+        _parse_checklist_form_submission). `dom_id` must be unique if more
+        than one of these widgets is ever rendered on the same page."""
+        required_ids = set(required_ids)
+        selected = [c for c in catalog_checklist_items if c["id"] in required_ids]
+        unselected = [c for c in catalog_checklist_items if c["id"] not in required_ids]
+
+        chips_html = "".join(
+            f"""<span class="checklist-chip" data-id="{c['id']}" style="display:inline-flex; align-items:center; gap:0.4em; background:#e4e6eb; border-radius:14px; padding:0.3em 0.7em; font-size:0.9em;">
+                <input type="hidden" name="checklist_item_ids" value="{c['id']}">
+                {("&#129497; " if c['kind'] == 'skill' else "&#127890; ")}{html.escape(c['name'])}
+                <button type="button" class="checklist-chip-remove" style="border:none; background:none; cursor:pointer; font-size:1.1em; line-height:1; padding:0;">&times;</button>
+              </span>"""
+            for c in selected
+        )
+        catalog_options = "".join(
+            f'<option value="{c["id"]}" data-kind="{c["kind"]}" data-name="{html.escape(c["name"])}">'
+            f'{"Skill" if c["kind"] == "skill" else "Item"}: {html.escape(c["name"])}</option>'
+            for c in unselected
+        )
+
+        return f"""
+          <label>Required skills &amp; items <a href="/pages/skills" style="font-weight:normal; font-size:0.85em;">(what do these mean?)</a></label>
+          <div id="{dom_id}-list" style="display:flex; flex-wrap:wrap; gap:0.4em; margin-bottom:0.6em;">{chips_html}</div>
+          <div style="display:flex; gap:0.5em; margin-bottom:0.4em; flex-wrap:wrap;">
+            <select id="{dom_id}-catalog-select" style="flex:1; min-width:160px;">
+              <option value="">Pick an existing skill/item&hellip;</option>
+              {catalog_options}
+            </select>
+            <button type="button" id="{dom_id}-add-existing-btn" class="btn">Add</button>
+          </div>
+          <div style="display:flex; gap:0.5em; margin-bottom:0.9em; flex-wrap:wrap;">
+            <input id="{dom_id}-custom-input" placeholder="Or type a new one" style="flex:1; min-width:160px;">
+            <select id="{dom_id}-custom-kind" style="width:110px;">
+              <option value="skill">Skill</option>
+              <option value="item">Item</option>
+            </select>
+            <button type="button" id="{dom_id}-add-custom-btn" class="btn">Add new</button>
+          </div>
+          <script>
+          (function() {{
+            var list = document.getElementById('{dom_id}-list');
+            var catalogSelect = document.getElementById('{dom_id}-catalog-select');
+            var customInput = document.getElementById('{dom_id}-custom-input');
+            var customKind = document.getElementById('{dom_id}-custom-kind');
+
+            function makeChip(label, kind, inputName, inputValue, catalogOption) {{
+              var chip = document.createElement('span');
+              chip.className = 'checklist-chip';
+              chip.style.cssText = 'display:inline-flex; align-items:center; gap:0.4em; background:#e4e6eb; border-radius:14px; padding:0.3em 0.7em; font-size:0.9em;';
+              var hidden = document.createElement('input');
+              hidden.type = 'hidden';
+              hidden.name = inputName;
+              hidden.value = inputValue;
+              chip.appendChild(hidden);
+              chip.appendChild(document.createTextNode((kind === 'skill' ? '\\u{{1F9D7}} ' : '\\u{{1F392}} ') + label));
+              var removeBtn = document.createElement('button');
+              removeBtn.type = 'button';
+              removeBtn.textContent = '\\u00d7';
+              removeBtn.style.cssText = 'border:none; background:none; cursor:pointer; font-size:1.1em; line-height:1; padding:0;';
+              removeBtn.addEventListener('click', function() {{
+                chip.remove();
+                if (catalogOption) catalogOption.disabled = false;
+              }});
+              chip.appendChild(removeBtn);
+              list.appendChild(chip);
+            }}
+
+            document.getElementById('{dom_id}-add-existing-btn').addEventListener('click', function() {{
+              var opt = catalogSelect.options[catalogSelect.selectedIndex];
+              if (!opt || !opt.value) return;
+              makeChip(opt.dataset.name, opt.dataset.kind, 'checklist_item_ids', opt.value, opt);
+              opt.disabled = true;
+              catalogSelect.value = '';
+            }});
+
+            document.getElementById('{dom_id}-add-custom-btn').addEventListener('click', function() {{
+              var name = customInput.value.trim();
+              if (!name) return;
+              var kind = customKind.value;
+              makeChip(name, kind, kind === 'skill' ? 'new_skill_names' : 'new_item_names', name, null);
+              customInput.value = '';
+            }});
+          }})();
+          </script>
+        """
+
+    def _parse_checklist_form_submission(self, conn, form):
+        """Combines the checked existing catalog ids with any brand-new
+        skill/item names added via the create/edit form's "Add new" button
+        -- new names are added to the club-wide checklist_items catalog (so
+        they're available for other trips too) and included in the
+        returned id set."""
+        checklist_item_ids = {int(v) for v in form.getlist("checklist_item_ids")}
+        with conn.cursor() as cur:
+            for field, kind in (("new_skill_names", "skill"), ("new_item_names", "item")):
+                for name in form.getlist(field):
+                    name = name.strip()
+                    if not name:
+                        continue
+                    cur.execute("INSERT IGNORE INTO checklist_items (name, kind) VALUES (%s, %s)", (name, kind))
+                    cur.execute("SELECT id FROM checklist_items WHERE name = %s AND kind = %s", (name, kind))
+                    row = cur.fetchone()
+                    if row:
+                        checklist_item_ids.add(row["id"])
+        return checklist_item_ids
+
+    def _save_event_checklist(self, conn, event_id, checklist_item_ids):
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM event_checklist_items WHERE event_id = %s", (event_id,))
+            if checklist_item_ids:
+                cur.executemany(
+                    "INSERT INTO event_checklist_items (event_id, checklist_item_id) VALUES (%s, %s)",
+                    [(event_id, cid) for cid in checklist_item_ids],
+                )
+
+    def handle_checklist_item_add(self, conn, user, form):
+        self._require_admin(user)
+        name = form.get("name", "").strip()
+        kind = form.get("kind", "").strip()
+        if name and kind in ("skill", "item"):
+            with conn.cursor() as cur:
+                cur.execute("INSERT IGNORE INTO checklist_items (name, kind) VALUES (%s, %s)", (name, kind))
+        redirect(self, "/admin")
+
+    def handle_checklist_item_delete(self, conn, user, checklist_item_id):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM checklist_items WHERE id = %s", (checklist_item_id,))
+        redirect(self, "/admin")
+
+    # -- content pages (admin-editable, CKEditor) -----------------------------
+
+    def _get_content_page(self, conn, slug):
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM content_pages WHERE slug = %s", (slug,))
+            return cur.fetchone()
+
+    def handle_content_page(self, conn, user, slug):
+        """Public: any admin-editable reference page (e.g. the club's skill
+        levels writeup), viewable by anyone, editable by an admin. Content
+        is written in Markdown (see markdown.py) and rendered to HTML here."""
+        page = self._get_content_page(conn, slug)
+        if not page:
+            return self._send_html(render_page("Not found", "<h1>Page not found</h1>", user), status=404)
+        edit_link = f'<a class="btn" href="/pages/{slug}/edit">Edit page</a>' if user and user.get("is_admin") else ""
+        body = f"""
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6em;">
+          <h1 style="margin:0;">{html.escape(page['title'])}</h1>
+          {edit_link}
+        </div>
+        <p class="muted">Last updated {page['updated_at']:%d %b %Y}</p>
+        <div class="card description-body">{markdown.render(page['content_markdown'])}</div>
+        """
+        self._send_html(render_page(page["title"], body, user))
+
+    def handle_content_page_edit_form(self, conn, user, slug):
+        self._require_admin(user)
+        page = self._get_content_page(conn, slug)
+        if not page:
+            return self._send_html(render_page("Not found", "<h1>Page not found</h1>", user), status=404)
+        body = f"""
+        <p><a href="/pages/{slug}">&larr; back to {html.escape(page['title'])}</a></p>
+        <div class="card">
+        <h1>Edit: {html.escape(page['title'])}</h1>
+        <form method="post" action="/pages/{slug}/edit">
+          <label>Title<input name="title" value="{html.escape(page['title'])}" required></label>
+          <label>Content (Markdown)
+            <div style="display:flex; gap:0.5em; margin-bottom:0.4em;">
+              <input type="file" id="page-image-file" accept="image/*" style="flex:1;">
+              <span id="page-image-status" class="muted"></span>
+            </div>
+            <textarea name="content_markdown" id="content-markdown" rows="26"
+                      style="font-family:monospace; font-size:0.9em;">{html.escape(page['content_markdown'])}</textarea>
+          </label>
+          <p class="muted" style="margin-top:-0.6em;">Headings with <code>#</code>/<code>##</code>, <code>**bold**</code>,
+          <code>*italic*</code>, <code>[link](url)</code>, <code>![alt](url)</code> for images, and <code>- item</code>
+          bullet lists. Uploading a file above inserts its <code>![]()</code> markdown at the cursor.</p>
+          <button type="submit" class="btn-primary">Save</button>
+          <a class="btn" href="/pages/{slug}">Discard</a>
+        </form>
+        </div>
+        <script>
+        (function() {{
+          var textarea = document.getElementById('content-markdown');
+          var fileInput = document.getElementById('page-image-file');
+          var status = document.getElementById('page-image-status');
+
+          function insertAtCursor(text) {{
+            var start = textarea.selectionStart, end = textarea.selectionEnd;
+            textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+            var pos = start + text.length;
+            textarea.focus();
+            textarea.setSelectionRange(pos, pos);
+          }}
+
+          fileInput.addEventListener('change', function() {{
+            var file = this.files[0];
+            if (!file) return;
+            status.textContent = 'Uploading...';
+            var reader = new FileReader();
+            reader.onload = function(e) {{
+              fetch('/pages/{slug}/upload-image', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/x-www-form-urlencoded'}},
+                body: 'image_data=' + encodeURIComponent(e.target.result)
+              }}).then(function(r) {{ return r.json(); }}).then(function(data) {{
+                if (data.url) {{
+                  insertAtCursor('![' + file.name.replace(/\\.[^.]+$/, '') + '](' + data.url + ')\\n');
+                  status.textContent = 'Inserted.';
+                }} else {{
+                  status.textContent = 'Upload failed.';
+                }}
+              }}).catch(function() {{ status.textContent = 'Upload failed.'; }});
+            }};
+            reader.readAsDataURL(file);
+          }});
+        }})();
+        </script>
+        """
+        self._send_html(render_page(f"Edit: {page['title']}", body, user))
+
+    def handle_content_page_edit_submit(self, conn, user, slug, form):
+        self._require_admin(user)
+        title = form.get("title", "").strip()
+        content_markdown = form.get("content_markdown", "")
+        if not title:
+            return redirect(self, f"/pages/{slug}/edit")
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE content_pages SET title = %s, content_markdown = %s WHERE slug = %s",
+                (title, content_markdown, slug),
+            )
+        _refresh_nav_links_cache(conn)  # a title change can affect the header link's fallback label
+        redirect(self, f"/pages/{slug}")
+
+    def handle_admin_page_create(self, conn, user, form):
+        self._require_admin(user)
+        title = form.get("title", "").strip()
+        slug = form.get("slug", "").strip().lower()
+        slug = re.sub(r"[^a-z0-9-]+", "-", slug).strip("-")
+        show_in_nav = 1 if form.get("show_in_nav") == "1" else 0
+        nav_label = form.get("nav_label", "").strip() or None
+        if title and slug:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT IGNORE INTO content_pages (slug, title, content_markdown, show_in_nav, nav_label) "
+                    "VALUES (%s, %s, '', %s, %s)",
+                    (slug, title, show_in_nav, nav_label),
+                )
+            _refresh_nav_links_cache(conn)
+            if show_in_nav:
+                return redirect(self, f"/pages/{slug}/edit")
+        redirect(self, "/admin")
+
+    def handle_admin_page_nav_update(self, conn, user, slug, form):
+        self._require_admin(user)
+        show_in_nav = 1 if form.get("show_in_nav") == "1" else 0
+        nav_label = form.get("nav_label", "").strip() or None
+        nav_order_raw = form.get("nav_order", "").strip()
+        nav_order = int(nav_order_raw) if nav_order_raw.lstrip("-").isdigit() else 0
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE content_pages SET show_in_nav = %s, nav_label = %s, nav_order = %s WHERE slug = %s",
+                (show_in_nav, nav_label, nav_order, slug),
+            )
+        _refresh_nav_links_cache(conn)
+        redirect(self, "/admin")
+
+    def handle_admin_page_delete(self, conn, user, slug):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM content_pages WHERE slug = %s", (slug,))
+        _refresh_nav_links_cache(conn)
+        redirect(self, "/admin")
+
+    def _send_image_upload_json(self, form, id_prefix):
+        """Shared by every "upload an image, get a /static/... URL back as
+        JSON" endpoint (the Markdown editor's inline uploader and the
+        general-purpose admin image uploader)."""
+        data_url = form.get("image_data", "")
+        try:
+            url = self._save_data_url_image(data_url, "pages", id_prefix)
+        except ValueError:
+            return self._send_html('{"error": "invalid image"}', status=400)
+        payload = json.dumps({"url": url})
+        encoded = payload.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def handle_content_page_image_upload(self, conn, user, slug, form):
+        """Admin-only: uploads an image picked in the Markdown editor and
+        returns its URL as JSON, for the editor's JS to insert as ![]()
+        markdown at the cursor."""
+        self._require_admin(user)
+        self._send_image_upload_json(form, f"{slug}-{user['id']}")
+
+    def handle_admin_image_upload(self, conn, user, form):
+        """Admin-only: general-purpose image upload, independent of any one
+        content page -- for grabbing a /static/pages/... URL to use
+        anywhere (another page's Markdown, a trip description, etc)."""
+        self._require_admin(user)
+        self._send_image_upload_json(form, f"upload-{user['id']}")
 
     def handle_distance_formula_test(self, user):
         self._require_admin(user)
@@ -1509,10 +2032,47 @@ class Handler(BaseHTTPRequestHandler):
 
         balance_rows = "".join(balance_row(u) for u in all_users)
 
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, lodged_at FROM events WHERE lodged_at IS NOT NULL ORDER BY lodged_at DESC"
+            )
+            lodged_events = list(cur.fetchall())
+
+        export_fees_dialog = ""
+        if lodged_events:
+            trip_checkboxes = "".join(
+                f"""<label style="display:flex; align-items:center; gap:0.5em; font-weight:normal;">
+                    <input type="checkbox" name="event_id" value="{e['id']}" checked style="width:auto; margin:0;">
+                    {html.escape(e['title'])} <span class="muted">(lodged {e['lodged_at']:%d %b %Y})</span>
+                  </label>"""
+                for e in lodged_events
+            )
+            export_fees_dialog = f"""
+            <dialog id="export-fees-dialog" style="border:none; border-radius:8px; padding:0; max-width:420px; width:90%;">
+              <div class="card" style="margin:0; box-shadow:none; border:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 style="margin:0;">Export fees</h3>
+                  <button type="button" class="btn" onclick="document.getElementById('export-fees-dialog').close()">&times;</button>
+                </div>
+                <p class="muted">Exports every lodged amount (including any later reversal/revision from an
+                amendment) for the selected trips, as a CSV: one row per member per trip entry.</p>
+                <form method="get" action="/accounting/export-fees">
+                  <div style="display:flex; flex-direction:column; gap:0.4em; margin-bottom:0.8em; max-height:300px; overflow-y:auto;">
+                    {trip_checkboxes}
+                  </div>
+                  <button type="submit" class="btn-primary">Download CSV</button>
+                </form>
+              </div>
+            </dialog>
+            """
+
         body = f"""
         {self._accounting_header("balances")}
         <div class="card">
-        <h3>Member balances</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;">Member balances</h3>
+          {f'<button type="button" class="btn" onclick="document.getElementById(\'export-fees-dialog\').showModal()">Export fees&hellip;</button>' if lodged_events else ''}
+        </div>
         <p class="muted">Each member's net position across all trips combined, reconciled against every bank
         transaction linked to them. A credit on one trip automatically offsets a debt on another; a single payment
         covering several trips is simply totalled. Click a name for their full history.</p>
@@ -1521,8 +2081,51 @@ class Handler(BaseHTTPRequestHandler):
           {balance_rows or '<tr><td colspan="3" class="muted">No activity yet.</td></tr>'}
         </table>
         </div>
+        {export_fees_dialog}
         """
         self._send_html(render_page("Accounting", body, user))
+
+    def handle_accounting_export_fees(self, conn, user):
+        """CSV export of lodged trip fees for the trips the treasurer
+        picked in the "Export fees" dialog -- one row per
+        event_fee_lodgements entry (so an amendment's reversal/revision
+        pair both appear, same audit trail as the per-member balance
+        history), grouped by trip. Columns: Trip, Member, Date,
+        Description, Amount -- not the bank-transaction CSV format (date,
+        amount, description) since this is a multi-trip, multi-member
+        export, not something meant to be re-imported as transactions."""
+        self._require_treasurer(user)
+        query = parse_qs(urlparse(self.path).query)
+        event_ids = [int(v) for v in query.get("event_id", []) if v.isdigit()]
+        if not event_ids:
+            return redirect(self, "/accounting")
+
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT e.title AS trip, u.name AS member, l.created_at, l.description, l.amount
+                FROM event_fee_lodgements l
+                JOIN events e ON e.id = l.event_id
+                JOIN users u ON u.id = l.user_id
+                WHERE l.event_id IN ({','.join(['%s'] * len(event_ids))})
+                ORDER BY e.title, u.name, l.created_at
+                """,
+                event_ids,
+            )
+            rows = cur.fetchall()
+
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerow(["Trip", "Member", "Date", "Description", "Amount"])
+        for r in rows:
+            writer.writerow([r["trip"], r["member"], r["created_at"].strftime("%d/%m/%Y"), r["description"], r["amount"]])
+        encoded = out.getvalue().encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", 'attachment; filename="trip_fees_export.csv"')
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
 
     def handle_accounting_user_balance_page(self, conn, user, target_user_id):
         """One member's full historical ledger: every trip they owed/were
@@ -2399,13 +3002,16 @@ class Handler(BaseHTTPRequestHandler):
         """
         self._send_html(render_page("Trips", body, user))
 
-    def _render_event_form(self, action, heading, submit_label, global_distance_formula, event=None, is_new=False, gear_rates=None):
+    def _render_event_form(self, action, heading, submit_label, global_distance_formula, event=None, is_new=False, gear_rates=None, catalog_checklist_items=None, required_checklist_ids=None):
         """Shared form for both creating and editing an event. `event` (a dict
         of current values) is provided when editing, to pre-fill the fields.
         `gear_rates` (this event's effective rates, from
         _resolve_event_gear_rates) is only given when editing -- a brand new
         event doesn't have a row in event_gear_rates yet, that's seeded
-        right after it's created."""
+        right after it's created. `catalog_checklist_items` is the full
+        club-wide skill/item catalog (see _get_checklist_items);
+        `required_checklist_ids` (only set when editing) are this event's
+        current selections."""
         title_val = html.escape(event["title"]) if event else ""
         description_val = (event.get("description") or "") if event else ""
         picture_val = html.escape(event.get("picture_url") or "") if event else ""
@@ -2485,6 +3091,7 @@ class Handler(BaseHTTPRequestHandler):
               <input name="gear_rate_{g['id']}" type="number" step="0.01" min="0" value="{g['rate']}" style="width:100px; margin:0; flex-shrink:0;">
             </div>""" for g in gear_rates) or '<p class="muted">No gear types configured yet -- an admin can add some.</p>'}
           </div>''' if gear_rates is not None else ''}
+          {self._render_checklist_form_section(catalog_checklist_items or [], required_checklist_ids or set())}
           {'''<label style="display:flex; align-items:center; gap:0.5em;">
             <input type="checkbox" name="attending" value="1" checked style="width:auto; margin:0;">
             I'm attending this trip
@@ -2539,7 +3146,8 @@ class Handler(BaseHTTPRequestHandler):
     def handle_event_new_form(self, conn, user):
         self._require_login(user)
         body = self._render_event_form(
-            "/events/new", "New trip", "Create trip", self._get_distance_formula(conn), is_new=True
+            "/events/new", "New trip", "Create trip", self._get_distance_formula(conn), is_new=True,
+            catalog_checklist_items=self._get_checklist_items(conn),
         )
         self._send_html(render_page("New trip", body, user))
 
@@ -2574,6 +3182,7 @@ class Handler(BaseHTTPRequestHandler):
                 pass  # fall back to the global default rather than reject event creation
 
         attending = form.get("attending") == "1"
+        checklist_item_ids = self._parse_checklist_form_submission(conn, form)
 
         with conn.cursor() as cur:
             cur.execute(
@@ -2590,6 +3199,7 @@ class Handler(BaseHTTPRequestHandler):
                     (event_id, user["id"]),
                 )
         self._seed_event_gear_rates(conn, event_id)
+        self._save_event_checklist(conn, event_id, checklist_item_ids)
         redirect(self, f"/events/{event_id}")
 
     def handle_event_edit_form(self, conn, user, event_id):
@@ -2600,9 +3210,14 @@ class Handler(BaseHTTPRequestHandler):
         if event["host_id"] != user["id"]:
             return self._send_html(render_page("Forbidden", "<h1>Only the host can edit this trip.</h1>", user), status=403)
 
+        with conn.cursor() as cur:
+            cur.execute("SELECT checklist_item_id FROM event_checklist_items WHERE event_id = %s", (event_id,))
+            required_checklist_ids = {r["checklist_item_id"] for r in cur.fetchall()}
+
         body = self._render_event_form(
             f"/events/{event_id}/edit", f"Edit: {event['title']}", "Save changes",
-            self._get_distance_formula(conn), event=event, gear_rates=self._resolve_event_gear_rates(conn, event_id)
+            self._get_distance_formula(conn), event=event, gear_rates=self._resolve_event_gear_rates(conn, event_id),
+            catalog_checklist_items=self._get_checklist_items(conn), required_checklist_ids=required_checklist_ids,
         )
         self._send_html(render_page("Edit trip", body, user))
 
@@ -2648,6 +3263,7 @@ class Handler(BaseHTTPRequestHandler):
             picture_url = None  # picture field cleared
 
         gear_types = self._get_gear_types(conn)
+        checklist_item_ids = self._parse_checklist_form_submission(conn, form)
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -2670,6 +3286,7 @@ class Handler(BaseHTTPRequestHandler):
                         "UPDATE event_gear_rates SET rate = %s WHERE event_id = %s AND gear_type_id = %s",
                         (str(rate), event_id, gear_type["id"]),
                     )
+        self._save_event_checklist(conn, event_id, checklist_item_ids)
         redirect(self, f"/events/{event_id}")
 
     def _get_event(self, conn, event_id):
@@ -2737,6 +3354,18 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 addable_users = []
 
+            cur.execute(
+                """
+                SELECT ci.id, ci.name, ci.kind FROM event_checklist_items eci
+                JOIN checklist_items ci ON ci.id = eci.checklist_item_id
+                WHERE eci.event_id = %s ORDER BY ci.kind, ci.name
+                """,
+                (event_id,),
+            )
+            required_checklist_items = list(cur.fetchall())
+
+        catalog_checklist_items = self._get_checklist_items(conn)
+
         my_signup = next((s for s in signups if user and s["user_id"] == user["id"]), None)
         approved = [s for s in signups if s["status"] == "approved"]
         pending = [s for s in signups if s["status"] == "pending"]
@@ -2799,6 +3428,39 @@ class Handler(BaseHTTPRequestHandler):
               </div>"""
             for s in approved
         ) or '<p class="muted">No one yet &mdash; be the first!</p>'
+
+        required_skills = [c for c in required_checklist_items if c["kind"] == "skill"]
+        required_items = [c for c in required_checklist_items if c["kind"] == "item"]
+        if not required_checklist_items:
+            checklist_html = '<p class="muted">Nothing required yet.</p>'
+        else:
+            checklist_html = ""
+            if required_skills:
+                checklist_html += "<p class=\"muted\" style=\"margin-bottom:0.2em;\"><strong>Skills</strong></p><ul style=\"margin-top:0;\">"
+                checklist_html += "".join(f"<li>{html.escape(c['name'])}</li>" for c in required_skills)
+                checklist_html += "</ul>"
+            if required_items:
+                checklist_html += "<p class=\"muted\" style=\"margin-bottom:0.2em;\"><strong>Items</strong></p><ul style=\"margin-top:0;\">"
+                checklist_html += "".join(f"<li>{html.escape(c['name'])}</li>" for c in required_items)
+                checklist_html += "</ul>"
+
+        checklist_dialog_html = ""
+        if is_host:
+            required_ids = {c["id"] for c in required_checklist_items}
+            checklist_dialog_html = f"""
+            <dialog id="checklist-dialog" style="border:none; border-radius:8px; padding:0; max-width:380px; width:90%;">
+              <div class="card" style="margin:0; box-shadow:none; border:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 style="margin:0;">Required skills &amp; items</h3>
+                  <button type="button" class="btn" onclick="document.getElementById('checklist-dialog').close()">&times;</button>
+                </div>
+                <form method="post" action="/events/{event_id}/checklist">
+                  {self._render_checklist_form_section(catalog_checklist_items, required_ids)}
+                  <button type="submit" class="btn-primary">Save</button>
+                </form>
+              </div>
+            </dialog>
+            """
 
         add_guest_dialog_html = ""
         if is_host:
@@ -2908,6 +3570,14 @@ class Handler(BaseHTTPRequestHandler):
               <div class="description-body">{description_html}</div>
             </div>
 
+            <div class="card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">Required skills &amp; items <a href="/pages/skills" style="font-size:0.7em; font-weight:normal;">(what do these mean?)</a></h3>
+                {f'<button type="button" class="btn" title="Edit checklist" onclick="document.getElementById(\'checklist-dialog\').showModal()" style="padding:0.3em 0.7em;">Edit</button>' if is_host else ''}
+              </div>
+              {checklist_html}
+            </div>
+
             {pending_rows}
 
             <div class="card">
@@ -2938,6 +3608,7 @@ class Handler(BaseHTTPRequestHandler):
           </div>
         </div>
         {add_guest_dialog_html}
+        {checklist_dialog_html}
         """
         self._send_html(render_page(event["title"], body, user))
 
@@ -3741,6 +4412,20 @@ class Handler(BaseHTTPRequestHandler):
                         (event_id, uid, f"Trip: {event['title']} (revised)", str(live)),
                     )
         self._fees_redirect(event_id)
+
+    def handle_event_checklist_submit(self, conn, user, event_id, form):
+        """Host picks which club-wide checklist_items this trip requires --
+        replaces the trip's whole set of required skills/items with
+        whatever's checked in the form."""
+        self._require_login(user)
+        event = self._get_event(conn, event_id)
+        if not event:
+            return redirect(self, "/")
+        if event["host_id"] != user["id"]:
+            return self._send_html(render_page("Forbidden", "<h1>Only the host can edit this trip's checklist.</h1>", user), status=403)
+        checklist_item_ids = self._parse_checklist_form_submission(conn, form)
+        self._save_event_checklist(conn, event_id, checklist_item_ids)
+        redirect(self, f"/events/{event_id}")
 
     def handle_event_guest_add(self, conn, user, event_id, form):
         """The host adds someone who went on this trip but has no account

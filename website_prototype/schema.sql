@@ -76,6 +76,41 @@ CREATE TABLE discussion_posts (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Club-wide catalog of required skills/items a trip leader can pick from
+-- when building their trip's checklist (see event_checklist_items), managed
+-- by an admin -- e.g. skill "Vertical sign-off", item "Wetsuit".
+-- Admin-editable reference pages, written in Markdown (see markdown.py) and
+-- rendered to HTML for viewing, e.g. the club's skill-levels writeup linked
+-- from a trip's "Required skills & items".
+CREATE TABLE content_pages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    content_markdown LONGTEXT NOT NULL,
+    show_in_nav TINYINT(1) NOT NULL DEFAULT 0, -- whether this page gets a link in the site header
+    nav_label VARCHAR(100) NULL, -- link text when show_in_nav is set; falls back to title if blank
+    nav_order INT NOT NULL DEFAULT 0, -- header links are ordered by this, then title
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE checklist_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    kind ENUM('skill','item') NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_name_kind (name, kind)
+);
+
+-- Which catalog entries a given trip requires -- the host picks from
+-- checklist_items to build their trip's "Required skills & items" section.
+CREATE TABLE event_checklist_items (
+    event_id INT NOT NULL,
+    checklist_item_id INT NOT NULL,
+    PRIMARY KEY (event_id, checklist_item_id),
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (checklist_item_id) REFERENCES checklist_items(id) ON DELETE CASCADE
+);
+
 -- A trip's lodged fees, as an auditable ledger rather than a live number:
 -- "Lodge" (once, per trip) inserts one row per member with their owed
 -- amount at that moment. If contributions/gear use change afterwards,
