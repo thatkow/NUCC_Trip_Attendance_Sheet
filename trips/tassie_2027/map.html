@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Tassie Jan 2027 – Trip Map</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+ body{margin:0;font-family:sans-serif;display:flex;height:100vh}
+ #side{width:340px;overflow:auto;padding:12px;box-sizing:border-box;border-right:1px solid #ccc}
+ #map{flex:1}
+ h1{font-size:18px;margin:0 0 8px}
+ .loc{padding:6px 0;border-bottom:1px solid #eee;cursor:pointer}
+ .loc small{color:#555;display:block}
+ .approx{color:#b45309}
+ @media(max-width:700px){body{flex-direction:column-reverse}#side{width:auto;height:40%}}
+</style></head><body>
+<div id="side"><h1>Tassie Jan 2027</h1>
+<p style="font-size:12px">Positions are approximate. Use the Google Maps links to confirm each place.
+Exact canyon start/exit points are not verified.</p><div id="list"></div><h1 style="margin-top:14px">Stages (click for route)</h1><div id="stages"></div><div id="info" style="font-size:12px;margin-top:8px"></div><h1 style="margin-top:14px">Canyon references</h1>
+<div style="font-size:13px;line-height:1.5">
+<b>Dove Canyon</b> – <a href="https://ropewiki.com/Dove_Canyon" target="_blank">RopeWiki</a> · <a href="https://www.cradlemountaincanyons.com.au/" target="_blank">operator</a> · <a href="https://unswoc.org/wordpress/2023/05/dove-canyon-above-the-line/" target="_blank">trip report</a><br>
+<b>Machinery Creek</b> – <a href="https://ropewiki.com/Machinery_Creek" target="_blank">RopeWiki</a> · <a href="https://www.qantas.com/travelinsider/en/explore/australia/tasmania/find-adventure-on-a-cradle-mountain-canyoning-trip-in-tasmania.html" target="_blank">Qantas article</a><br>
+<b>Lost World Canyon</b> – <a href="https://www.discovertasmania.com.au/things-to-do/tours/cradlemountaincanyons/the-lost-world-canyon" target="_blank">operator listing</a> (no RopeWiki page found)<br>
+<b>Phoenix Gorge</b> – no references found<br>
+<b>Minnow Falls</b> – <a href="https://fatcanyoners.org/2018/03/minnow-falls/" target="_blank">exploratory descent report</a> · <a href="https://forum.bushwalk.com/forum/viewtopic.php?p=372868" target="_blank">escarpment route closed (forum)</a><br>
+<i>Note: RopeWiki's "Minnow Canyon" is in Arizona, not Tasmania.</i><br>
+<a href="https://canyoning.org.au/canyons/map" target="_blank">Australian canyoning map</a>
+</div></div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const L_ = [
+ {n:"Spirit of Tasmania – Melbourne (Station Pier)", d:"15 Jan / 31 Jan: ferry", c:[-37.8396,144.9120], q:"Spirit of Tasmania Terminal Station Pier Port Melbourne"},
+ {n:"Spirit of Tasmania – Devonport", d:"Ferry arrival/departure", c:[-41.1790,146.3560], q:"Spirit of Tasmania Terminal Devonport"},
+ {n:"Maydena (Junee Florentine base area)", d:"16–21 Jan: Junee Florentine caving", c:[-42.7580,146.5900], q:"Maydena Tasmania", approx:true},
+ {n:"Cradle Mountain Visitor Centre", d:"23–26 Jan: canyoning base; operator departure point", c:[-41.6370,145.9470], q:"Cradle Mountain Visitor Centre"},
+ {n:"Cradle Valley canyons (Dove, Machinery, Lost World, Phoenix)", d:"Exact canyon locations unverified", c:[-41.6300,145.9500], q:"Dove Canyon Cradle Mountain", approx:true},
+ {n:"Discovery Holiday Park Cradle Mountain (camping)", d:"Camping option 22–26 Jan; confirm location", c:[-41.6390,145.9470], q:"Discovery Holiday Park Cradle Mountain", approx:true},
+ {n:"Cradle Mountain Fishery & Camping (Moina)", d:"Camping option; 2369 Cradle Mountain Rd", c:[-41.5800,146.0000], q:"Cradle Mountain Fishery & Camping Moina", approx:true},
+ {n:"Minnow Falls (Mt Roland, near Gowrie Park)", d:"Canyon option – exploratory/unverified; see references", c:[-41.4800,146.0750], q:"Minnow Falls Mt Roland Tasmania", approx:true},
+ {n:"Mole Creek", d:"27–30 Jan: Mole Creek caving", c:[-41.5640,146.2430], q:"Mole Creek Tasmania"},
+ {n:"Marakoopa Cave", d:"Mole Creek karst area (reference)", c:[-41.5420,146.1970], q:"Marakoopa Cave", approx:true}
+];
+const map=L.map('map').setView([-41.2,146.0],7);
+const esri=(l,a)=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/'+l+'/MapServer/tile/{z}/{y}/{x}',{attribution:a,maxZoom:18});
+const topo=esri('World_Topo_Map','Tiles © Esri').addTo(map);
+L.control.layers({'Topo':topo,'Satellite':esri('World_Imagery','Tiles © Esri'),'Streets':esri('World_Street_Map','Tiles © Esri')}).addTo(map);
+const list=document.getElementById('list'),pts=[];
+L_.forEach((p,i)=>{
+ const g='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.q);
+ const dir='https://www.google.com/maps/dir/?api=1&destination='+p.c.join(',');
+ const html=`<b>${p.n}</b><br>${p.d}${p.approx?'<br><span class="approx">approximate position</span>':''}<br><a href="${g}" target="_blank">Google Maps</a> · <a href="${dir}" target="_blank">Directions</a>`;
+ const m=L.marker(p.c).addTo(map).bindPopup(html);pts.push(p.c);
+ const el=document.createElement('div');el.className='loc';
+ el.innerHTML=`${i+1}. ${p.n}<small>${p.d}</small>`;
+ el.onclick=()=>{map.setView(p.c,10);m.openPopup()};list.appendChild(el);
+});
+map.fitBounds(pts.slice(1),{padding:[40,40]});
+// Stages: indexes into L_. ferry=true draws a dashed straight line (sea crossing).
+const stages=[
+ {n:"15 Jan – Melbourne to Devonport (ferry)",a:0,b:1,ferry:true},
+ {n:"15 Jan – Devonport to Maydena (Junee Florentine)",a:1,b:2},
+ {n:"22 Jan – Maydena to Cradle Mountain",a:2,b:3},
+ {n:"27 Jan – Cradle Mountain to Mole Creek",a:3,b:8},
+ {n:"31 Jan – Mole Creek to Devonport",a:8,b:1},
+ {n:"31 Jan – Devonport to Melbourne (ferry)",a:1,b:0,ferry:true}
+];
+let routeLayer=null;
+const info=document.getElementById('info'),sl=document.getElementById('stages');
+async function show(st){
+ if(routeLayer){map.removeLayer(routeLayer);routeLayer=null}
+ const A=L_[st.a].c,B=L_[st.b].c;
+ const gm='https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+A.join(',')+'&destination='+B.join(',');
+ const link=` <a href="${gm}" target="_blank">Open in Google Maps</a>`;
+ if(st.ferry){
+  routeLayer=L.polyline([A,B],{color:'#2563eb',dashArray:'8 8',weight:4}).addTo(map);
+  info.innerHTML='Ferry crossing (approx. 9–11 h, straight line shown).'+link;
+ }else{
+  info.textContent='Loading route…';
+  try{
+   const u=`https://router.project-osrm.org/route/v1/driving/${A[1]},${A[0]};${B[1]},${B[0]}?overview=full&geometries=geojson`;
+   const r=await (await fetch(u)).json();
+   const rt=r.routes[0];
+   routeLayer=L.geoJSON(rt.geometry,{style:{color:'#dc2626',weight:5}}).addTo(map);
+   info.innerHTML=`Drive: ${(rt.distance/1000).toFixed(0)} km, about ${Math.floor(rt.duration/3600)} h ${Math.round(rt.duration%3600/60)} min (no stops).`+link;
+  }catch(e){
+   routeLayer=L.polyline([A,B],{color:'#dc2626',dashArray:'4 8'}).addTo(map);
+   info.innerHTML='Could not load route (straight line shown).'+link;
+  }
+ }
+ map.fitBounds(routeLayer.getBounds(),{padding:[50,50]});
+}
+stages.forEach(st=>{const el=document.createElement('div');el.className='loc';el.textContent=st.n;el.onclick=()=>show(st);sl.appendChild(el)});
+</script></body></html>

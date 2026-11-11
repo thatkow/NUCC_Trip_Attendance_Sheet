@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+app.log
+static/avatars/
+static/events/
+static/site/
+static/ledger/
+db_snapshots/

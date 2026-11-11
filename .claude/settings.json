@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mysqldump *)",
+      "Bash(sacct *)",
+      "Bash(squeue *)",
+      "Bash(scontrol show *)",
+      "Bash(systemctl is-active *)",
+      "Bash(journalctl *)"
+    ]
+  }
+}
