@@ -572,7 +572,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/events/new":
                 return self.handle_event_new_form(conn, user)
             if path == "/profile":
-                return self.handle_profile_form(user)
+                return self.handle_profile_form(conn, user)
             if path == "/admin":
                 return self.handle_admin_page(conn, user)
             if path == "/admin/distance-formula/test":
@@ -2878,11 +2878,31 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- profile ---------------------------------------------------------------
 
-    def handle_profile_form(self, user, error=None, success=None):
+    def handle_profile_form(self, conn, user, error=None, success=None):
         self._require_login(user)
         error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
         success_html = f'<p style="color:#15803d;">{html.escape(success)}</p>' if success else ""
         current_pic = avatar(user["name"], user.get("profile_picture_url"), size=120)
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT ci.name, us.assessed_at, a.name AS assessor_name
+                FROM user_skills us
+                JOIN checklist_items ci ON ci.id = us.checklist_item_id
+                JOIN users a ON a.id = us.assessor_id
+                WHERE us.user_id = %s ORDER BY ci.name
+                """,
+                (user["id"],),
+            )
+            acquired_skills = list(cur.fetchall())
+        skills_html = (
+            "<ul style=\"padding-left:1.2em; margin:0;\">" + "".join(
+                f"""<li>{html.escape(s['name'])}
+                    <span class="muted">&mdash; signed off by {html.escape(s['assessor_name'])} on {s['assessed_at']:%d %b %Y}</span></li>"""
+                for s in acquired_skills
+            ) + "</ul>"
+        ) if acquired_skills else '<p class="muted">No skills signed off yet.</p>'
 
         body = f"""
         <div class="card" style="max-width:460px; margin:2em auto;">
@@ -2905,6 +2925,11 @@ class Handler(BaseHTTPRequestHandler):
 
           <button type="submit" class="btn-primary">Save changes</button>
         </form>
+        </div>
+
+        <div class="card" style="max-width:460px; margin:0 auto 2em;">
+        <h3>Skills</h3>
+        {skills_html}
         </div>
 
         <dialog id="picture-dialog" style="border:none; border-radius:8px; padding:0; max-width:340px; width:90%;">
@@ -3066,7 +3091,7 @@ class Handler(BaseHTTPRequestHandler):
         self._require_login(user)
         name = form.get("name", "").strip()
         if not name:
-            return self.handle_profile_form(user, error="Name can't be empty.")
+            return self.handle_profile_form(conn, user, error="Name can't be empty.")
 
         picture_url = user.get("profile_picture_url")
         data_url = form.get("profile_picture_data", "").strip()
@@ -3074,7 +3099,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 picture_url = self._save_data_url_image(data_url, "avatars", user["id"])
             except Exception:
-                return self.handle_profile_form(user, error="Couldn't process that image, please try a different one.")
+                return self.handle_profile_form(conn, user, error="Couldn't process that image, please try a different one.")
 
         with conn.cursor() as cur:
             cur.execute(
@@ -3084,7 +3109,7 @@ class Handler(BaseHTTPRequestHandler):
         user = dict(user)
         user["name"] = name
         user["profile_picture_url"] = picture_url
-        self.handle_profile_form(user, success="Profile updated.")
+        self.handle_profile_form(conn, user, success="Profile updated.")
 
     # -- events ---------------------------------------------------------------
 
