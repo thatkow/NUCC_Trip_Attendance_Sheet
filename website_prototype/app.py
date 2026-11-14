@@ -639,6 +639,10 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.handle_user_skill_toggle(conn, user, int(m.group(1)), int(m.group(2)))
 
+            m = re.fullmatch(r"/users/(\d+)/skill-notes", path)
+            if m:
+                return self.handle_user_skill_notes_submit(conn, user, int(m.group(1)), form)
+
             if path == "/accounting/import":
                 return self.handle_accounting_import(conn, user, form)
 
@@ -1242,7 +1246,7 @@ class Handler(BaseHTTPRequestHandler):
         off and when (user_skills); unchecking just deletes that row."""
         self._require_assessor(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM users WHERE id = %s", (target_user_id,))
+            cur.execute("SELECT id, name, skill_notes FROM users WHERE id = %s", (target_user_id,))
             target_user = cur.fetchone()
             if not target_user:
                 return self._send_html(render_page("Not found", "<h1>Member not found</h1>", user), status=404)
@@ -1274,6 +1278,13 @@ class Handler(BaseHTTPRequestHandler):
         <p><a href="/assess">&larr; back to Assess skills</a></p>
         <h1>{html.escape(target_user['name'])}'s skills</h1>
         <div class="card">
+        <h3>Notes</h3>
+        <form method="post" action="/users/{target_user_id}/skill-notes">
+          <textarea name="skill_notes" rows="4" placeholder="Notes for assessors about this member's skills...">{html.escape(target_user['skill_notes'] or '')}</textarea>
+          <button type="submit" class="btn-primary">Save notes</button>
+        </form>
+        </div>
+        <div class="card">
         <table>
           <tr><th>Skill</th><th>Status</th><th></th></tr>
           {skill_rows or '<tr><td colspan="3" class="muted">No skills configured yet -- an admin can add some.</td></tr>'}
@@ -1299,6 +1310,13 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT INTO user_skills (user_id, checklist_item_id, assessor_id) VALUES (%s, %s, %s)",
                     (target_user_id, checklist_item_id, user["id"]),
                 )
+        redirect(self, f"/users/{target_user_id}/skills")
+
+    def handle_user_skill_notes_submit(self, conn, user, target_user_id, form):
+        self._require_assessor(user)
+        skill_notes = form.get("skill_notes", "").strip() or None
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET skill_notes = %s WHERE id = %s", (skill_notes, target_user_id))
         redirect(self, f"/users/{target_user_id}/skills")
 
     def handle_banner_submit(self, conn, user, form):

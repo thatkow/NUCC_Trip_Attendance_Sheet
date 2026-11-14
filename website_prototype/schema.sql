@@ -14,6 +14,7 @@ CREATE TABLE users (
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
     is_treasurer TINYINT(1) NOT NULL DEFAULT 0,
     is_assessor TINYINT(1) NOT NULL DEFAULT 0, -- can check off members' skills, see user_skills below
+    skill_notes TEXT NULL, -- free-text notes an assessor keeps on this member's skills page
     bank_name_aliases VARCHAR(255) NULL, -- comma-separated name(s) this person appears as in bank transaction descriptions, used to auto-match imported transactions to them
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
