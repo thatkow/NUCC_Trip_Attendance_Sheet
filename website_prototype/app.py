@@ -203,11 +203,6 @@ PAGE_TEMPLATE = """<!doctype html>
   .club-header {{ margin-bottom: 1em; }}
   .club-header h1 {{ margin-bottom: 0.1em; }}
 
-  .test-banner {{
-    background: #fbbf24; color: #1c1e21; text-align: center; font-weight: 700;
-    font-size: 0.85em; padding: 0.4em 1em; letter-spacing: 0.02em;
-  }}
-
   #toast {{
     position: fixed; bottom: 1.5em; left: 50%; transform: translateX(-50%) translateY(0.5em);
     background: #1c1e21; color: #fff; padding: 0.7em 1.1em; border-radius: 8px;
@@ -219,7 +214,6 @@ PAGE_TEMPLATE = """<!doctype html>
 </style>
 </head>
 <body>
-{test_banner}
 <div class="topbar">
   <a class="brand" href="/">{club_name}</a>
   <div>{page_links}{user_nav}</div>
@@ -306,28 +300,9 @@ def render_page(title, body, user=None):
         f'<a href="/pages/{html.escape(link["slug"])}">{html.escape(link["label"])}</a>'
         for link in (_NAV_LINKS_CACHE or [])
     )
-    test_banner = ""
-    if config.TEST_MODE:
-        role_switch = ""
-        if user:
-            current_role = "admin" if user.get("is_admin") else ("treasurer" if user.get("is_treasurer") else "member")
-            role_options = "".join(
-                f'<option value="{key}"{" selected" if key == current_role else ""}>{label}</option>'
-                for key, label in (("member", "Member"), ("treasurer", "Treasurer"), ("admin", "Admin"))
-            )
-            role_switch = f"""
-            <form method="post" action="/dev/switch-role" style="display:inline-block; margin-left:0.8em;" onchange="this.submit()">
-              <label>Switch role:
-                <select name="role" style="padding:0.15em 0.4em; border-radius:4px;">{role_options}</select>
-              </label>
-            </form>"""
-        test_banner = (
-            '<div class="test-banner">&#9888; This is a test server &mdash; trips, members and data shown here '
-            f'are not real{role_switch}</div>'
-        )
     return PAGE_TEMPLATE.format(
         title=html.escape(title), body=body, user_nav=user_nav, club_name=html.escape(CLUB_NAME),
-        test_banner=test_banner, page_links=page_links,
+        page_links=page_links,
     )
 
 
@@ -593,8 +568,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_event_new_submit(conn, user, form)
             if path == "/profile":
                 return self.handle_profile_submit(conn, user, form)
-            if path == "/dev/switch-role":
-                return self.handle_dev_switch_role(conn, user, form)
             if path == "/admin/banner":
                 return self.handle_banner_submit(conn, user, form)
             if path == "/admin/distance-formula":
@@ -954,7 +927,9 @@ class Handler(BaseHTTPRequestHandler):
             for g in gear_types
         )
 
-        role_label = lambda m: "Admin" if m["is_admin"] else ("Treasurer" if m["is_treasurer"] else "Member")
+        def role_label(m):
+            roles = [r for r, held in (("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"])) if held]
+            return ", ".join(roles) if roles else "Member"
         member_rows = "".join(
             f"""<tr>
               <td>{html.escape(m['name'])}</td>
@@ -2859,22 +2834,6 @@ class Handler(BaseHTTPRequestHandler):
         with open(os.path.join(target_dir, filename), "wb") as f:
             f.write(raw)
         return f"/static/{subdir}/{filename}"
-
-    def handle_dev_switch_role(self, conn, user, form):
-        """Test-mode only: lets the signed-in user freely flip their own
-        admin/treasurer flags, to demo different privilege levels without
-        needing separate accounts. Never reachable unless TRIP_TEST_MODE is
-        set -- see config.TEST_MODE."""
-        if not config.TEST_MODE:
-            return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
-        self._require_login(user)
-        role = form.get("role", "").strip()
-        is_admin = 1 if role == "admin" else 0
-        is_treasurer = 1 if role == "treasurer" else 0
-        with conn.cursor() as cur:
-            cur.execute("UPDATE users SET is_admin = %s, is_treasurer = %s WHERE id = %s", (is_admin, is_treasurer, user["id"]))
-        referer = self.headers.get("Referer") or "/"
-        redirect(self, referer)
 
     def handle_profile_submit(self, conn, user, form):
         self._require_login(user)
