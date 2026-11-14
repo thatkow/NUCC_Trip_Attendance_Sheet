@@ -1351,30 +1351,54 @@ class Handler(BaseHTTPRequestHandler):
     # -- skills assessment ----------------------------------------------------
 
     def handle_assess_page(self, conn, user):
-        """Lets an assessor (or admin) pick which member's skills page to
-        open. The skills page itself is reached from here or from the
-        admin Members table -- it's not linked from anywhere a regular
-        member would see, per handle_user_skills_page's own access check."""
+        """Overview matrix of every member against every skill, so an
+        assessor (or admin) can see who's acquired what at a glance.
+        Clicking a member's name goes to their own skills page (/users/<id>
+        /skills) to actually check skills off -- not linked from anywhere a
+        regular member would see, per handle_user_skills_page's own access
+        check."""
         self._require_assessor(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email FROM users ORDER BY name")
+            cur.execute("SELECT id, name FROM users ORDER BY name")
             members = list(cur.fetchall())
+            cur.execute("SELECT id, name FROM checklist_items WHERE kind = 'skill' ORDER BY name")
+            skills = list(cur.fetchall())
+            cur.execute(
+                """
+                SELECT us.user_id, us.checklist_item_id, us.assessed_at, a.name AS assessor_name
+                FROM user_skills us JOIN users a ON a.id = us.assessor_id
+                """
+            )
+            acquired = {(r["user_id"], r["checklist_item_id"]): r for r in cur.fetchall()}
+
+        def cell(m, s):
+            entry = acquired.get((m["id"], s["id"]))
+            if not entry:
+                return '<td class="muted" style="text-align:center;">&mdash;</td>'
+            title = f"Signed off by {html.escape(entry['assessor_name'])} on {entry['assessed_at']:%d %b %Y}"
+            return f'<td style="text-align:center; color:#15803d;" title="{title}">&#10003;</td>'
+
+        header_cells = "".join(
+            f'''<th style="height:140px; width:2em; vertical-align:bottom; padding-bottom:0.5em;">
+              <div style="writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; margin:0 auto;">{html.escape(s["name"])}</div>
+            </th>'''
+            for s in skills
+        )
         member_rows = "".join(
             f"""<tr>
-              <td>{html.escape(m['name'])}</td>
-              <td class="muted">{html.escape(m['email'] or '')}</td>
-              <td><a class="btn" href="/users/{m['id']}/skills">Skills</a></td>
+              <td><a href="/users/{m['id']}/skills">{html.escape(m['name'])}</a></td>
+              {"".join(cell(m, s) for s in skills)}
             </tr>"""
             for m in members
         )
         body = f"""
         <p><a href="/">&larr; back to trips</a></p>
         <h1>Assess skills</h1>
-        <p class="muted">Pick a member to check off their acquired skills.</p>
-        <div class="card">
+        <p class="muted">Click a member's name to check off their acquired skills.</p>
+        <div class="card" style="overflow-x:auto;">
         <table>
-          <tr><th>Name</th><th>Email</th><th></th></tr>
-          {member_rows or '<tr><td colspan="3" class="muted">No members yet.</td></tr>'}
+          <tr><th>Name</th>{header_cells}</tr>
+          {member_rows or f'<tr><td colspan="{len(skills) + 1}" class="muted">No members yet.</td></tr>'}
         </table>
         </div>
         """
