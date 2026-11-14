@@ -190,7 +190,17 @@ PAGE_TEMPLATE = """<!doctype html>
   .guest-row .name {{ flex: 1; font-weight: 600; font-size: 0.95em; }}
   .guest-row .status {{ font-size: 0.85em; color: var(--fb-muted); }}
   .description-body {{ line-height: 1.5; }}
-  .description-body img {{ max-width: 100%; }}
+  .description-body img {{ max-width: 100%; cursor: zoom-in; }}
+
+  #lightbox-overlay {{
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 2000; align-items: center; justify-content: center; cursor: zoom-out;
+    padding: 2em; overflow: auto; overscroll-behavior: contain;
+  }}
+  #lightbox-overlay.show {{ display: flex; }}
+  #lightbox-overlay img {{
+    margin: auto; border-radius: 6px; box-shadow: 0 4px 24px rgba(0,0,0,0.5); display: block;
+  }}
   .tabs {{ display: flex; gap: 1.5em; border-bottom: 1px solid var(--fb-border); margin-bottom: 1em; padding-bottom: 0; }}
   .tabs a {{ padding: 0.8em 0.2em; text-decoration: none; color: var(--fb-muted); font-weight: 600; font-size: 0.95em; border-bottom: 3px solid transparent; }}
   .tabs a.active {{ color: var(--fb-blue); border-bottom-color: var(--fb-blue); }}
@@ -222,6 +232,7 @@ PAGE_TEMPLATE = """<!doctype html>
 {body}
 </div>
 <div id="toast"></div>
+<div id="lightbox-overlay"><img id="lightbox-img"></div>
 <script>
   let toastTimer = null;
   function showToast(message) {{
@@ -231,6 +242,61 @@ PAGE_TEMPLATE = """<!doctype html>
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
   }}
+
+  (function() {{
+    const overlay = document.getElementById('lightbox-overlay');
+    const overlayImg = document.getElementById('lightbox-img');
+    let zoom = 1, naturalW = 0, naturalH = 0, baseScale = 1;
+
+    function applySize() {{
+      overlayImg.style.width = (naturalW * baseScale * zoom) + 'px';
+      overlayImg.style.height = 'auto';
+      overlay.style.cursor = zoom > 1 ? 'default' : 'zoom-in';
+    }}
+
+    function setZoom(z) {{
+      zoom = Math.min(Math.max(z, 1), 6);
+      applySize();
+    }}
+
+    overlayImg.addEventListener('load', function() {{
+      naturalW = overlayImg.naturalWidth || 1;
+      naturalH = overlayImg.naturalHeight || 1;
+      baseScale = Math.min((window.innerWidth * 0.9) / naturalW, (window.innerHeight * 0.9) / naturalH, 1);
+      setZoom(1);
+    }});
+
+    function openLightbox(src) {{
+      overlayImg.src = src;
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }}
+
+    function closeLightbox() {{
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }}
+
+    document.querySelectorAll('.description-body img').forEach(function(img) {{
+      img.addEventListener('click', function() {{ openLightbox(img.src); }});
+    }});
+    overlay.addEventListener('click', function(e) {{
+      if (e.target === overlay) closeLightbox();
+    }});
+    overlayImg.addEventListener('dblclick', function() {{
+      setZoom(zoom > 1 ? 1 : 2.5);
+    }});
+    // Plain scroll/trackpad pans the (possibly larger-than-viewport) image via the
+    // overlay's own overflow:auto -- only a pinch gesture or Ctrl+wheel zooms.
+    overlay.addEventListener('wheel', function(e) {{
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom(zoom - e.deltaY * 0.01);
+    }}, {{ passive: false }});
+    document.addEventListener('keydown', function(e) {{
+      if (e.key === 'Escape') closeLightbox();
+    }});
+  }})();
 </script>
 </body>
 </html>"""
