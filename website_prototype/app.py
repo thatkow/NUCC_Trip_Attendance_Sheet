@@ -192,6 +192,15 @@ PAGE_TEMPLATE = """<!doctype html>
   .description-body {{ line-height: 1.5; }}
   .description-body img {{ max-width: 100%; cursor: zoom-in; }}
 
+  .role-dropdown {{ position: relative; display: inline-block; }}
+  .role-dropdown-menu {{
+    display: none; position: absolute; top: 100%; left: 0; z-index: 50; margin-top: 0.2em;
+    background: #fff; border: 1px solid var(--fb-border); border-radius: 6px; padding: 0.5em 0.7em;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15); white-space: nowrap;
+  }}
+  .role-dropdown-menu.show {{ display: block; }}
+  .role-dropdown-menu label {{ display: flex; align-items: center; gap: 0.4em; font-weight: normal; margin: 0.3em 0; }}
+
   #lightbox-overlay {{
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
     z-index: 2000; align-items: center; justify-content: center; cursor: zoom-out;
@@ -297,6 +306,19 @@ PAGE_TEMPLATE = """<!doctype html>
       if (e.key === 'Escape') closeLightbox();
     }});
   }})();
+
+  // Shared checkbox-dropdown widget (e.g. the "Visible to" roles picker on /admin):
+  // a button toggles a hidden checkbox menu; clicking elsewhere closes any open one.
+  document.addEventListener('click', function(e) {{
+    const toggle = e.target.closest('.role-dropdown-toggle');
+    document.querySelectorAll('.role-dropdown-menu.show').forEach(function(menu) {{
+      if (!toggle || menu !== toggle.nextElementSibling) menu.classList.remove('show');
+    }});
+    if (toggle) {{
+      e.preventDefault();
+      toggle.nextElementSibling.classList.toggle('show');
+    }}
+  }});
 </script>
 </body>
 </html>"""
@@ -308,6 +330,40 @@ SIGNUP_MODE_LABELS = {
     "fcfs": "First come, first served",
     "host_picks": "Host picks",
 }
+
+# Options for a content page's visible_roles (see handle_content_page and
+# the Pages card on /admin). "anonymous" is a logged-out visitor; "member"
+# matches anyone logged in regardless of other roles.
+PAGE_ROLE_CHOICES = [
+    ("anonymous", "Not logged in"),
+    ("member", "Member"),
+    ("admin", "Admin"),
+    ("treasurer", "Treasurer"),
+    ("assessor", "Assessor"),
+]
+
+
+def _viewer_role_keys(user):
+    """Which of PAGE_ROLE_CHOICES' keys this viewer (user dict, or None for
+    a logged-out visitor) matches, for checking a page's visible_roles."""
+    if not user:
+        return {"anonymous"}
+    keys = {"member"}
+    for key in ("admin", "treasurer", "assessor"):
+        if user.get(f"is_{key}"):
+            keys.add(key)
+    return keys
+
+
+def _page_visible_to(page, user):
+    """A page with no visible_roles set is visible to everyone (the
+    default, unrestricted) -- otherwise the viewer needs at least one
+    matching role."""
+    allowed = (page.get("visible_roles") or "").strip()
+    if not allowed:
+        return True
+    allowed_keys = {k.strip() for k in allowed.split(",") if k.strip()}
+    return bool(allowed_keys & _viewer_role_keys(user))
 
 
 def avatar(name, picture_url=None, size=36):
@@ -338,10 +394,11 @@ def _refresh_nav_links_cache(conn):
     global _NAV_LINKS_CACHE
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT slug, title, nav_label FROM content_pages WHERE show_in_nav = 1 ORDER BY nav_order, title"
+            "SELECT slug, title, nav_label, visible_roles FROM content_pages WHERE show_in_nav = 1 ORDER BY nav_order, title"
         )
         _NAV_LINKS_CACHE = [
-            {"slug": r["slug"], "label": r["nav_label"] or r["title"]} for r in cur.fetchall()
+            {"slug": r["slug"], "label": r["nav_label"] or r["title"], "visible_roles": r["visible_roles"]}
+            for r in cur.fetchall()
         ]
 
 
@@ -369,6 +426,7 @@ def render_page(title, body, user=None):
     page_links = "".join(
         f'<a href="/pages/{html.escape(link["slug"])}">{html.escape(link["label"])}</a>'
         for link in (_NAV_LINKS_CACHE or [])
+        if _page_visible_to(link, user)
     )
     return PAGE_TEMPLATE.format(
         title=html.escape(title), body=body, user_nav=user_nav, club_name=html.escape(CLUB_NAME),
@@ -971,20 +1029,35 @@ class Handler(BaseHTTPRequestHandler):
         gear_types = self._get_gear_types(conn)
         checklist_items = self._get_checklist_items(conn)
         with conn.cursor() as cur:
-            cur.execute("SELECT slug, title, show_in_nav, nav_label, nav_order FROM content_pages ORDER BY title")
+            cur.execute("SELECT slug, title, show_in_nav, nav_label, nav_order, visible_roles FROM content_pages ORDER BY title")
             content_pages = list(cur.fetchall())
+
+        def role_dropdown(form_id, current):
+            # NULL/empty visible_roles means "everyone" (unset trips/old rows) -- show that as
+            # every box checked, matching what a fresh page defaults to.
+            current_keys = {k.strip() for k in (current or "").split(",") if k.strip()} or {k for k, _ in PAGE_ROLE_CHOICES}
+            checkboxes = "".join(
+                f'<label><input type="checkbox" name="visible_roles" form="{form_id}" value="{key}"'
+                f'{" checked" if key in current_keys else ""}> {label}</label>'
+                for key, label in PAGE_ROLE_CHOICES
+            )
+            return f"""<div class="role-dropdown">
+              <button type="button" class="btn role-dropdown-toggle" style="padding:0.3em 0.6em;">Visible to &#9662;</button>
+              <div class="role-dropdown-menu">{checkboxes}</div>
+            </div>"""
 
         content_page_rows = "".join(
             f"""<tr>
               <td>
                 <form id="page-nav-form-{p['slug']}" class="inline" method="post" action="/admin/pages/{p['slug']}/nav"></form>
-                <a href="/pages/{p['slug']}">{html.escape(p['title'])}</a> <span class="muted">/pages/{p['slug']}</span>
-                <a class="btn" style="padding:0.1em 0.5em; margin-left:0.4em;" href="/pages/{p['slug']}/edit">Edit content</a></td>
+                <a href="/pages/{p['slug']}">{html.escape(p['title'])}</a> <span class="muted">/pages/{p['slug']}</span></td>
               <td><input type="checkbox" name="show_in_nav" value="1" form="page-nav-form-{p['slug']}" style="width:auto;"{" checked" if p['show_in_nav'] else ""}></td>
               <td><input name="nav_label" form="page-nav-form-{p['slug']}" placeholder="{html.escape(p['title'])}" value="{html.escape(p['nav_label'] or '')}" style="width:140px;"></td>
               <td><input name="nav_order" form="page-nav-form-{p['slug']}" type="number" value="{p['nav_order']}" style="width:70px;"></td>
+              <td>{role_dropdown(f"page-nav-form-{p['slug']}", p['visible_roles'])}</td>
               <td style="display:flex; gap:0.4em;">
                 <button type="submit" form="page-nav-form-{p['slug']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
+                <a class="btn" style="padding:0.3em 0.7em;" href="/pages/{p['slug']}/edit">Edit</a>
                 <form class="inline" method="post" action="/admin/pages/{p['slug']}/delete" onsubmit="return confirm('Delete the page \\'{html.escape(p['title'])}\\'? This can\\'t be undone.');">
                   <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
                 </form>
@@ -1133,18 +1206,20 @@ class Handler(BaseHTTPRequestHandler):
         <div class="card">
         <h3>Pages</h3>
         <p class="muted">Admin-editable content pages (Markdown). Any page can optionally get a link in the
-        site header -- set its label and where it sits in the link order below.</p>
+        site header -- set its label and where it sits in the link order below. "Visible to" restricts who can
+        open the page at all.</p>
         <table>
-          <tr><th>Page</th><th>In header</th><th>Link label</th><th>Order</th><th></th></tr>
-          {content_page_rows or '<tr><td colspan="5" class="muted">None yet.</td></tr>'}
+          <tr><th>Page</th><th>In header</th><th>Link label</th><th>Order</th><th>Visible to</th><th></th></tr>
+          {content_page_rows or '<tr><td colspan="6" class="muted">None yet.</td></tr>'}
         </table>
-        <form method="post" action="/admin/pages" style="display:flex; gap:0.5em; margin-top:1em; flex-wrap:wrap;">
+        <form method="post" action="/admin/pages" id="new-page-form" style="display:flex; gap:0.5em; margin-top:1em; flex-wrap:wrap; align-items:center;">
           <input name="title" id="new-page-title" placeholder="Page title, e.g. About Us" required style="flex:1; min-width:160px; width:auto;">
           <input name="slug" id="new-page-slug" placeholder="url-slug" required style="width:160px;">
           <label style="display:flex; align-items:center; gap:0.4em; font-weight:normal; width:auto;">
             <input type="checkbox" name="show_in_nav" value="1" style="width:auto;"> Show in header
           </label>
           <input name="nav_label" placeholder="Link label (optional)" style="width:160px;">
+          {role_dropdown("new-page-form", None)}
           <button type="submit" class="btn-primary" style="flex:0 0 auto;">+ New page</button>
         </form>
         <script>
@@ -1616,6 +1691,10 @@ class Handler(BaseHTTPRequestHandler):
         page = self._get_content_page(conn, slug)
         if not page:
             return self._send_html(render_page("Not found", "<h1>Page not found</h1>", user), status=404)
+        if not _page_visible_to(page, user):
+            if not user:
+                raise PermissionErrorRedirect("/login")
+            return self._send_html(render_page("Forbidden", "<h1>You don't have access to this page.</h1>", user), status=403)
         edit_link = f'<a class="btn" href="/pages/{slug}/edit">Edit page</a>' if user and user.get("is_admin") else ""
         body = f"""
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6em;">
@@ -1707,6 +1786,11 @@ class Handler(BaseHTTPRequestHandler):
         _refresh_nav_links_cache(conn)  # a title change can affect the header link's fallback label
         redirect(self, f"/pages/{slug}")
 
+    def _parse_visible_roles(self, form):
+        valid_keys = {key for key, _ in PAGE_ROLE_CHOICES}
+        selected = [v for v in form.getlist("visible_roles") if v in valid_keys]
+        return ",".join(selected) or None
+
     def handle_admin_page_create(self, conn, user, form):
         self._require_admin(user)
         title = form.get("title", "").strip()
@@ -1714,12 +1798,13 @@ class Handler(BaseHTTPRequestHandler):
         slug = re.sub(r"[^a-z0-9-]+", "-", slug).strip("-")
         show_in_nav = 1 if form.get("show_in_nav") == "1" else 0
         nav_label = form.get("nav_label", "").strip() or None
+        visible_roles = self._parse_visible_roles(form)
         if title and slug:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT IGNORE INTO content_pages (slug, title, content_markdown, show_in_nav, nav_label) "
-                    "VALUES (%s, %s, '', %s, %s)",
-                    (slug, title, show_in_nav, nav_label),
+                    "INSERT IGNORE INTO content_pages (slug, title, content_markdown, show_in_nav, nav_label, visible_roles) "
+                    "VALUES (%s, %s, '', %s, %s, %s)",
+                    (slug, title, show_in_nav, nav_label, visible_roles),
                 )
             _refresh_nav_links_cache(conn)
             if show_in_nav:
@@ -1732,10 +1817,11 @@ class Handler(BaseHTTPRequestHandler):
         nav_label = form.get("nav_label", "").strip() or None
         nav_order_raw = form.get("nav_order", "").strip()
         nav_order = int(nav_order_raw) if nav_order_raw.lstrip("-").isdigit() else 0
+        visible_roles = self._parse_visible_roles(form)
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE content_pages SET show_in_nav = %s, nav_label = %s, nav_order = %s WHERE slug = %s",
-                (show_in_nav, nav_label, nav_order, slug),
+                "UPDATE content_pages SET show_in_nav = %s, nav_label = %s, nav_order = %s, visible_roles = %s WHERE slug = %s",
+                (show_in_nav, nav_label, nav_order, visible_roles, slug),
             )
         _refresh_nav_links_cache(conn)
         redirect(self, "/admin")

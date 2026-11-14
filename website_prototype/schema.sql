@@ -92,6 +92,8 @@ CREATE TABLE content_pages (
     show_in_nav TINYINT(1) NOT NULL DEFAULT 0, -- whether this page gets a link in the site header
     nav_label VARCHAR(100) NULL, -- link text when show_in_nav is set; falls back to title if blank
     nav_order INT NOT NULL DEFAULT 0, -- header links are ordered by this, then title
+    visible_roles VARCHAR(255) NULL, -- comma-separated subset of anonymous/member/admin/treasurer/assessor;
+                                      -- NULL or empty means visible to everyone (the default, unrestricted)
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
