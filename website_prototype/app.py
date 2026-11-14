@@ -287,8 +287,12 @@ def render_page(title, body, user=None):
             '<a href="/accounting">Accounting</a> &middot; '
             if user.get("is_admin") or user.get("is_treasurer") else ""
         )
+        assess_link = (
+            '<a href="/assess">Assess skills</a> &middot; '
+            if user.get("is_admin") or user.get("is_assessor") else ""
+        )
         user_nav = (
-            f'{admin_link}{accounting_link}'
+            f'{admin_link}{accounting_link}{assess_link}'
             f'<a href="/profile" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:0.5em;">'
             f'{pic} {html.escape(user["name"])}</a> &middot; <a href="/logout">Log out</a>'
         )
@@ -507,6 +511,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_admin_page(conn, user)
             if path == "/admin/distance-formula/test":
                 return self.handle_distance_formula_test(user)
+            if path == "/assess":
+                return self.handle_assess_page(conn, user)
+
+            m = re.fullmatch(r"/users/(\d+)/skills", path)
+            if m:
+                return self.handle_user_skills_page(conn, user, int(m.group(1)))
+
             if path == "/accounting":
                 return self.handle_accounting_page(conn, user)
             if path == "/accounting/transactions":
@@ -619,6 +630,14 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/admin/users/(\d+)/toggle-treasurer", path)
             if m:
                 return self.handle_toggle_treasurer(conn, user, int(m.group(1)))
+
+            m = re.fullmatch(r"/admin/users/(\d+)/toggle-assessor", path)
+            if m:
+                return self.handle_toggle_assessor(conn, user, int(m.group(1)))
+
+            m = re.fullmatch(r"/users/(\d+)/skills/(\d+)/toggle", path)
+            if m:
+                return self.handle_user_skill_toggle(conn, user, int(m.group(1)), int(m.group(2)))
 
             if path == "/accounting/import":
                 return self.handle_accounting_import(conn, user, form)
@@ -862,12 +881,18 @@ class Handler(BaseHTTPRequestHandler):
             raise PermissionErrorRedirect("/")
         return user
 
+    def _require_assessor(self, user):
+        self._require_login(user)
+        if not user.get("is_admin") and not user.get("is_assessor"):
+            raise PermissionErrorRedirect("/")
+        return user
+
     # -- admin ---------------------------------------------------------------
 
     def handle_admin_page(self, conn, user, formula_error=None):
         self._require_admin(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, is_admin, is_treasurer FROM users ORDER BY name")
+            cur.execute("SELECT id, name, email, is_admin, is_treasurer, is_assessor FROM users ORDER BY name")
             members = cur.fetchall()
             cur.execute("SELECT banner_url, distance_formula FROM site_settings WHERE id = 1")
             settings_row = cur.fetchone()
@@ -928,20 +953,28 @@ class Handler(BaseHTTPRequestHandler):
         )
 
         def role_label(m):
-            roles = [r for r, held in (("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"])) if held]
+            roles = [
+                r for r, held in (
+                    ("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"]), ("Assessor", m["is_assessor"]),
+                ) if held
+            ]
             return ", ".join(roles) if roles else "Member"
         member_rows = "".join(
             f"""<tr>
               <td>{html.escape(m['name'])}</td>
               <td>{html.escape(m['email'] or '')}</td>
               <td>{role_label(m)}</td>
-              <td>
+              <td style="display:flex; gap:0.4em; flex-wrap:wrap;">
                 {'' if m['id'] == user['id'] else f'''<form class="inline" method="post" action="/admin/users/{m['id']}/toggle-admin">
                   <button type="submit" class="btn">{"Revoke admin" if m['is_admin'] else "Grant admin"}</button>
                 </form>'''}
                 <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-treasurer">
                   <button type="submit" class="btn">{"Revoke treasurer" if m['is_treasurer'] else "Grant treasurer"}</button>
                 </form>
+                <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-assessor">
+                  <button type="submit" class="btn">{"Revoke assessor" if m['is_assessor'] else "Grant assessor"}</button>
+                </form>
+                <a class="btn" href="/users/{m['id']}/skills">Skills</a>
               </td>
             </tr>"""
             for m in members
@@ -1157,6 +1190,116 @@ class Handler(BaseHTTPRequestHandler):
                     (0 if target["is_treasurer"] else 1, target_user_id),
                 )
         redirect(self, "/admin")
+
+    def handle_toggle_assessor(self, conn, user, target_user_id):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute("SELECT is_assessor FROM users WHERE id = %s", (target_user_id,))
+            target = cur.fetchone()
+            if target:
+                cur.execute(
+                    "UPDATE users SET is_assessor = %s WHERE id = %s",
+                    (0 if target["is_assessor"] else 1, target_user_id),
+                )
+        redirect(self, "/admin")
+
+    # -- skills assessment ----------------------------------------------------
+
+    def handle_assess_page(self, conn, user):
+        """Lets an assessor (or admin) pick which member's skills page to
+        open. The skills page itself is reached from here or from the
+        admin Members table -- it's not linked from anywhere a regular
+        member would see, per handle_user_skills_page's own access check."""
+        self._require_assessor(user)
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email FROM users ORDER BY name")
+            members = list(cur.fetchall())
+        member_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(m['name'])}</td>
+              <td class="muted">{html.escape(m['email'] or '')}</td>
+              <td><a class="btn" href="/users/{m['id']}/skills">Skills</a></td>
+            </tr>"""
+            for m in members
+        )
+        body = f"""
+        <p><a href="/">&larr; back to trips</a></p>
+        <h1>Assess skills</h1>
+        <p class="muted">Pick a member to check off their acquired skills.</p>
+        <div class="card">
+        <table>
+          <tr><th>Name</th><th>Email</th><th></th></tr>
+          {member_rows or '<tr><td colspan="3" class="muted">No members yet.</td></tr>'}
+        </table>
+        </div>
+        """
+        self._send_html(render_page("Assess skills", body, user))
+
+    def handle_user_skills_page(self, conn, user, target_user_id):
+        """A member's skill checklist, visible only to an admin or an
+        assessor -- not to the member themselves (unless they also hold
+        one of those roles). Checking a skill off records who signed it
+        off and when (user_skills); unchecking just deletes that row."""
+        self._require_assessor(user)
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name FROM users WHERE id = %s", (target_user_id,))
+            target_user = cur.fetchone()
+            if not target_user:
+                return self._send_html(render_page("Not found", "<h1>Member not found</h1>", user), status=404)
+            cur.execute("SELECT id, name FROM checklist_items WHERE kind = 'skill' ORDER BY name")
+            skills = list(cur.fetchall())
+            cur.execute(
+                """
+                SELECT us.checklist_item_id, us.assessed_at, u.name AS assessor_name
+                FROM user_skills us JOIN users u ON u.id = us.assessor_id
+                WHERE us.user_id = %s
+                """,
+                (target_user_id,),
+            )
+            acquired = {r["checklist_item_id"]: r for r in cur.fetchall()}
+
+        skill_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(s['name'])}</td>
+              <td>{f"Signed off by {html.escape(acquired[s['id']]['assessor_name'])} on {acquired[s['id']]['assessed_at']:%d %b %Y}" if s['id'] in acquired else '<span class="muted">Not yet acquired</span>'}</td>
+              <td>
+                <form class="inline" method="post" action="/users/{target_user_id}/skills/{s['id']}/toggle">
+                  <button type="submit" class="btn{' btn-primary' if s['id'] not in acquired else ''}">{"Unmark" if s['id'] in acquired else "Mark acquired"}</button>
+                </form>
+              </td>
+            </tr>"""
+            for s in skills
+        )
+        body = f"""
+        <p><a href="/assess">&larr; back to Assess skills</a></p>
+        <h1>{html.escape(target_user['name'])}'s skills</h1>
+        <div class="card">
+        <table>
+          <tr><th>Skill</th><th>Status</th><th></th></tr>
+          {skill_rows or '<tr><td colspan="3" class="muted">No skills configured yet -- an admin can add some.</td></tr>'}
+        </table>
+        </div>
+        """
+        self._send_html(render_page(f"{target_user['name']}'s skills", body, user))
+
+    def handle_user_skill_toggle(self, conn, user, target_user_id, checklist_item_id):
+        self._require_assessor(user)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM user_skills WHERE user_id = %s AND checklist_item_id = %s",
+                (target_user_id, checklist_item_id),
+            )
+            if cur.fetchone():
+                cur.execute(
+                    "DELETE FROM user_skills WHERE user_id = %s AND checklist_item_id = %s",
+                    (target_user_id, checklist_item_id),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO user_skills (user_id, checklist_item_id, assessor_id) VALUES (%s, %s, %s)",
+                    (target_user_id, checklist_item_id, user["id"]),
+                )
+        redirect(self, f"/users/{target_user_id}/skills")
 
     def handle_banner_submit(self, conn, user, form):
         self._require_admin(user)

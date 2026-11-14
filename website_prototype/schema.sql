@@ -13,6 +13,7 @@ CREATE TABLE users (
     profile_picture_url VARCHAR(512) NULL,
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
     is_treasurer TINYINT(1) NOT NULL DEFAULT 0,
+    is_assessor TINYINT(1) NOT NULL DEFAULT 0, -- can check off members' skills, see user_skills below
     bank_name_aliases VARCHAR(255) NULL, -- comma-separated name(s) this person appears as in bank transaction descriptions, used to auto-match imported transactions to them
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -109,6 +110,21 @@ CREATE TABLE event_checklist_items (
     PRIMARY KEY (event_id, checklist_item_id),
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (checklist_item_id) REFERENCES checklist_items(id) ON DELETE CASCADE
+);
+
+-- A member's acquired skills (checklist_items of kind 'skill'), checked off
+-- by an assessor (a user with is_assessor set, or an admin) on the user's
+-- skills page -- see handle_user_skills_page. Recorded who signed it off
+-- and when; unchecking a skill just deletes the row.
+CREATE TABLE user_skills (
+    user_id INT NOT NULL,
+    checklist_item_id INT NOT NULL,
+    assessor_id INT NOT NULL,
+    assessed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, checklist_item_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (checklist_item_id) REFERENCES checklist_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (assessor_id) REFERENCES users(id)
 );
 
 -- A trip's lodged fees, as an auditable ledger rather than a live number:
