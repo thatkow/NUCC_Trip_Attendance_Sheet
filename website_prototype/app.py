@@ -638,10 +638,6 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/assess":
                 return self.handle_assess_page(conn, user)
 
-            m = re.fullmatch(r"/users/(\d+)/skills", path)
-            if m:
-                return self.handle_user_skills_page(conn, user, int(m.group(1)))
-
             if path == "/accounting":
                 return self.handle_accounting_page(conn, user)
             if path == "/accounting/transactions":
@@ -1117,7 +1113,6 @@ class Handler(BaseHTTPRequestHandler):
                 <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-assessor">
                   <button type="submit" class="btn">{"Revoke assessor" if m['is_assessor'] else "Grant assessor"}</button>
                 </form>
-                <a class="btn" href="/users/{m['id']}/skills">Skills</a>
               </td>
             </tr>"""
             for m in members
@@ -1352,14 +1347,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_assess_page(self, conn, user):
         """Overview matrix of every member against every skill, so an
-        assessor (or admin) can see who's acquired what at a glance.
-        Clicking a member's name goes to their own skills page (/users/<id>
-        /skills) to actually check skills off -- not linked from anywhere a
-        regular member would see, per handle_user_skills_page's own access
-        check."""
+        assessor (or admin) can see who's acquired what at a glance, and do
+        all their editing right here: a "Notes" column before the skill
+        columns opens a dialog to edit that member's free-text notes, and
+        every skill cell opens a dialog to toggle that skill for that
+        member. Replaces the old per-member /users/<id>/skills page."""
         self._require_assessor(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM users ORDER BY name")
+            cur.execute("SELECT id, name, skill_notes FROM users ORDER BY name")
             members = list(cur.fetchall())
             cur.execute("SELECT id, name FROM checklist_items WHERE kind = 'skill' ORDER BY name")
             skills = list(cur.fetchall())
@@ -1371,12 +1366,54 @@ class Handler(BaseHTTPRequestHandler):
             )
             acquired = {(r["user_id"], r["checklist_item_id"]): r for r in cur.fetchall()}
 
-        def cell(m, s):
+        dialogs = []
+
+        def notes_cell(m):
+            dialog_id = f"notes-dialog-{m['id']}"
+            preview = (m["skill_notes"] or "").strip()
+            label = (preview[:24] + "&hellip;") if len(preview) > 24 else (html.escape(preview) if preview else "Add notes")
+            dialogs.append(f"""
+            <dialog id="{dialog_id}" style="border:none; border-radius:8px; padding:0; max-width:420px; width:90%;">
+              <div class="card" style="margin:0; box-shadow:none; border:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 style="margin:0;">Notes for {html.escape(m['name'])}</h3>
+                  <button type="button" class="btn" onclick="document.getElementById('{dialog_id}').close()">&times;</button>
+                </div>
+                <form method="post" action="/users/{m['id']}/skill-notes">
+                  <textarea name="skill_notes" rows="5" placeholder="Notes for assessors about this member's skills...">{html.escape(m['skill_notes'] or '')}</textarea>
+                  <button type="submit" class="btn-primary">Save notes</button>
+                </form>
+              </div>
+            </dialog>""")
+            style = "text-align:left; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+            if not preview:
+                style += " color:var(--fb-muted);"
+            return f'<td><button type="button" class="btn" style="{style}" onclick="document.getElementById(\'{dialog_id}\').showModal()">{label}</button></td>'
+
+        def skill_cell(m, s):
             entry = acquired.get((m["id"], s["id"]))
-            if not entry:
-                return '<td class="muted" style="text-align:center;">&mdash;</td>'
-            title = f"Signed off by {html.escape(entry['assessor_name'])} on {entry['assessed_at']:%d %b %Y}"
-            return f'<td style="text-align:center; color:#15803d;" title="{title}">&#10003;</td>'
+            dialog_id = f"skill-dialog-{m['id']}-{s['id']}"
+            status_html = (
+                f"Signed off by {html.escape(entry['assessor_name'])} on {entry['assessed_at']:%d %b %Y}"
+                if entry else '<span class="muted">Not yet acquired</span>'
+            )
+            dialogs.append(f"""
+            <dialog id="{dialog_id}" style="border:none; border-radius:8px; padding:0; max-width:380px; width:90%;">
+              <div class="card" style="margin:0; box-shadow:none; border:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 style="margin:0;">{html.escape(s['name'])}</h3>
+                  <button type="button" class="btn" onclick="document.getElementById('{dialog_id}').close()">&times;</button>
+                </div>
+                <p class="muted">{html.escape(m['name'])}</p>
+                <p>{status_html}</p>
+                <form method="post" action="/users/{m['id']}/skills/{s['id']}/toggle">
+                  <button type="submit" class="btn{' btn-primary' if not entry else ''}">{"Unmark" if entry else "Mark acquired"}</button>
+                </form>
+              </div>
+            </dialog>""")
+            if entry:
+                return f'<td style="text-align:center;"><button type="button" class="btn" style="color:#15803d; padding:0.2em 0.6em;" title="{html.escape(status_html)}" onclick="document.getElementById(\'{dialog_id}\').showModal()">&#10003;</button></td>'
+            return f'<td style="text-align:center;"><button type="button" class="btn" style="padding:0.2em 0.6em; color:var(--fb-muted);" onclick="document.getElementById(\'{dialog_id}\').showModal()">&mdash;</button></td>'
 
         header_cells = "".join(
             f'''<th style="height:140px; width:2em; vertical-align:bottom; padding-bottom:0.5em;">
@@ -1386,77 +1423,25 @@ class Handler(BaseHTTPRequestHandler):
         )
         member_rows = "".join(
             f"""<tr>
-              <td><a href="/users/{m['id']}/skills">{html.escape(m['name'])}</a></td>
-              {"".join(cell(m, s) for s in skills)}
+              <td>{html.escape(m['name'])}</td>
+              {notes_cell(m)}
+              {"".join(skill_cell(m, s) for s in skills)}
             </tr>"""
             for m in members
         )
         body = f"""
         <p><a href="/">&larr; back to trips</a></p>
         <h1>Assess skills</h1>
-        <p class="muted">Click a member's name to check off their acquired skills.</p>
+        <p class="muted">Click a member's notes to edit them, or any cell to mark a skill acquired/not.</p>
         <div class="card" style="overflow-x:auto;">
         <table>
-          <tr><th>Name</th>{header_cells}</tr>
-          {member_rows or f'<tr><td colspan="{len(skills) + 1}" class="muted">No members yet.</td></tr>'}
+          <tr><th>Name</th><th>Notes</th>{header_cells}</tr>
+          {member_rows or f'<tr><td colspan="{len(skills) + 2}" class="muted">No members yet.</td></tr>'}
         </table>
         </div>
+        {"".join(dialogs)}
         """
         self._send_html(render_page("Assess skills", body, user))
-
-    def handle_user_skills_page(self, conn, user, target_user_id):
-        """A member's skill checklist, visible only to an admin or an
-        assessor -- not to the member themselves (unless they also hold
-        one of those roles). Checking a skill off records who signed it
-        off and when (user_skills); unchecking just deletes that row."""
-        self._require_assessor(user)
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, name, skill_notes FROM users WHERE id = %s", (target_user_id,))
-            target_user = cur.fetchone()
-            if not target_user:
-                return self._send_html(render_page("Not found", "<h1>Member not found</h1>", user), status=404)
-            cur.execute("SELECT id, name FROM checklist_items WHERE kind = 'skill' ORDER BY name")
-            skills = list(cur.fetchall())
-            cur.execute(
-                """
-                SELECT us.checklist_item_id, us.assessed_at, u.name AS assessor_name
-                FROM user_skills us JOIN users u ON u.id = us.assessor_id
-                WHERE us.user_id = %s
-                """,
-                (target_user_id,),
-            )
-            acquired = {r["checklist_item_id"]: r for r in cur.fetchall()}
-
-        skill_rows = "".join(
-            f"""<tr>
-              <td>{html.escape(s['name'])}</td>
-              <td>{f"Signed off by {html.escape(acquired[s['id']]['assessor_name'])} on {acquired[s['id']]['assessed_at']:%d %b %Y}" if s['id'] in acquired else '<span class="muted">Not yet acquired</span>'}</td>
-              <td>
-                <form class="inline" method="post" action="/users/{target_user_id}/skills/{s['id']}/toggle">
-                  <button type="submit" class="btn{' btn-primary' if s['id'] not in acquired else ''}">{"Unmark" if s['id'] in acquired else "Mark acquired"}</button>
-                </form>
-              </td>
-            </tr>"""
-            for s in skills
-        )
-        body = f"""
-        <p><a href="/assess">&larr; back to Assess skills</a></p>
-        <h1>{html.escape(target_user['name'])}'s skills</h1>
-        <div class="card">
-        <h3>Notes</h3>
-        <form method="post" action="/users/{target_user_id}/skill-notes">
-          <textarea name="skill_notes" rows="4" placeholder="Notes for assessors about this member's skills...">{html.escape(target_user['skill_notes'] or '')}</textarea>
-          <button type="submit" class="btn-primary">Save notes</button>
-        </form>
-        </div>
-        <div class="card">
-        <table>
-          <tr><th>Skill</th><th>Status</th><th></th></tr>
-          {skill_rows or '<tr><td colspan="3" class="muted">No skills configured yet -- an admin can add some.</td></tr>'}
-        </table>
-        </div>
-        """
-        self._send_html(render_page(f"{target_user['name']}'s skills", body, user))
 
     def handle_user_skill_toggle(self, conn, user, target_user_id, checklist_item_id):
         self._require_assessor(user)
@@ -1475,14 +1460,14 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT INTO user_skills (user_id, checklist_item_id, assessor_id) VALUES (%s, %s, %s)",
                     (target_user_id, checklist_item_id, user["id"]),
                 )
-        redirect(self, f"/users/{target_user_id}/skills")
+        redirect(self, "/assess")
 
     def handle_user_skill_notes_submit(self, conn, user, target_user_id, form):
         self._require_assessor(user)
         skill_notes = form.get("skill_notes", "").strip() or None
         with conn.cursor() as cur:
             cur.execute("UPDATE users SET skill_notes = %s WHERE id = %s", (skill_notes, target_user_id))
-        redirect(self, f"/users/{target_user_id}/skills")
+        redirect(self, "/assess")
 
     def handle_banner_submit(self, conn, user, form):
         self._require_admin(user)
