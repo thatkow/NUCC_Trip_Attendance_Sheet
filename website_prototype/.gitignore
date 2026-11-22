@@ -8,3 +8,6 @@ static/site/
 static/ledger/
 static/pages/
 db_snapshots/
+.env
+anusport_reports/
+anusport_storage_state.json

@@ -28,6 +28,8 @@ import accounting
 import bank_accounting
 import formula
 import auth
+import anusport_daemon
+import anusport_sync
 import config
 import db
 import markdown
@@ -637,6 +639,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_distance_formula_test(user)
             if path == "/assess":
                 return self.handle_assess_page(conn, user)
+            if path == "/admin/anusport-sync":
+                return self.handle_anusport_sync_page(conn, user)
 
             if path == "/accounting":
                 return self.handle_accounting_page(conn, user)
@@ -754,6 +758,12 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/admin/users/(\d+)/toggle-assessor", path)
             if m:
                 return self.handle_toggle_assessor(conn, user, int(m.group(1)))
+
+            if path == "/admin/anusport-sync/run":
+                return self.handle_anusport_sync_run(conn, user)
+
+            if path == "/admin/anusport-sync/settings":
+                return self.handle_anusport_sync_settings_submit(conn, user, form)
 
             m = re.fullmatch(r"/users/(\d+)/skills/(\d+)/toggle", path)
             if m:
@@ -892,10 +902,23 @@ class Handler(BaseHTTPRequestHandler):
         if not name or not email or len(password) < 8:
             return self.handle_register_form(None, error="All fields are required; password must be at least 8 characters.")
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-            if cur.fetchone():
-                return self.handle_register_form(None, error="That email is already registered.")
-        user_id = auth.create_user(conn, email, name, password)
+            cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
+            existing = cur.fetchone()
+        if existing and existing["password_hash"] is not None:
+            return self.handle_register_form(None, error="That email is already registered.")
+        if existing:
+            # A passwordless placeholder account already exists for this
+            # email (e.g. one created by the ANU Sport sync) -- claim it by
+            # setting its password instead of blocking the registration.
+            password_hash, salt = auth.hash_password(password)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE users SET name = %s, password_hash = %s, salt = %s WHERE id = %s",
+                    (name, password_hash, salt, existing["id"]),
+                )
+            user_id = existing["id"]
+        else:
+            user_id = auth.create_user(conn, email, name, password)
         token = auth.create_session(conn, user_id)
         self.send_response(302)
         self.send_header("Location", "/")
@@ -1016,7 +1039,7 @@ class Handler(BaseHTTPRequestHandler):
     def handle_admin_page(self, conn, user, formula_error=None):
         self._require_admin(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, is_admin, is_treasurer, is_assessor FROM users ORDER BY name")
+            cur.execute("SELECT id, name, email, is_admin, is_treasurer, is_assessor, membership_expiry FROM users ORDER BY name")
             members = cur.fetchall()
             cur.execute("SELECT banner_url, distance_formula FROM site_settings WHERE id = 1")
             settings_row = cur.fetchone()
@@ -1103,6 +1126,7 @@ class Handler(BaseHTTPRequestHandler):
               <td>{html.escape(m['name'])}</td>
               <td>{html.escape(m['email'] or '')}</td>
               <td>{role_label(m)}</td>
+              <td>{f"NUCC member until {m['membership_expiry']:%d %b %Y}" if m['membership_expiry'] else '<span class="muted">Non-member</span>'}</td>
               <td style="display:flex; gap:0.4em; flex-wrap:wrap;">
                 {'' if m['id'] == user['id'] else f'''<form class="inline" method="post" action="/admin/users/{m['id']}/toggle-admin">
                   <button type="submit" class="btn">{"Revoke admin" if m['is_admin'] else "Grant admin"}</button>
@@ -1230,9 +1254,15 @@ class Handler(BaseHTTPRequestHandler):
         <div class="card">
         <h3>Members</h3>
         <table>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Membership</th><th></th></tr>
           {member_rows}
         </table>
+        </div>
+
+        <div class="card">
+        <h3>ANU Sport membership sync</h3>
+        <p class="muted">Poll ANU Sport's caving club member list to keep membership_expiry up to date.</p>
+        <a class="btn-primary" href="/admin/anusport-sync">Open sync</a>
         </div>
 
         <script>
@@ -1442,6 +1472,132 @@ class Handler(BaseHTTPRequestHandler):
         {"".join(dialogs)}
         """
         self._send_html(render_page("Assess skills", body, user))
+
+    # -- ANU Sport membership sync --------------------------------------------
+
+    def handle_anusport_sync_page(self, conn, user, result=None, error=None):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT anusport_sync_enabled, anusport_sync_minutes, anusport_sync_next_at, "
+                "anusport_sync_last_run_at, anusport_sync_last_summary FROM site_settings WHERE id = 1"
+            )
+            settings = cur.fetchone() or {}
+
+        error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
+
+        def person_row(p, extra=""):
+            return f"""<tr><td>{html.escape(p['name'] or '')}</td><td class="muted">{html.escape(p['email'] or '')}</td><td>{extra}</td></tr>"""
+
+        result_html = ""
+        if result:
+            updated_rows = "".join(
+                person_row(u, f"{'New member' if u['is_new_member'] else 'Renewed'}: "
+                               f"{u['previous_expiry'] or '&mdash;'} &rarr; {u['new_expiry']:%d %b %Y}"
+                               f"{' (email sent)' if u['email_sent'] else ''}")
+                for u in result["updated"]
+            ) or '<tr><td colspan="3" class="muted">None</td></tr>'
+            created_rows = "".join(
+                person_row(c, f"Member until {c['new_expiry']:%d %b %Y}{' (email sent)' if c['email_sent'] else ''}")
+                for c in result["created"]
+            ) or '<tr><td colspan="3" class="muted">None</td></tr>'
+            no_email_rows = "".join(person_row(p) for p in result["no_email"]) or '<tr><td colspan="3" class="muted">None</td></tr>'
+            result_html = f"""
+            <div class="card">
+              <h3>Updated ({len(result['updated'])})</h3>
+              <table><tr><th>Name</th><th>Email</th><th>Change</th></tr>{updated_rows}</table>
+            </div>
+            <div class="card">
+              <h3>New accounts created ({len(result['created'])})</h3>
+              <p class="muted">No password set yet &mdash; registering with the same email claims the account.</p>
+              <table><tr><th>Name</th><th>Email</th><th></th></tr>{created_rows}</table>
+            </div>
+            <div class="card">
+              <h3>Skipped, no email on file ({len(result['no_email'])})</h3>
+              <p class="muted">Couldn't create an account for these without an email to identify them by.</p>
+              <table><tr><th>Name</th><th>Email</th><th></th></tr>{no_email_rows}</table>
+            </div>"""
+
+        enabled = bool(settings.get("anusport_sync_enabled"))
+        minutes = settings.get("anusport_sync_minutes") or 1440
+        last_run_at = settings.get("anusport_sync_last_run_at")
+        last_summary = settings.get("anusport_sync_last_summary")
+
+        body = f"""
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>ANU Sport membership sync</h1>
+        {error_html}
+
+        <div class="card">
+        <h3>Run now</h3>
+        <p class="muted">Fetches the caving club's Orders/Users exports from ANU Sport, updates membership_expiry
+        for matching accounts, and creates a new account for anyone unmatched with a known email.
+        Takes a little while &mdash; ANU Sport's export can take a minute or two to generate.</p>
+        <form method="post" action="/admin/anusport-sync/run" id="anusport-sync-run-form">
+          <button type="submit" class="btn-primary" id="anusport-sync-run-btn">
+            <span id="anusport-sync-run-spinner" style="width:0.9em; height:0.9em; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; vertical-align:middle; margin-right:0.5em; animation:anusport-spin 0.7s linear infinite; display:none;"></span>
+            <span id="anusport-sync-run-label">Sync now</span>
+          </button>
+        </form>
+        <style>@keyframes anusport-spin {{ to {{ transform: rotate(360deg); }} }}</style>
+        <script>
+        document.getElementById('anusport-sync-run-form').addEventListener('submit', function() {{
+          document.getElementById('anusport-sync-run-btn').disabled = true;
+          document.getElementById('anusport-sync-run-spinner').style.display = 'inline-block';
+          document.getElementById('anusport-sync-run-label').textContent = 'Syncing… this can take a minute or two';
+        }});
+        </script>
+        </div>
+
+        <div class="card">
+        <h3>Automatic sync</h3>
+        <form method="post" action="/admin/anusport-sync/settings">
+          <label><input type="checkbox" name="enabled" value="1" style="width:auto;"{" checked" if enabled else ""}> Run automatically in the background</label>
+          <label>Interval (minutes)<input name="minutes" type="number" min="5" value="{minutes}"></label>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+        <p class="muted" style="margin-top:0.8em;">
+          Last run: {last_run_at.strftime('%d %b %Y %H:%M') if last_run_at else 'never'}
+          {f" &mdash; {html.escape(last_summary)}" if last_summary else ""}
+        </p>
+        <p class="muted">Renewal/creation emails are {"sent via SMTP" if config.SMTP_HOST else
+        "currently just printed to the server log (SMTP_HOST isn't set)"}.</p>
+        </div>
+
+        {result_html}
+        """
+        self._send_html(render_page("ANU Sport sync", body, user))
+
+    def handle_anusport_sync_run(self, conn, user):
+        self._require_admin(user)
+        try:
+            result = anusport_sync.run_sync(conn)
+            delivery = anusport_sync.deliver_report(result)
+        except Exception as exc:
+            return self.handle_anusport_sync_page(conn, user, error=str(exc))
+        now = datetime.now()
+        summary = f"{anusport_sync.summarize(result)} ({delivery})"
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE site_settings SET anusport_sync_last_run_at = %s, anusport_sync_last_summary = %s WHERE id = 1",
+                (now, summary),
+            )
+        return self.handle_anusport_sync_page(conn, user, result=result)
+
+    def handle_anusport_sync_settings_submit(self, conn, user, form):
+        self._require_admin(user)
+        enabled = 1 if form.get("enabled") == "1" else 0
+        try:
+            minutes = max(5, int(form.get("minutes", "1440")))
+        except ValueError:
+            minutes = 1440
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE site_settings SET anusport_sync_enabled = %s, anusport_sync_minutes = %s, "
+                "anusport_sync_next_at = NOW() WHERE id = 1",
+                (enabled, minutes),
+            )
+        redirect(self, "/admin/anusport-sync")
 
     def handle_user_skill_toggle(self, conn, user, target_user_id, checklist_item_id):
         self._require_assessor(user)
@@ -2999,6 +3155,12 @@ class Handler(BaseHTTPRequestHandler):
             ) + "</ul>"
         ) if acquired_skills else '<p class="muted">No skills signed off yet.</p>'
 
+        membership_html = (
+            f'<p>You\'re a current NUCC member, until <strong>{user["membership_expiry"]:%d %b %Y}</strong>.</p>'
+            if user.get("membership_expiry")
+            else '<p class="muted">You\'re not currently a NUCC member. Membership status is synced from ANU Sport.</p>'
+        )
+
         body = f"""
         <div class="card" style="max-width:460px; margin:2em auto;">
         <h1>Your profile</h1>
@@ -3020,6 +3182,11 @@ class Handler(BaseHTTPRequestHandler):
 
           <button type="submit" class="btn-primary">Save changes</button>
         </form>
+        </div>
+
+        <div class="card" style="max-width:460px; margin:0 auto 2em;">
+        <h3>Membership</h3>
+        {membership_html}
         </div>
 
         <div class="card" style="max-width:460px; margin:0 auto 2em;">
@@ -3632,7 +3799,7 @@ class Handler(BaseHTTPRequestHandler):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT s.*, u.name, u.email, u.profile_picture_url FROM event_signups s
+                SELECT s.*, u.name, u.email, u.profile_picture_url, u.membership_expiry FROM event_signups s
                 JOIN users u ON u.id = s.user_id
                 WHERE s.event_id = %s ORDER BY s.created_at
                 """,
@@ -3727,6 +3894,7 @@ class Handler(BaseHTTPRequestHandler):
             f"""<div class="guest-row">
                 {avatar(s['name'], s.get('profile_picture_url'))}
                 <span class="name">{html.escape(s['name'])}</span>
+                {f'<span class="badge" style="background:var(--fb-blue); color:#fff; border-radius:4px; padding:0.1em 0.5em; font-size:0.8em;" title="Member of the National University Caving Club (NUCC)">nucc</span>' if s.get('membership_expiry') else ''}
                 <span class="status">{"No login" if not s.get("email") else "Going"}</span>
                 {f'''<form class="inline" method="post" action="/events/{event_id}/guests/{s["user_id"]}/remove" onsubmit="return confirm('Remove this guest?');">
                   <button type="submit" class="btn" style="padding:0.2em 0.6em;">Remove</button>
@@ -4899,6 +5067,7 @@ class PermissionErrorRedirect(Exception):
 def main():
     server = ThreadingHTTPServer((config.HOST, config.PORT), Handler)
     server._shared_conn = None
+    anusport_daemon.start()  # no-op loop until an admin enables it via /admin/anusport-sync (off by default)
     print(f"Serving on http://{config.HOST}:{config.PORT}")
     try:
         server.serve_forever()

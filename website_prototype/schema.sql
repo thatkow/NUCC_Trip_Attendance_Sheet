@@ -15,6 +15,8 @@ CREATE TABLE users (
     is_treasurer TINYINT(1) NOT NULL DEFAULT 0,
     is_assessor TINYINT(1) NOT NULL DEFAULT 0, -- can check off members' skills, see user_skills below
     skill_notes TEXT NULL, -- free-text notes an assessor keeps on this member's skills page
+    membership_expiry DATE NULL, -- NULL means not a current NUCC member (can still sign up/log in); set by the ANU Sport sync
+    anusportid VARCHAR(32) NULL UNIQUE, -- u<student id> or a<ANU Sport UserId>, used to re-match this account on future syncs
     bank_name_aliases VARCHAR(255) NULL, -- comma-separated name(s) this person appears as in bank transaction descriptions, used to auto-match imported transactions to them
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -26,7 +28,12 @@ CREATE TABLE users (
 CREATE TABLE site_settings (
     id INT PRIMARY KEY,
     banner_url VARCHAR(512) NULL,
-    distance_formula VARCHAR(255) NULL
+    distance_formula VARCHAR(255) NULL,
+    anusport_sync_enabled TINYINT(1) NOT NULL DEFAULT 0, -- whether the background daemon polls ANU Sport
+    anusport_sync_minutes INT NOT NULL DEFAULT 1440, -- interval between automatic syncs (default: daily)
+    anusport_sync_next_at DATETIME NULL, -- when the daemon should next run; updated after every run
+    anusport_sync_last_run_at DATETIME NULL,
+    anusport_sync_last_summary TEXT NULL -- short human-readable result of the last run, shown on /admin/anusport-sync
 );
 INSERT INTO site_settings (id, banner_url, distance_formula) VALUES (1, '/static/banner.jpg', 'km * 0.88');
 
