@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# Wipes the local dev DB, reloads schema.sql, and seeds a single admin
-# account (kow.andrew@gmail.com / password) so there's something to log in
-# with straight away. Stops+restarts the local dev server if it was running.
+# Wipes the local dev DB, reloads schema.sql, seeds a single admin account
+# (kow.andrew@gmail.com / password), and reloads the real checklist items
+# (skills/items catalog) and content pages from seed_data.sql -- a dump of
+# those two tables taken from prod (nucc.anumc.org.au), so a reset doesn't
+# lose the actual skills/pages content. Stops+restarts the local dev server
+# if it was running.
+#
+# To refresh seed_data.sql from prod after editing content there:
+#   ssh root@172.105.167.40 "mysqldump --no-create-info --complete-insert \
+#     -u trip_events -p<password> trip_events checklist_items content_pages" \
+#     > seed_data.sql
+# (password is in `systemctl cat trip-events`'s TRIP_DB_PASSWORD line).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -22,6 +31,7 @@ fi
 
 "${MYSQL[@]}" -e "DROP DATABASE IF EXISTS ${DB_NAME};"
 "${MYSQL[@]}" < schema.sql
+"${MYSQL[@]}" "$DB_NAME" < seed_data.sql
 
 TRIP_DB_HOST="$DB_HOST" TRIP_DB_USER="$DB_USER" TRIP_DB_PASSWORD="$DB_PASSWORD" TRIP_DB_NAME="$DB_NAME" \
     ./venv/bin/python3 - <<'PYEOF'

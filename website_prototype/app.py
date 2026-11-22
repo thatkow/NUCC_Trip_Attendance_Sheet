@@ -635,6 +635,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_profile_form(conn, user)
             if path == "/admin":
                 return self.handle_admin_page(conn, user)
+            if path == "/admin/site":
+                return self.handle_admin_site_page(conn, user)
+            if path == "/admin/gear":
+                return self.handle_admin_gear_page(conn, user)
+            if path == "/admin/checklist-items":
+                return self.handle_admin_checklist_page(conn, user)
+            if path == "/admin/pages":
+                return self.handle_admin_pages_page(conn, user)
+            if path == "/admin/members":
+                return self.handle_admin_members_page(conn, user)
             if path == "/admin/distance-formula/test":
                 return self.handle_distance_formula_test(user)
             if path == "/assess":
@@ -1036,115 +1046,56 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- admin ---------------------------------------------------------------
 
-    def handle_admin_page(self, conn, user, formula_error=None):
+    def _admin_nav(self, active):
+        items = [
+            ("/admin", "Overview"),
+            ("/admin/site", "Site settings"),
+            ("/admin/gear", "Gear types"),
+            ("/admin/checklist-items", "Required skills & items"),
+            ("/admin/pages", "Pages"),
+            ("/admin/members", "Members"),
+            ("/admin/anusport-sync", "ANU Sport sync"),
+        ]
+        links = "".join(
+            f'<a href="{href}" style="padding:0.4em 0.8em; border-radius:6px; text-decoration:none;'
+            f'{" background:var(--fb-blue); color:#fff;" if href == active else " color:inherit;"}">{label}</a>'
+            for href, label in items
+        )
+        return f'<nav style="display:flex; gap:0.3em; flex-wrap:wrap; margin-bottom:1.2em;">{links}</nav>'
+
+    def handle_admin_page(self, conn, user):
+        self._require_admin(user)
+        body = f"""
+        <p><a href="/">&larr; back to trips</a></p>
+        <h1>Admin</h1>
+        {self._admin_nav("/admin")}
+        <div class="card"><h3><a href="/admin/site">Site settings</a></h3>
+        <p class="muted">Site banner, image uploads, and the driven-distance pricing formula.</p></div>
+        <div class="card"><h3><a href="/admin/gear">Gear types</a></h3>
+        <p class="muted">Club-wide gear and their default per-person rate.</p></div>
+        <div class="card"><h3><a href="/admin/checklist-items">Required skills &amp; items</a></h3>
+        <p class="muted">The catalog a trip leader can pick from when building a trip's checklist.</p></div>
+        <div class="card"><h3><a href="/admin/pages">Pages</a></h3>
+        <p class="muted">Admin-editable content pages and their header-nav/visibility settings.</p></div>
+        <div class="card"><h3><a href="/admin/members">Members</a></h3>
+        <p class="muted">Roles (admin/treasurer/assessor) and membership status.</p></div>
+        <div class="card"><h3><a href="/admin/anusport-sync">ANU Sport sync</a></h3>
+        <p class="muted">Poll ANU Sport's caving club orders to keep membership_expiry up to date.</p></div>
+        """
+        self._send_html(render_page("Admin", body, user))
+
+    def handle_admin_site_page(self, conn, user, formula_error=None):
         self._require_admin(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, email, is_admin, is_treasurer, is_assessor, membership_expiry FROM users ORDER BY name")
-            members = cur.fetchall()
             cur.execute("SELECT banner_url, distance_formula FROM site_settings WHERE id = 1")
             settings_row = cur.fetchone()
         banner_url = (settings_row or {}).get("banner_url") or "/static/banner.jpg"
         distance_formula = (settings_row or {}).get("distance_formula") or "km * 0.88"
-        gear_types = self._get_gear_types(conn)
-        checklist_items = self._get_checklist_items(conn)
-        with conn.cursor() as cur:
-            cur.execute("SELECT slug, title, show_in_nav, nav_label, nav_order, visible_roles FROM content_pages ORDER BY title")
-            content_pages = list(cur.fetchall())
-
-        def role_dropdown(form_id, current):
-            # NULL/empty visible_roles means "everyone" (unset trips/old rows) -- show that as
-            # every box checked, matching what a fresh page defaults to.
-            current_keys = {k.strip() for k in (current or "").split(",") if k.strip()} or {k for k, _ in PAGE_ROLE_CHOICES}
-            checkboxes = "".join(
-                f'<label><input type="checkbox" name="visible_roles" form="{form_id}" value="{key}"'
-                f'{" checked" if key in current_keys else ""}> {label}</label>'
-                for key, label in PAGE_ROLE_CHOICES
-            )
-            return f"""<div class="role-dropdown">
-              <button type="button" class="btn role-dropdown-toggle" style="padding:0.3em 0.6em;">Visible to &#9662;</button>
-              <div class="role-dropdown-menu">{checkboxes}</div>
-            </div>"""
-
-        content_page_rows = "".join(
-            f"""<tr>
-              <td>
-                <form id="page-nav-form-{p['slug']}" class="inline" method="post" action="/admin/pages/{p['slug']}/nav"></form>
-                <a href="/pages/{p['slug']}">{html.escape(p['title'])}</a> <span class="muted">/pages/{p['slug']}</span></td>
-              <td><input type="checkbox" name="show_in_nav" value="1" form="page-nav-form-{p['slug']}" style="width:auto;"{" checked" if p['show_in_nav'] else ""}></td>
-              <td><input name="nav_label" form="page-nav-form-{p['slug']}" placeholder="{html.escape(p['title'])}" value="{html.escape(p['nav_label'] or '')}" style="width:140px;"></td>
-              <td><input name="nav_order" form="page-nav-form-{p['slug']}" type="number" value="{p['nav_order']}" style="width:70px;"></td>
-              <td>{role_dropdown(f"page-nav-form-{p['slug']}", p['visible_roles'])}</td>
-              <td style="display:flex; gap:0.4em;">
-                <button type="submit" form="page-nav-form-{p['slug']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
-                <a class="btn" style="padding:0.3em 0.7em;" href="/pages/{p['slug']}/edit">Edit</a>
-                <form class="inline" method="post" action="/admin/pages/{p['slug']}/delete" onsubmit="return confirm('Delete the page \\'{html.escape(p['title'])}\\'? This can\\'t be undone.');">
-                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
-                </form>
-              </td>
-            </tr>"""
-            for p in content_pages
-        )
-
-        checklist_rows = "".join(
-            f"""<tr>
-              <td>{html.escape(c['name'])}</td>
-              <td>{"Skill" if c['kind'] == 'skill' else "Item"}</td>
-              <td>
-                <form class="inline" method="post" action="/admin/checklist-items/{c['id']}/delete" onsubmit="return confirm('Delete this checklist entry? It will be removed from any trip that currently requires it.');">
-                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
-                </form>
-              </td>
-            </tr>"""
-            for c in checklist_items
-        )
-
-        gear_rows = "".join(
-            f"""<tr>
-              <td><input name="name" form="gear-form-{g['id']}" value="{html.escape(g['name'])}" required></td>
-              <td><input name="rate" form="gear-form-{g['id']}" type="number" step="0.01" min="0" value="{g['rate']}" style="width:100px;"></td>
-              <td><input name="description" form="gear-form-{g['id']}" value="{html.escape(g['description'] or '')}" placeholder="When to charge this" style="min-width:240px;"></td>
-              <td style="display:flex; gap:0.4em;">
-                <form id="gear-form-{g['id']}" class="inline" method="post" action="/admin/gear/{g['id']}/update"></form>
-                <button type="submit" form="gear-form-{g['id']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
-                <form class="inline" method="post" action="/admin/gear/{g['id']}/delete" onsubmit="return confirm('Delete this gear type? Existing trips keep their own rate for it.');">
-                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
-                </form>
-              </td>
-            </tr>"""
-            for g in gear_types
-        )
-
-        def role_label(m):
-            roles = [
-                r for r, held in (
-                    ("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"]), ("Assessor", m["is_assessor"]),
-                ) if held
-            ]
-            return ", ".join(roles) if roles else "Member"
-        member_rows = "".join(
-            f"""<tr>
-              <td>{html.escape(m['name'])}</td>
-              <td>{html.escape(m['email'] or '')}</td>
-              <td>{role_label(m)}</td>
-              <td>{f"NUCC member until {m['membership_expiry']:%d %b %Y}" if m['membership_expiry'] else '<span class="muted">Non-member</span>'}</td>
-              <td style="display:flex; gap:0.4em; flex-wrap:wrap;">
-                {'' if m['id'] == user['id'] else f'''<form class="inline" method="post" action="/admin/users/{m['id']}/toggle-admin">
-                  <button type="submit" class="btn">{"Revoke admin" if m['is_admin'] else "Grant admin"}</button>
-                </form>'''}
-                <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-treasurer">
-                  <button type="submit" class="btn">{"Revoke treasurer" if m['is_treasurer'] else "Grant treasurer"}</button>
-                </form>
-                <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-assessor">
-                  <button type="submit" class="btn">{"Revoke assessor" if m['is_assessor'] else "Grant assessor"}</button>
-                </form>
-              </td>
-            </tr>"""
-            for m in members
-        )
 
         body = f"""
-        <p><a href="/">&larr; back to trips</a></p>
-        <h1>Admin</h1>
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>Site settings</h1>
+        {self._admin_nav("/admin/site")}
 
         <div class="card">
         <h3>Site banner</h3>
@@ -1186,83 +1137,6 @@ class Handler(BaseHTTPRequestHandler):
           <label>Try it: km<input type="number" id="formula-test-km" value="10" step="0.1" style="display:inline-block; width:100px;"></label>
           <p>Result: <strong id="formula-test-result">--</strong></p>
         </div>
-        </div>
-
-        <div class="card">
-        <h3>Gear types</h3>
-        <p class="muted">Club-wide gear and their default per-person rate (e.g. "Horizontal Gear": $5). A new
-        trip inherits these rates; the host can override them for their own trip from the trip's Edit page.</p>
-        <table>
-          <tr><th>Name</th><th>Rate ($/person)</th><th>Description</th><th></th></tr>
-          {gear_rows or '<tr><td colspan="4" class="muted">None yet.</td></tr>'}
-        </table>
-        <form method="post" action="/admin/gear" style="display:flex; gap:0.5em; margin-top:1em;">
-          <input name="name" placeholder="e.g. Wetsuit" required style="flex:1;">
-          <input name="rate" type="number" step="0.01" min="0" placeholder="Rate ($)" required style="width:120px;">
-          <input name="description" placeholder="When to charge this" style="flex:2;">
-          <button type="submit" class="btn-primary">Add gear type</button>
-        </form>
-        </div>
-
-        <div class="card">
-        <h3>Required skills &amp; items</h3>
-        <p class="muted">Club-wide catalog a trip leader can pick from when building their trip's checklist
-        (e.g. skill "Vertical sign-off", item "Wetsuit").</p>
-        <table>
-          <tr><th>Name</th><th>Kind</th><th></th></tr>
-          {checklist_rows or '<tr><td colspan="3" class="muted">None yet.</td></tr>'}
-        </table>
-        <form method="post" action="/admin/checklist-items" style="display:flex; gap:0.5em; margin-top:1em;">
-          <input name="name" placeholder="e.g. Vertical sign-off" required style="flex:1; width:auto;">
-          <select name="kind" style="flex:0 0 120px; width:auto;">
-            <option value="skill">Skill</option>
-            <option value="item">Item</option>
-          </select>
-          <button type="submit" class="btn-primary" style="flex:0 0 auto;">Add</button>
-        </form>
-        </div>
-
-        <div class="card">
-        <h3>Pages</h3>
-        <p class="muted">Admin-editable content pages (Markdown). Any page can optionally get a link in the
-        site header -- set its label and where it sits in the link order below. "Visible to" restricts who can
-        open the page at all.</p>
-        <table>
-          <tr><th>Page</th><th>In header</th><th>Link label</th><th>Order</th><th>Visible to</th><th></th></tr>
-          {content_page_rows or '<tr><td colspan="6" class="muted">None yet.</td></tr>'}
-        </table>
-        <form method="post" action="/admin/pages" id="new-page-form" style="display:flex; gap:0.5em; margin-top:1em; flex-wrap:wrap; align-items:center;">
-          <input name="title" id="new-page-title" placeholder="Page title, e.g. About Us" required style="flex:1; min-width:160px; width:auto;">
-          <input name="slug" id="new-page-slug" placeholder="url-slug" required style="width:160px;">
-          <label style="display:flex; align-items:center; gap:0.4em; font-weight:normal; width:auto;">
-            <input type="checkbox" name="show_in_nav" value="1" style="width:auto;"> Show in header
-          </label>
-          <input name="nav_label" placeholder="Link label (optional)" style="width:160px;">
-          {role_dropdown("new-page-form", None)}
-          <button type="submit" class="btn-primary" style="flex:0 0 auto;">+ New page</button>
-        </form>
-        <script>
-        document.getElementById('new-page-title').addEventListener('input', function() {{
-          var slugField = document.getElementById('new-page-slug');
-          if (slugField.dataset.touched) return;
-          slugField.value = this.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-        }});
-        document.getElementById('new-page-slug').addEventListener('input', function() {{ this.dataset.touched = '1'; }});
-        </script>
-        </div>
-
-        <div class="card">
-        <h3>Members</h3>
-        <table>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th>Membership</th><th></th></tr>
-          {member_rows}
-        </table>
-        </div>
-
-        <div class="card">
-        <h3>ANU Sport membership sync</h3>
-        <p class="muted">Poll ANU Sport's caving club member list to keep membership_expiry up to date.</p>
-        <a class="btn-primary" href="/admin/anusport-sync">Open sync</a>
         </div>
 
         <script>
@@ -1335,7 +1209,205 @@ class Handler(BaseHTTPRequestHandler):
         }})();
         </script>
         """
-        self._send_html(render_page("Admin", body, user))
+        self._send_html(render_page("Site settings", body, user))
+
+    def handle_admin_gear_page(self, conn, user):
+        self._require_admin(user)
+        gear_types = self._get_gear_types(conn)
+        gear_rows = "".join(
+            f"""<tr>
+              <td><input name="name" form="gear-form-{g['id']}" value="{html.escape(g['name'])}" required></td>
+              <td><input name="rate" form="gear-form-{g['id']}" type="number" step="0.01" min="0" value="{g['rate']}" style="width:100px;"></td>
+              <td><input name="description" form="gear-form-{g['id']}" value="{html.escape(g['description'] or '')}" placeholder="When to charge this" style="min-width:240px;"></td>
+              <td style="display:flex; gap:0.4em;">
+                <form id="gear-form-{g['id']}" class="inline" method="post" action="/admin/gear/{g['id']}/update"></form>
+                <button type="submit" form="gear-form-{g['id']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
+                <form class="inline" method="post" action="/admin/gear/{g['id']}/delete" onsubmit="return confirm('Delete this gear type? Existing trips keep their own rate for it.');">
+                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </form>
+              </td>
+            </tr>"""
+            for g in gear_types
+        )
+        body = f"""
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>Gear types</h1>
+        {self._admin_nav("/admin/gear")}
+        <div class="card">
+        <p class="muted">Club-wide gear and their default per-person rate (e.g. "Horizontal Gear": $5). A new
+        trip inherits these rates; the host can override them for their own trip from the trip's Edit page.</p>
+        <table>
+          <tr><th>Name</th><th>Rate ($/person)</th><th>Description</th><th></th></tr>
+          {gear_rows or '<tr><td colspan="4" class="muted">None yet.</td></tr>'}
+        </table>
+        <form method="post" action="/admin/gear" style="display:flex; gap:0.5em; margin-top:1em;">
+          <input name="name" placeholder="e.g. Wetsuit" required style="flex:1;">
+          <input name="rate" type="number" step="0.01" min="0" placeholder="Rate ($)" required style="width:120px;">
+          <input name="description" placeholder="When to charge this" style="flex:2;">
+          <button type="submit" class="btn-primary">Add gear type</button>
+        </form>
+        </div>
+        """
+        self._send_html(render_page("Gear types", body, user))
+
+    def handle_admin_checklist_page(self, conn, user):
+        self._require_admin(user)
+        checklist_items = self._get_checklist_items(conn)
+        checklist_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(c['name'])}</td>
+              <td>{"Skill" if c['kind'] == 'skill' else "Item"}</td>
+              <td>
+                <form class="inline" method="post" action="/admin/checklist-items/{c['id']}/delete" onsubmit="return confirm('Delete this checklist entry? It will be removed from any trip that currently requires it.');">
+                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </form>
+              </td>
+            </tr>"""
+            for c in checklist_items
+        )
+        body = f"""
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>Required skills &amp; items</h1>
+        {self._admin_nav("/admin/checklist-items")}
+        <div class="card">
+        <p class="muted">Club-wide catalog a trip leader can pick from when building their trip's checklist
+        (e.g. skill "Vertical sign-off", item "Wetsuit").</p>
+        <table>
+          <tr><th>Name</th><th>Kind</th><th></th></tr>
+          {checklist_rows or '<tr><td colspan="3" class="muted">None yet.</td></tr>'}
+        </table>
+        <form method="post" action="/admin/checklist-items" style="display:flex; gap:0.5em; margin-top:1em;">
+          <input name="name" placeholder="e.g. Vertical sign-off" required style="flex:1; width:auto;">
+          <select name="kind" style="flex:0 0 120px; width:auto;">
+            <option value="skill">Skill</option>
+            <option value="item">Item</option>
+          </select>
+          <button type="submit" class="btn-primary" style="flex:0 0 auto;">Add</button>
+        </form>
+        </div>
+        """
+        self._send_html(render_page("Required skills & items", body, user))
+
+    def handle_admin_pages_page(self, conn, user):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug, title, show_in_nav, nav_label, nav_order, visible_roles FROM content_pages ORDER BY title")
+            content_pages = list(cur.fetchall())
+
+        def role_dropdown(form_id, current):
+            # NULL/empty visible_roles means "everyone" (unset trips/old rows) -- show that as
+            # every box checked, matching what a fresh page defaults to.
+            current_keys = {k.strip() for k in (current or "").split(",") if k.strip()} or {k for k, _ in PAGE_ROLE_CHOICES}
+            checkboxes = "".join(
+                f'<label><input type="checkbox" name="visible_roles" form="{form_id}" value="{key}"'
+                f'{" checked" if key in current_keys else ""}> {label}</label>'
+                for key, label in PAGE_ROLE_CHOICES
+            )
+            return f"""<div class="role-dropdown">
+              <button type="button" class="btn role-dropdown-toggle" style="padding:0.3em 0.6em;">Visible to &#9662;</button>
+              <div class="role-dropdown-menu">{checkboxes}</div>
+            </div>"""
+
+        content_page_rows = "".join(
+            f"""<tr>
+              <td>
+                <form id="page-nav-form-{p['slug']}" class="inline" method="post" action="/admin/pages/{p['slug']}/nav"></form>
+                <a href="/pages/{p['slug']}">{html.escape(p['title'])}</a> <span class="muted">/pages/{p['slug']}</span></td>
+              <td><input type="checkbox" name="show_in_nav" value="1" form="page-nav-form-{p['slug']}" style="width:auto;"{" checked" if p['show_in_nav'] else ""}></td>
+              <td><input name="nav_label" form="page-nav-form-{p['slug']}" placeholder="{html.escape(p['title'])}" value="{html.escape(p['nav_label'] or '')}" style="width:140px;"></td>
+              <td><input name="nav_order" form="page-nav-form-{p['slug']}" type="number" value="{p['nav_order']}" style="width:70px;"></td>
+              <td>{role_dropdown(f"page-nav-form-{p['slug']}", p['visible_roles'])}</td>
+              <td style="display:flex; gap:0.4em;">
+                <button type="submit" form="page-nav-form-{p['slug']}" class="btn" style="padding:0.3em 0.7em;">Save</button>
+                <a class="btn" style="padding:0.3em 0.7em;" href="/pages/{p['slug']}/edit">Edit</a>
+                <form class="inline" method="post" action="/admin/pages/{p['slug']}/delete" onsubmit="return confirm('Delete the page \\'{html.escape(p['title'])}\\'? This can\\'t be undone.');">
+                  <button type="submit" class="btn" style="padding:0.3em 0.7em; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </form>
+              </td>
+            </tr>"""
+            for p in content_pages
+        )
+
+        body = f"""
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>Pages</h1>
+        {self._admin_nav("/admin/pages")}
+        <div class="card">
+        <p class="muted">Admin-editable content pages (Markdown). Any page can optionally get a link in the
+        site header -- set its label and where it sits in the link order below. "Visible to" restricts who can
+        open the page at all.</p>
+        <table>
+          <tr><th>Page</th><th>In header</th><th>Link label</th><th>Order</th><th>Visible to</th><th></th></tr>
+          {content_page_rows or '<tr><td colspan="6" class="muted">None yet.</td></tr>'}
+        </table>
+        <form method="post" action="/admin/pages" id="new-page-form" style="display:flex; gap:0.5em; margin-top:1em; flex-wrap:wrap; align-items:center;">
+          <input name="title" id="new-page-title" placeholder="Page title, e.g. About Us" required style="flex:1; min-width:160px; width:auto;">
+          <input name="slug" id="new-page-slug" placeholder="url-slug" required style="width:160px;">
+          <label style="display:flex; align-items:center; gap:0.4em; font-weight:normal; width:auto;">
+            <input type="checkbox" name="show_in_nav" value="1" style="width:auto;"> Show in header
+          </label>
+          <input name="nav_label" placeholder="Link label (optional)" style="width:160px;">
+          {role_dropdown("new-page-form", None)}
+          <button type="submit" class="btn-primary" style="flex:0 0 auto;">+ New page</button>
+        </form>
+        <script>
+        document.getElementById('new-page-title').addEventListener('input', function() {{
+          var slugField = document.getElementById('new-page-slug');
+          if (slugField.dataset.touched) return;
+          slugField.value = this.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        }});
+        document.getElementById('new-page-slug').addEventListener('input', function() {{ this.dataset.touched = '1'; }});
+        </script>
+        </div>
+        """
+        self._send_html(render_page("Pages", body, user))
+
+    def handle_admin_members_page(self, conn, user):
+        self._require_admin(user)
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, is_admin, is_treasurer, is_assessor, membership_expiry FROM users ORDER BY name")
+            members = cur.fetchall()
+
+        def role_label(m):
+            roles = [
+                r for r, held in (
+                    ("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"]), ("Assessor", m["is_assessor"]),
+                ) if held
+            ]
+            return ", ".join(roles) if roles else "Member"
+        member_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(m['name'])}</td>
+              <td>{html.escape(m['email'] or '')}</td>
+              <td>{role_label(m)}</td>
+              <td>{f"{m['membership_expiry']:%d %b %Y}" if m['membership_expiry'] else '<span class="muted">&mdash;</span>'}</td>
+              <td style="white-space:nowrap;">
+                {'' if m['id'] == user['id'] else f'''<form class="inline" method="post" action="/admin/users/{m['id']}/toggle-admin">
+                  <button type="submit" class="btn" style="padding:0.3em 0.6em;">{"Revoke admin" if m['is_admin'] else "Grant admin"}</button>
+                </form>'''}
+                <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-treasurer">
+                  <button type="submit" class="btn" style="padding:0.3em 0.6em;">{"Revoke treasurer" if m['is_treasurer'] else "Grant treasurer"}</button>
+                </form>
+                <form class="inline" method="post" action="/admin/users/{m['id']}/toggle-assessor">
+                  <button type="submit" class="btn" style="padding:0.3em 0.6em;">{"Revoke assessor" if m['is_assessor'] else "Grant assessor"}</button>
+                </form>
+              </td>
+            </tr>"""
+            for m in members
+        )
+
+        body = f"""
+        <p><a href="/admin">&larr; back to admin</a></p>
+        <h1>Members</h1>
+        {self._admin_nav("/admin/members")}
+        <div class="card" style="overflow-x:auto;">
+        <table>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Membership expiry</th><th></th></tr>
+          {member_rows}
+        </table>
+        </div>
+        """
+        self._send_html(render_page("Members", body, user))
 
     def handle_toggle_admin(self, conn, user, target_user_id):
         self._require_admin(user)
@@ -1347,7 +1419,7 @@ class Handler(BaseHTTPRequestHandler):
                     "UPDATE users SET is_admin = %s WHERE id = %s",
                     (0 if target["is_admin"] else 1, target_user_id),
                 )
-        redirect(self, "/admin")
+        redirect(self, "/admin/members")
 
     def handle_toggle_treasurer(self, conn, user, target_user_id):
         self._require_admin(user)
@@ -1359,7 +1431,7 @@ class Handler(BaseHTTPRequestHandler):
                     "UPDATE users SET is_treasurer = %s WHERE id = %s",
                     (0 if target["is_treasurer"] else 1, target_user_id),
                 )
-        redirect(self, "/admin")
+        redirect(self, "/admin/members")
 
     def handle_toggle_assessor(self, conn, user, target_user_id):
         self._require_admin(user)
@@ -1371,7 +1443,7 @@ class Handler(BaseHTTPRequestHandler):
                     "UPDATE users SET is_assessor = %s WHERE id = %s",
                     (0 if target["is_assessor"] else 1, target_user_id),
                 )
-        redirect(self, "/admin")
+        redirect(self, "/admin/members")
 
     # -- skills assessment ----------------------------------------------------
 
@@ -1639,7 +1711,7 @@ class Handler(BaseHTTPRequestHandler):
                     )
             except ValueError:
                 pass
-        redirect(self, "/admin")
+        redirect(self, "/admin/site")
 
     def handle_distance_formula_submit(self, conn, user, form):
         self._require_admin(user)
@@ -1647,7 +1719,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             formula.validate(expr)
         except formula.FormulaError as e:
-            return self.handle_admin_page(conn, user, formula_error=str(e))
+            return self.handle_admin_site_page(conn, user, formula_error=str(e))
 
         with conn.cursor() as cur:
             cur.execute(
@@ -1655,7 +1727,7 @@ class Handler(BaseHTTPRequestHandler):
                 "ON DUPLICATE KEY UPDATE distance_formula = VALUES(distance_formula)",
                 (expr,),
             )
-        redirect(self, "/admin")
+        redirect(self, "/admin/site")
 
     def handle_gear_type_add(self, conn, user, form):
         self._require_admin(user)
@@ -1666,13 +1738,13 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 rate = Decimal(rate_raw).quantize(Decimal("0.01"))
             except Exception:
-                return redirect(self, "/admin")
+                return redirect(self, "/admin/gear")
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT IGNORE INTO gear_types (name, rate, description) VALUES (%s, %s, %s)",
                     (name, str(rate), description),
                 )
-        redirect(self, "/admin")
+        redirect(self, "/admin/gear")
 
     def handle_gear_type_update(self, conn, user, gear_type_id, form):
         self._require_admin(user)
@@ -1683,19 +1755,19 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 rate = Decimal(rate_raw).quantize(Decimal("0.01"))
             except Exception:
-                return redirect(self, "/admin")
+                return redirect(self, "/admin/gear")
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE gear_types SET name = %s, rate = %s, description = %s WHERE id = %s",
                     (name, str(rate), description, gear_type_id),
                 )
-        redirect(self, "/admin")
+        redirect(self, "/admin/gear")
 
     def handle_gear_type_delete(self, conn, user, gear_type_id):
         self._require_admin(user)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM gear_types WHERE id = %s", (gear_type_id,))
-        redirect(self, "/admin")
+        redirect(self, "/admin/gear")
 
     def _get_checklist_items(self, conn):
         """The club-wide catalog of required skills/items a trip leader can
@@ -1834,13 +1906,13 @@ class Handler(BaseHTTPRequestHandler):
         if name and kind in ("skill", "item"):
             with conn.cursor() as cur:
                 cur.execute("INSERT IGNORE INTO checklist_items (name, kind) VALUES (%s, %s)", (name, kind))
-        redirect(self, "/admin")
+        redirect(self, "/admin/checklist-items")
 
     def handle_checklist_item_delete(self, conn, user, checklist_item_id):
         self._require_admin(user)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM checklist_items WHERE id = %s", (checklist_item_id,))
-        redirect(self, "/admin")
+        redirect(self, "/admin/checklist-items")
 
     # -- content pages (admin-editable, CKEditor) -----------------------------
 
@@ -1974,7 +2046,7 @@ class Handler(BaseHTTPRequestHandler):
             _refresh_nav_links_cache(conn)
             if show_in_nav:
                 return redirect(self, f"/pages/{slug}/edit")
-        redirect(self, "/admin")
+        redirect(self, "/admin/pages")
 
     def handle_admin_page_nav_update(self, conn, user, slug, form):
         self._require_admin(user)
@@ -1989,14 +2061,14 @@ class Handler(BaseHTTPRequestHandler):
                 (show_in_nav, nav_label, nav_order, visible_roles, slug),
             )
         _refresh_nav_links_cache(conn)
-        redirect(self, "/admin")
+        redirect(self, "/admin/pages")
 
     def handle_admin_page_delete(self, conn, user, slug):
         self._require_admin(user)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM content_pages WHERE slug = %s", (slug,))
         _refresh_nav_links_cache(conn)
-        redirect(self, "/admin")
+        redirect(self, "/admin/pages")
 
     def _send_image_upload_json(self, form, id_prefix):
         """Shared by every "upload an image, get a /static/... URL back as
