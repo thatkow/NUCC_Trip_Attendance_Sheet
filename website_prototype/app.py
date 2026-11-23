@@ -1376,7 +1376,7 @@ class Handler(BaseHTTPRequestHandler):
                     ("Admin", m["is_admin"]), ("Treasurer", m["is_treasurer"]), ("Assessor", m["is_assessor"]),
                 ) if held
             ]
-            return ", ".join(roles) if roles else "Member"
+            return ", ".join(roles) if roles else "User"
         member_rows = "".join(
             f"""<tr>
               <td>{html.escape(m['name'])}</td>
