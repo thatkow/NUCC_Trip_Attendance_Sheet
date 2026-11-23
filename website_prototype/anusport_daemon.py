@@ -36,8 +36,8 @@ class AnusportSyncDaemon:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT anusport_sync_enabled, anusport_sync_minutes, anusport_sync_next_at "
-                    "FROM site_settings WHERE id = 1"
+                    "SELECT anusport_sync_enabled, anusport_sync_minutes, anusport_sync_next_at, "
+                    "anusport_sync_send_emails FROM site_settings WHERE id = 1"
                 )
                 settings = cur.fetchone() or {}
             if not settings.get("anusport_sync_enabled"):
@@ -48,7 +48,7 @@ class AnusportSyncDaemon:
                 return
 
             try:
-                result = anusport_sync.run_sync(conn)
+                result = anusport_sync.run_sync(conn, send_emails=bool(settings.get("anusport_sync_send_emails")))
                 summary = f"{anusport_sync.summarize(result)} ({anusport_sync.deliver_report(result)})"
             except Exception as exc:
                 summary = f"Sync failed: {exc}"

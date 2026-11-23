@@ -772,7 +772,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_toggle_assessor(conn, user, int(m.group(1)))
 
             if path == "/admin/anusport-sync/run":
-                return self.handle_anusport_sync_run(conn, user)
+                return self.handle_anusport_sync_run(conn, user, form)
 
             if path == "/admin/anusport-sync/settings":
                 return self.handle_anusport_sync_settings_submit(conn, user, form)
@@ -1555,7 +1555,8 @@ class Handler(BaseHTTPRequestHandler):
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT anusport_sync_enabled, anusport_sync_minutes, anusport_sync_next_at, "
-                "anusport_sync_last_run_at, anusport_sync_last_summary FROM site_settings WHERE id = 1"
+                "anusport_sync_last_run_at, anusport_sync_last_summary, anusport_sync_send_emails "
+                "FROM site_settings WHERE id = 1"
             )
             settings = cur.fetchone() or {}
 
@@ -1596,6 +1597,7 @@ class Handler(BaseHTTPRequestHandler):
             </div>"""
 
         enabled = bool(settings.get("anusport_sync_enabled"))
+        send_emails_default = bool(settings.get("anusport_sync_send_emails"))
         minutes = settings.get("anusport_sync_minutes") or 1440
         last_run_at = settings.get("anusport_sync_last_run_at")
         last_summary = settings.get("anusport_sync_last_summary")
@@ -1611,6 +1613,7 @@ class Handler(BaseHTTPRequestHandler):
         for matching accounts, and creates a new account for anyone unmatched with a known email.
         Takes a little while &mdash; ANU Sport's export can take a minute or two to generate.</p>
         <form method="post" action="/admin/anusport-sync/run" id="anusport-sync-run-form">
+          <label><input type="checkbox" name="send_emails" value="1" style="width:auto;"> Send renewal/welcome emails for this run</label>
           <button type="submit" class="btn-primary" id="anusport-sync-run-btn">
             <span id="anusport-sync-run-spinner" style="width:0.9em; height:0.9em; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; vertical-align:middle; margin-right:0.5em; animation:anusport-spin 0.7s linear infinite; display:none;"></span>
             <span id="anusport-sync-run-label">Sync now</span>
@@ -1630,6 +1633,7 @@ class Handler(BaseHTTPRequestHandler):
         <h3>Automatic sync</h3>
         <form method="post" action="/admin/anusport-sync/settings">
           <label><input type="checkbox" name="enabled" value="1" style="width:auto;"{" checked" if enabled else ""}> Run automatically in the background</label>
+          <label><input type="checkbox" name="send_emails" value="1" style="width:auto;"{" checked" if send_emails_default else ""}> Send renewal/welcome emails</label>
           <label>Interval (minutes)<input name="minutes" type="number" min="5" value="{minutes}"></label>
           <button type="submit" class="btn-primary">Save</button>
         </form>
@@ -1645,10 +1649,11 @@ class Handler(BaseHTTPRequestHandler):
         """
         self._send_html(render_page("ANU Sport sync", body, user))
 
-    def handle_anusport_sync_run(self, conn, user):
+    def handle_anusport_sync_run(self, conn, user, form):
         self._require_admin(user)
+        send_emails = form.get("send_emails") == "1"
         try:
-            result = anusport_sync.run_sync(conn)
+            result = anusport_sync.run_sync(conn, send_emails=send_emails)
             delivery = anusport_sync.deliver_report(result)
         except Exception as exc:
             return self.handle_anusport_sync_page(conn, user, error=str(exc))
@@ -1664,6 +1669,7 @@ class Handler(BaseHTTPRequestHandler):
     def handle_anusport_sync_settings_submit(self, conn, user, form):
         self._require_admin(user)
         enabled = 1 if form.get("enabled") == "1" else 0
+        send_emails = 1 if form.get("send_emails") == "1" else 0
         try:
             minutes = max(5, int(form.get("minutes", "1440")))
         except ValueError:
@@ -1671,8 +1677,8 @@ class Handler(BaseHTTPRequestHandler):
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE site_settings SET anusport_sync_enabled = %s, anusport_sync_minutes = %s, "
-                "anusport_sync_next_at = NOW() WHERE id = 1",
-                (enabled, minutes),
+                "anusport_sync_send_emails = %s, anusport_sync_next_at = NOW() WHERE id = 1",
+                (enabled, minutes, send_emails),
             )
         redirect(self, "/admin/anusport-sync")
 

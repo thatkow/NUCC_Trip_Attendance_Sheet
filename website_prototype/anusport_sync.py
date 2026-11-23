@@ -359,13 +359,15 @@ def _read_club_orders(orders_bytes: bytes, users_bytes: bytes) -> List[Dict[str,
     return out
 
 
-def run_sync(conn) -> Dict[str, Any]:
+def run_sync(conn, send_emails: bool = False) -> Dict[str, Any]:
     """Fetches the Orders/Users exports, matches each qualifying caving-club
     order to an existing local account (anusportid -> email -> exact
     first+last name), updates membership_expiry to the latest matched
     order's expiry if it changed, and creates a new (passwordless, claimable
     via /register) account for anyone with no match but a known email.
-    Returns a summary dict."""
+    Returns a summary dict. Renewal/welcome emails are only sent when
+    send_emails is True -- defaults to off so a sync never surprises
+    someone with an email unless explicitly asked to."""
     orders_bytes, users_bytes = fetch_orders_and_users_exports()
     club_orders = _read_club_orders(orders_bytes, users_bytes)
 
@@ -449,7 +451,7 @@ def run_sync(conn) -> Dict[str, Any]:
         is_new_member = current_expiry is None
         is_renewal = is_new_member or (new_expiry - current_expiry).days > _RENEWAL_THRESHOLD_DAYS
         email_sent = False
-        if is_renewal and db_user["email"]:
+        if send_emails and is_renewal and db_user["email"]:
             email_sent = send_membership_email(db_user["email"], db_user["name"], new_expiry, is_new_member)
 
         updated.append({
@@ -478,7 +480,7 @@ def run_sync(conn) -> Dict[str, Any]:
             no_email.append({"name": candidate["name"], "email": candidate["email"], "anusportid": candidate["anusportid"]})
             continue
 
-        email_sent = send_membership_email(candidate["email"], candidate["name"], candidate["new_expiry"], True)
+        email_sent = send_emails and send_membership_email(candidate["email"], candidate["name"], candidate["new_expiry"], True)
         created.append({
             "name": candidate["name"], "email": candidate["email"],
             "new_expiry": candidate["new_expiry"], "email_sent": email_sent,

@@ -33,7 +33,8 @@ CREATE TABLE site_settings (
     anusport_sync_minutes INT NOT NULL DEFAULT 1440, -- interval between automatic syncs (default: daily)
     anusport_sync_next_at DATETIME NULL, -- when the daemon should next run; updated after every run
     anusport_sync_last_run_at DATETIME NULL,
-    anusport_sync_last_summary TEXT NULL -- short human-readable result of the last run, shown on /admin/anusport-sync
+    anusport_sync_last_summary TEXT NULL, -- short human-readable result of the last run, shown on /admin/anusport-sync
+    anusport_sync_send_emails TINYINT(1) NOT NULL DEFAULT 0 -- whether the automatic (background) sync sends renewal/welcome emails
 );
 INSERT INTO site_settings (id, banner_url, distance_formula) VALUES (1, '/static/banner.jpg', 'km * 0.88');
 
