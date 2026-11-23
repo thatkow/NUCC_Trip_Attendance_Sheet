@@ -40,14 +40,9 @@ BASE_DIR = Path(__file__).resolve().parent
 STORAGE_STATE_PATH = BASE_DIR / "anusport_storage_state.json"
 
 LOGIN_URL = "https://anu-sport.com.au/Account/CommunityLogin"
-JOBS_LIST_URL = "https://anu-sport.com.au/Account/Jobs"
 JOB_DETAILS_RE = re.compile(r"/Account/Jobs/Details/(\d+)", re.IGNORECASE)
 JOB_POLL_TIMEOUT_SECONDS = 900
 JOB_POLL_INTERVAL_SECONDS = 10.0
-# Loosely matched against today's Jobs list row text, just to avoid queuing a
-# duplicate export if one's already running/done today (exact job naming
-# isn't critical -- worst case we just trigger a fresh one).
-JOB_KEYWORD_BY_KIND = {"orders": "Order", "users": "User"}
 
 _STUDENT_ID_RE = re.compile(r"^u(\d+)", re.IGNORECASE)
 _CLUB_KEYWORD = "caving"
@@ -135,25 +130,77 @@ def _export_ensure_logged_in(context, page, email, password) -> None:
     context.storage_state(path=str(STORAGE_STATE_PATH))
 
 
-def _export_find_todays_job(page, kind: str) -> Optional[Tuple[str, str]]:
-    keyword = JOB_KEYWORD_BY_KIND[kind]
-    page.goto(JOBS_LIST_URL, timeout=60000, wait_until="domcontentloaded")
-    today_str = date.today().strftime("%Y-%m-%d")
-    rows = page.locator("table tbody tr")
-    for i in range(rows.count()):
-        row = rows.nth(i)
-        text = row.inner_text()
-        if keyword not in text or today_str not in text:
+# The Users page's "Membership Status" filter defaults to only "Current"
+# checked -- a club member can be missing from the export entirely if their
+# status isn't Current (observed: an Expired/Inactive member silently
+# dropped). These exact ids/selector were taken from a saved debug snapshot
+# of the real page (anusport_debug/, see _save_debug_snapshot) -- the
+# checkboxes are a standard Bootstrap accordion + checkbox-list, not
+# anything dynamic, so hardcoding them is more reliable than guessing at
+# label-text-based locators (which silently matched nothing useful before).
+_ADVANCED_SEARCH_TOGGLE_SELECTOR = 'button[data-bs-target="#advancedSearchFilter"]'
+_MEMBERSHIP_STATUS_CHECKBOX_IDS = {
+    "Incomplete Application": "PostedItems_Items1",
+    "Pending": "PostedItems_Items2",
+    "Current": "PostedItems_Items3",
+    "Expired": "PostedItems_Items4",
+    "Inactive": "PostedItems_Items5",
+}
+_ADV_SEARCH_SUBMIT_SELECTOR = "#adv_search_btn"
+
+
+def _apply_users_status_filter(page) -> None:
+    """Expands the "Advanced Search" accordion (Bootstrap collapse -- its
+    content exists in the DOM but isn't interactable while collapsed, which
+    is why earlier attempts silently failed to check most of the boxes),
+    checks every Membership Status checkbox, then clicks the Advanced
+    Search's own Search button (#adv_search_btn, not the page's main quick
+    search) so the filter is actually applied before the export is
+    triggered -- checking the boxes alone doesn't filter anything until
+    submitted, same as the manual UI."""
+    toggle = page.locator(_ADVANCED_SEARCH_TOGGLE_SELECTOR)
+    if toggle.count() and toggle.first.get_attribute("aria-expanded") != "true":
+        toggle.first.click()
+        page.wait_for_timeout(500)
+
+    checked = 0
+    for label, checkbox_id in _MEMBERSHIP_STATUS_CHECKBOX_IDS.items():
+        box = page.locator(f"#{checkbox_id}")
+        if box.count() == 0:
+            print(f"[anusport_sync] Membership Status checkbox #{checkbox_id} ({label!r}) not found on the page.")
             continue
-        cells = row.locator("td")
-        job_id = cells.nth(0).inner_text().strip()
-        status = cells.nth(2).inner_text().strip()
-        return job_id, status
-    return None
+        try:
+            if not box.is_checked():
+                box.check()
+            checked += 1
+        except Exception as exc:
+            print(f"[anusport_sync] Couldn't check {label!r} (#{checkbox_id}): {exc}")
+
+    if checked == 0:
+        raise RuntimeError(
+            "Could not check any 'Membership Status' checkboxes on the Users export page -- "
+            "ANU Sport's markup may have changed (see anusport_debug/ for the last snapshot). "
+            "Aborting rather than exporting with whatever filter was already set."
+        )
+
+    search_btn = page.locator(_ADV_SEARCH_SUBMIT_SELECTOR)
+    if search_btn.count() == 0:
+        print(f"[anusport_sync] Couldn't find the Advanced Search submit button ({_ADV_SEARCH_SUBMIT_SELECTOR}) -- "
+              "the filter may not actually have been applied.")
+        return
+
+    search_btn.first.click()
+    try:
+        page.wait_for_load_state("networkidle", timeout=5000)
+    except Exception:
+        pass
+    page.wait_for_timeout(5000)
 
 
-def _export_trigger(page, admin_url: str) -> Tuple[str, Any]:
+def _export_trigger(page, admin_url: str, kind: str) -> Tuple[str, Any]:
     page.goto(admin_url, timeout=60000, wait_until="domcontentloaded")
+    if kind == "users":
+        _apply_users_status_filter(page)
     export_btn = page.locator("#export-button")
     if export_btn.count() == 0:
         raise RuntimeError(f"No #export-button found on {admin_url} -- ANU Sport's markup may have changed.")
@@ -213,17 +260,14 @@ def _export_wait_and_download(job_page, job_id, dest_dir: Path) -> Path:
 
 
 def _export_one(page, kind: str, dest_dir: Path) -> Path:
+    # Always queue a fresh export rather than reusing one already run today
+    # (an earlier version reused same-day jobs to avoid "queuing a
+    # duplicate" -- but that meant a stale job triggered before a filter
+    # fix, or with different Membership Status checkboxes, silently kept
+    # getting reused instead of picking up the fix. Correctness here matters
+    # more than avoiding an extra ANU Sport export job.)
     admin_url = config.ANUSPORT_ORDERS_URL if kind == "orders" else config.ANUSPORT_USERS_URL
-    existing = _export_find_todays_job(page, kind)
-    if existing:
-        job_id, status = existing
-        job_page = page.context.new_page()
-        job_page.goto(f"https://anu-sport.com.au/Account/Jobs/Details/{job_id}", timeout=60000, wait_until="domcontentloaded")
-        if status.lower() in ("succeeded", "running"):
-            return _export_wait_and_download(job_page, job_id, dest_dir)
-        job_page.close()
-
-    job_id, job_page = _export_trigger(page, admin_url)
+    job_id, job_page = _export_trigger(page, admin_url, kind)
     return _export_wait_and_download(job_page, job_id, dest_dir)
 
 
@@ -417,7 +461,7 @@ def run_sync(conn) -> Dict[str, Any]:
     created, no_email = [], []
     for candidate in new_candidates.values():
         if not candidate["email"]:
-            no_email.append({"name": candidate["name"], "email": None})
+            no_email.append({"name": candidate["name"], "email": None, "anusportid": candidate["anusportid"]})
             continue
 
         try:
@@ -431,7 +475,7 @@ def run_sync(conn) -> Dict[str, Any]:
             # Someone already holds this email/anusportid -- shouldn't
             # happen (by_email above should've caught it), but don't let
             # one collision abort the whole run.
-            no_email.append({"name": candidate["name"], "email": candidate["email"]})
+            no_email.append({"name": candidate["name"], "email": candidate["email"], "anusportid": candidate["anusportid"]})
             continue
 
         email_sent = send_membership_email(candidate["email"], candidate["name"], candidate["new_expiry"], True)
@@ -522,7 +566,7 @@ def build_report_workbook(result: Dict[str, Any]) -> bytes:
         [r["name"], r["email"], r["new_expiry"], r["email_sent"]] for r in result["created"]
     ])
     add_sheet("Unchanged", ["Name", "Email"], [[r["name"], r["email"]] for r in result["unchanged"]])
-    add_sheet("Skipped (no email)", ["Name"], [[r["name"]] for r in result["no_email"]])
+    add_sheet("Skipped (no email)", ["Name", "ANU Sport ID"], [[r["name"], r["anusportid"]] for r in result["no_email"]])
     add_sheet("Ambiguous", ["Name", "Email"], [[r["name"], r["email"]] for r in result["ambiguous"]])
 
     buf = io.BytesIO()

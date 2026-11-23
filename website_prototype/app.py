@@ -24,6 +24,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.request
 from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
+import pymysql
+
 import accounting
 import bank_accounting
 import formula
@@ -1400,6 +1402,7 @@ class Handler(BaseHTTPRequestHandler):
         <p><a href="/admin">&larr; back to admin</a></p>
         <h1>Members</h1>
         {self._admin_nav("/admin/members")}
+        <p class="muted">{len(members)} member{'' if len(members) == 1 else 's'}</p>
         <div class="card" style="overflow-x:auto;">
         <table>
           <tr><th>Name</th><th>Email</th><th>Role</th><th>Membership expiry</th><th></th></tr>
@@ -1573,7 +1576,9 @@ class Handler(BaseHTTPRequestHandler):
                 person_row(c, f"Member until {c['new_expiry']:%d %b %Y}{' (email sent)' if c['email_sent'] else ''}")
                 for c in result["created"]
             ) or '<tr><td colspan="3" class="muted">None</td></tr>'
-            no_email_rows = "".join(person_row(p) for p in result["no_email"]) or '<tr><td colspan="3" class="muted">None</td></tr>'
+            no_email_rows = "".join(
+                person_row(p, f"ANU Sport ID: {html.escape(p['anusportid'] or '?')}") for p in result["no_email"]
+            ) or '<tr><td colspan="3" class="muted">None</td></tr>'
             result_html = f"""
             <div class="card">
               <h3>Updated ({len(result['updated'])})</h3>
@@ -3871,7 +3876,7 @@ class Handler(BaseHTTPRequestHandler):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT s.*, u.name, u.email, u.profile_picture_url, u.membership_expiry FROM event_signups s
+                SELECT s.*, u.name, u.email, u.profile_picture_url, u.membership_expiry, u.password_hash FROM event_signups s
                 JOIN users u ON u.id = s.user_id
                 WHERE s.event_id = %s ORDER BY s.created_at
                 """,
@@ -3967,10 +3972,10 @@ class Handler(BaseHTTPRequestHandler):
                 {avatar(s['name'], s.get('profile_picture_url'))}
                 <span class="name">{html.escape(s['name'])}</span>
                 {f'<span class="badge" style="background:var(--fb-blue); color:#fff; border-radius:4px; padding:0.1em 0.5em; font-size:0.8em;" title="Member of the National University Caving Club (NUCC)">nucc</span>' if s.get('membership_expiry') else ''}
-                <span class="status">{"No login" if not s.get("email") else "Going"}</span>
+                <span class="status">{"No login" if not s.get("password_hash") else "Going"}</span>
                 {f'''<form class="inline" method="post" action="/events/{event_id}/guests/{s["user_id"]}/remove" onsubmit="return confirm('Remove this guest?');">
                   <button type="submit" class="btn" style="padding:0.2em 0.6em;">Remove</button>
-                </form>''' if is_host and not s.get("email") else ''}
+                </form>''' if is_host and not s.get("password_hash") else ''}
               </div>"""
             for s in approved
         ) or '<p class="muted">No one yet &mdash; be the first!</p>'
@@ -4039,8 +4044,9 @@ class Handler(BaseHTTPRequestHandler):
                   <p class="muted">For someone who went on this trip but doesn't have an account here (e.g. importing
                   a past trip's attendance sheet). Creates an account for them with no login -- they count toward the
                   fee split and show up everywhere a regular participant would.</p>
-                  <form method="post" action="/events/{event_id}/guests" style="display:flex; gap:0.5em;">
-                    <input name="name" placeholder="Full name" required style="flex:1;">
+                  <form method="post" action="/events/{event_id}/guests" style="display:flex; flex-direction:column; gap:0.5em;">
+                    <input name="name" placeholder="Full name" required style="width:100%;">
+                    <input name="email" type="email" placeholder="Email" required style="width:100%;">
                     <button type="submit" class="btn-primary">Create</button>
                   </form>
                   <p style="margin-top:0.8em;">
@@ -4987,9 +4993,15 @@ class Handler(BaseHTTPRequestHandler):
         if event["host_id"] != user["id"]:
             return self._send_html(render_page("Forbidden", "<h1>Only the host can add guests.</h1>", user), status=403)
         name = form.get("name", "").strip()
-        if name:
+        email = form.get("email", "").strip().lower()
+        if name and email:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO users (name) VALUES (%s)", (name,))
+                try:
+                    cur.execute("INSERT INTO users (name, email) VALUES (%s, %s)", (name, email))
+                except pymysql.err.IntegrityError:
+                    # Someone with this email already has an account -- don't
+                    # create a second, conflicting one for the same person.
+                    return redirect(self, f"/events/{event_id}")
                 guest_id = cur.lastrowid
                 cur.execute(
                     "INSERT INTO event_signups (event_id, user_id, status) VALUES (%s, %s, 'approved')",
