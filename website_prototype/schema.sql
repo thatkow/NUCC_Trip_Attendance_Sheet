@@ -45,6 +45,17 @@ CREATE TABLE sessions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Self-service "forgot password" tokens (also doubles as the way to claim a
+-- passwordless account created by the ANU Sport sync or "+ add guest" --
+-- setting a password via a valid token works the same regardless of
+-- whether the account already had one). One-time use: deleted once consumed.
+CREATE TABLE password_resets (
+    token VARCHAR(64) PRIMARY KEY,
+    user_id INT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     host_id INT NOT NULL,

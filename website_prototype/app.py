@@ -33,6 +33,7 @@ import auth
 import anusport_daemon
 import anusport_sync
 import config
+import email_notify
 import db
 import markdown
 
@@ -424,7 +425,7 @@ def render_page(title, body, user=None):
             f'{pic} {html.escape(user["name"])}</a> &middot; <a href="/logout">Log out</a>'
         )
     else:
-        user_nav = '<a href="/login">Log in</a> &middot; <a href="/register">Register</a>'
+        user_nav = '<a href="/login">Log in</a>'
     if _NAV_LINKS_CACHE is None:
         _refresh_nav_links_cache(db.get_connection())
     page_links = "".join(
@@ -627,8 +628,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_content_page(conn, user, m.group(1))
             if path == "/login":
                 return self.handle_login_form(user)
-            if path == "/register":
-                return self.handle_register_form(user)
+            if path == "/forgot-password":
+                return self.handle_forgot_password_form(user)
+            m = re.fullmatch(r"/reset-password/([0-9a-f]{64})", path)
+            if m:
+                return self.handle_reset_password_form(conn, user, m.group(1))
             if path == "/logout":
                 return self.handle_logout(conn)
             if path == "/events/new":
@@ -707,10 +711,13 @@ class Handler(BaseHTTPRequestHandler):
         form = self._read_form()
 
         try:
-            if path == "/register":
-                return self.handle_register_submit(conn, form)
             if path == "/login":
                 return self.handle_login_submit(conn, form)
+            if path == "/forgot-password":
+                return self.handle_forgot_password_submit(conn, form)
+            m = re.fullmatch(r"/reset-password/([0-9a-f]{64})", path)
+            if m:
+                return self.handle_reset_password_submit(conn, m.group(1), form)
             if path == "/events/new":
                 return self.handle_event_new_submit(conn, user, form)
             if path == "/profile":
@@ -892,67 +899,101 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- auth ---------------------------------------------------------------
 
-    def handle_register_form(self, user, error=None):
-        error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
-        body = f"""
-        <div class="card" style="max-width:380px; margin:3em auto;">
-        <h1>Register</h1>
-        {error_html}
-        <form method="post" action="/register">
-          <label>Name<input name="name" required></label>
-          <label>Email<input name="email" type="email" required></label>
-          <label>Password<input name="password" type="password" required minlength="8"></label>
-          <button type="submit" class="btn-primary" style="width:100%;">Create account</button>
-        </form>
-        </div>"""
-        self._send_html(render_page("Register", body, user))
+    def _site_base_url(self):
+        """Best-effort absolute origin for building links in emails (there's
+        no admin-configured site URL setting) -- uses the request's own Host
+        header, guessing http for local dev hosts and https otherwise."""
+        host = self.headers.get("Host", "localhost")
+        scheme = "http" if host.split(":")[0] in ("localhost", "127.0.0.1") else "https"
+        return f"{scheme}://{host}"
 
-    def handle_register_submit(self, conn, form):
-        name = form.get("name", "").strip()
-        email = form.get("email", "").strip().lower()
-        password = form.get("password", "")
-        if not name or not email or len(password) < 8:
-            return self.handle_register_form(None, error="All fields are required; password must be at least 8 characters.")
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
-            existing = cur.fetchone()
-        if existing and existing["password_hash"] is not None:
-            return self.handle_register_form(None, error="That email is already registered.")
-        if existing:
-            # A passwordless placeholder account already exists for this
-            # email (e.g. one created by the ANU Sport sync) -- claim it by
-            # setting its password instead of blocking the registration.
-            password_hash, salt = auth.hash_password(password)
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE users SET name = %s, password_hash = %s, salt = %s WHERE id = %s",
-                    (name, password_hash, salt, existing["id"]),
-                )
-            user_id = existing["id"]
-        else:
-            user_id = auth.create_user(conn, email, name, password)
-        token = auth.create_session(conn, user_id)
-        self.send_response(302)
-        self.send_header("Location", "/")
-        self.send_header(
-            "Set-Cookie",
-            f"{config.SESSION_COOKIE_NAME}={token}; Path=/; HttpOnly; Max-Age={config.SESSION_LIFETIME_HOURS * 3600}",
-        )
-        self.end_headers()
-
-    def handle_login_form(self, user, error=None):
+    def handle_login_form(self, user, error=None, success=None):
         error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
+        success_html = f'<p style="color:#15803d;">{html.escape(success)}</p>' if success else ""
         body = f"""
         <div class="card" style="max-width:380px; margin:3em auto;">
         <h1>Log in</h1>
-        {error_html}
+        {error_html}{success_html}
         <form method="post" action="/login">
           <label>Email<input name="email" type="email" required></label>
           <label>Password<input name="password" type="password" required></label>
           <button type="submit" class="btn-primary" style="width:100%;">Log in</button>
         </form>
+        <p style="margin-top:1em; text-align:center;"><a href="/forgot-password">Forgot your password?</a></p>
         </div>"""
         self._send_html(render_page("Log in", body, user))
+
+    def handle_forgot_password_form(self, user, sent=False):
+        body_inner = (
+            '<p style="color:#15803d;">If that email has an account, we\'ve sent a password reset link to it.</p>'
+            '<p class="muted"><a href="/login">Back to log in</a></p>'
+        ) if sent else f"""
+        <form method="post" action="/forgot-password">
+          <label>Email<input name="email" type="email" required></label>
+          <button type="submit" class="btn-primary" style="width:100%;">Send reset link</button>
+        </form>
+        <p style="margin-top:1em; text-align:center;"><a href="/login">Back to log in</a></p>"""
+        body = f"""
+        <div class="card" style="max-width:380px; margin:3em auto;">
+        <h1>Forgot your password?</h1>
+        <p class="muted">Enter the email you think your account uses. If it has an account, we'll email a link to set a new password.</p>
+        {body_inner}
+        </div>"""
+        self._send_html(render_page("Forgot password", body, user))
+
+    def handle_forgot_password_submit(self, conn, form):
+        email = form.get("email", "").strip().lower()
+        if email:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+                existing = cur.fetchone()
+            if existing:
+                token = auth.create_password_reset(conn, existing["id"])
+                reset_url = f"{self._site_base_url()}/reset-password/{token}"
+                email_notify.send_password_reset_email(email, reset_url)
+        # Always the same response, whether or not the email matched an
+        # account -- otherwise this page could be used to check who has one.
+        return self.handle_forgot_password_form(None, sent=True)
+
+    def handle_reset_password_form(self, conn, user, token, error=None):
+        target = auth.get_user_for_reset_token(conn, token)
+        if not target:
+            body = """
+            <div class="card" style="max-width:380px; margin:3em auto;">
+            <h1>Link expired</h1>
+            <p>This password reset link is invalid or has expired.</p>
+            <p><a href="/forgot-password">Request a new one</a></p>
+            </div>"""
+            return self._send_html(render_page("Link expired", body, user), status=400)
+
+        error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
+        body = f"""
+        <div class="card" style="max-width:380px; margin:3em auto;">
+        <h1>Choose a new password</h1>
+        {error_html}
+        <form method="post" action="/reset-password/{token}">
+          <label>New password<input name="password" type="password" required minlength="8"></label>
+          <button type="submit" class="btn-primary" style="width:100%;">Set password</button>
+        </form>
+        </div>"""
+        self._send_html(render_page("Reset password", body, user))
+
+    def handle_reset_password_submit(self, conn, token, form):
+        password = form.get("password", "")
+        if len(password) < 8:
+            return self.handle_reset_password_form(conn, None, token, error="Password must be at least 8 characters.")
+        target = auth.get_user_for_reset_token(conn, token)
+        if not target:
+            return self.handle_reset_password_form(conn, None, token)
+        auth.consume_password_reset(conn, token, password)
+        session_token = auth.create_session(conn, target["id"])
+        self.send_response(302)
+        self.send_header("Location", "/")
+        self.send_header(
+            "Set-Cookie",
+            f"{config.SESSION_COOKIE_NAME}={session_token}; Path=/; HttpOnly; Max-Age={config.SESSION_LIFETIME_HOURS * 3600}",
+        )
+        self.end_headers()
 
     def handle_login_submit(self, conn, form):
         email = form.get("email", "")

@@ -72,3 +72,50 @@ def get_user_for_token(conn, token: str):
 def destroy_session(conn, token: str):
     with conn.cursor() as cur:
         cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
+
+
+PASSWORD_RESET_LIFETIME_HOURS = 1
+
+
+def create_password_reset(conn, user_id: int) -> str:
+    """One-time, time-limited token for the forgot-password flow. Also
+    used to claim a passwordless account (ANU Sport sync / "+ add guest"),
+    since setting a password via a valid token works the same either way."""
+    token = secrets.token_hex(32)
+    expires_at = datetime.utcnow() + timedelta(hours=PASSWORD_RESET_LIFETIME_HOURS)
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM password_resets WHERE user_id = %s", (user_id,))
+        cur.execute(
+            "INSERT INTO password_resets (token, user_id, expires_at) VALUES (%s, %s, %s)",
+            (token, user_id, expires_at),
+        )
+    return token
+
+
+def get_user_for_reset_token(conn, token: str):
+    if not token:
+        return None
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT u.* FROM password_resets r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.token = %s AND r.expires_at > UTC_TIMESTAMP()
+            """,
+            (token,),
+        )
+        return cur.fetchone()
+
+
+def consume_password_reset(conn, token: str, new_password: str) -> None:
+    """Sets the account's password and deletes the (now used) token."""
+    user = get_user_for_reset_token(conn, token)
+    if not user:
+        return
+    password_hash, salt = hash_password(new_password)
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE users SET password_hash = %s, salt = %s WHERE id = %s",
+            (password_hash, salt, user["id"]),
+        )
+        cur.execute("DELETE FROM password_resets WHERE token = %s", (token,))
