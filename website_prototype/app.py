@@ -1094,6 +1094,35 @@ class Handler(BaseHTTPRequestHandler):
             cur.execute("SELECT bank_account_name, bank_bsb, bank_account_number, bank_logo_url FROM site_settings WHERE id = 1")
             return cur.fetchone() or {}
 
+    def _render_info_tooltip(self, items):
+        """A hoverable breakdown icon for a Fee/Contributions cell on the
+        "who owes what" table, listing each item and its amount -- used on
+        both the real contributions page and the public view share link."""
+        description_counts = {}
+        for i in items:
+            description_counts[i["description"]] = description_counts.get(i["description"], 0) + 1
+
+        def label(i):
+            text = i["description"]
+            if description_counts[text] > 1 and i.get("paid_by"):
+                text = f"{text} (paid by {i['paid_by']})"
+            return html.escape(text)
+
+        rows = "".join(
+            f"<tr><td>{label(i)}</td><td style='text-align:right; white-space:nowrap;'>{money(i['amount'])}</td></tr>"
+            for i in items
+        ) or "<tr><td class='muted'>Nothing yet.</td></tr>"
+        total = money(sum(i["amount"] for i in items))
+        return f"""<span class="info-tooltip">
+          <button type="button" class="info-icon" style="border:none; background:none; cursor:pointer; color:var(--fb-blue); font-size:1em; padding:0 0.2em;">&#9432;</button>
+          <span class="info-tooltip-content">
+            <table style="width:100%; margin:0;">
+              {rows}
+              <tr><th style="text-align:left;">Total</th><th style="text-align:right;">{total}</th></tr>
+            </table>
+          </span>
+        </span>"""
+
     def _pay_button(self, bank_details, amount, dialog_id="pay-dialog"):
         """A "Pay" button that opens the shared pay dialog with this
         amount. Builds the onclick as JSON-encoded JS arguments, then
@@ -4644,31 +4673,7 @@ class Handler(BaseHTTPRequestHandler):
         accounts = self._compute_event_accounts(conn, event_id)
         gear_rates = self._resolve_event_gear_rates(conn, event_id)
 
-        def info_tooltip(items):
-            description_counts = {}
-            for i in items:
-                description_counts[i["description"]] = description_counts.get(i["description"], 0) + 1
-
-            def label(i):
-                text = i["description"]
-                if description_counts[text] > 1 and i.get("paid_by"):
-                    text = f"{text} (paid by {i['paid_by']})"
-                return html.escape(text)
-
-            rows = "".join(
-                f"<tr><td>{label(i)}</td><td style='text-align:right; white-space:nowrap;'>{money(i['amount'])}</td></tr>"
-                for i in items
-            ) or "<tr><td class='muted'>Nothing yet.</td></tr>"
-            total = money(sum(i["amount"] for i in items))
-            return f"""<span class="info-tooltip">
-              <button type="button" class="info-icon" style="border:none; background:none; cursor:pointer; color:var(--fb-blue); font-size:1em; padding:0 0.2em;">&#9432;</button>
-              <span class="info-tooltip-content">
-                <table style="width:100%; margin:0;">
-                  {rows}
-                  <tr><th style="text-align:left;">Total</th><th style="text-align:right;">{total}</th></tr>
-                </table>
-              </span>
-            </span>"""
+        info_tooltip = self._render_info_tooltip
 
         bank_details = self._get_bank_details(conn)
         account_rows = "".join(
@@ -5046,9 +5051,9 @@ class Handler(BaseHTTPRequestHandler):
         account_rows = "".join(
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
-              <td class="owe-negative">{money(a['paid'])}</td>
+              <td class="owe-negative">{money(a['paid'])} {self._render_info_tooltip(a['paid_items'])}</td>
               <td class="muted" style="text-align:center;">&minus;</td>
-              <td class="owe-positive">{money(a['fee'])}</td>
+              <td class="owe-positive">{money(a['fee'])} {self._render_info_tooltip(a['fee_items'])}</td>
               <td class="muted" style="text-align:center;">=</td>
               <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{signed_money(-a['owe'])}</td>
               <td>{self._pay_button(bank_details, f"{a['owe']:.2f}") if a['owe'] > 0 and event['lodged_at'] else ''}</td>
