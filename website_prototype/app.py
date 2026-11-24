@@ -1094,6 +1094,20 @@ class Handler(BaseHTTPRequestHandler):
             cur.execute("SELECT bank_account_name, bank_bsb, bank_account_number, bank_logo_url FROM site_settings WHERE id = 1")
             return cur.fetchone() or {}
 
+    def _maintenance_info_tooltip(self):
+        """Explains the "Maintenance" line item next to the Contributions
+        heading -- it's easy to mistake for an unrelated charge, since it's
+        really just the driven-distance (per-km) contribution, separate
+        from any Petrol contribution the same driver also logs."""
+        return """<span class="info-tooltip">
+          <button type="button" class="info-icon" style="border:none; background:none; cursor:pointer; color:var(--fb-blue); font-size:1em; padding:0 0.2em;">&#9432;</button>
+          <span class="info-tooltip-content">
+            <p style="margin:0; text-align:left;">"Maintenance" is the driven-distance contribution -- a per-km
+            amount covering wear and tear on the driver's own car, separate from any "Petrol" contribution they
+            also log for fuel.</p>
+          </span>
+        </span>"""
+
     def _render_info_tooltip(self, items):
         """A hoverable breakdown icon for a Fee/Contributions cell on the
         "who owes what" table, listing each item and its amount -- used on
@@ -4861,7 +4875,7 @@ class Handler(BaseHTTPRequestHandler):
 
         <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="margin:0;">Contributions</h3>
+          <h3 style="margin:0;">Contributions {self._maintenance_info_tooltip()}</h3>
           <button type="button" class="btn-primary" onclick="document.getElementById('contribution-choice-dialog').showModal()" style="width:2.2em; height:2.2em; border-radius:50%; padding:0; font-size:1.2em; line-height:1;">+</button>
         </div>
         <table>
@@ -5143,7 +5157,7 @@ class Handler(BaseHTTPRequestHandler):
         </div>
 
         <div class="card">
-        <h3>Contributions</h3>
+        <h3>Contributions {self._maintenance_info_tooltip()}</h3>
         <table>
           <tr><th>Date</th><th>Description</th><th>Type</th><th>Paid by</th><th>Consumed by</th><th>Amount</th></tr>
           {contribution_rows or '<tr><td colspan="6">None yet</td></tr>'}
