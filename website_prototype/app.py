@@ -4634,8 +4634,8 @@ class Handler(BaseHTTPRequestHandler):
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
               <td>{money(a['paid'])} {info_tooltip(a['paid_items'])}</td>
-              <td>{money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
-              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{money(a['owe'])}</td>
+              <td><span class="muted">&minus;</span> {money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
+              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}"><span class="muted">=</span> {money(a['owe'])}</td>
               <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
@@ -4783,7 +4783,7 @@ class Handler(BaseHTTPRequestHandler):
         <div class="card">
         <h3>Who owes what</h3>
         <table>
-          <tr><th>Name</th><th>Contributions</th><th>&minus; Fee</th><th>= Owe (-Owed)</th><th></th></tr>
+          <tr><th>Name</th><th>Contributions</th><th>Fee</th><th>Owe (-Owed)</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
@@ -5007,8 +5007,8 @@ class Handler(BaseHTTPRequestHandler):
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
               <td>{money(a['paid'])}</td>
-              <td>{money(a['fee'])}</td>
-              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{money(a['owe'])}</td>
+              <td><span class="muted">&minus;</span> {money(a['fee'])}</td>
+              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}"><span class="muted">=</span> {money(a['owe'])}</td>
               <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
@@ -5019,7 +5019,7 @@ class Handler(BaseHTTPRequestHandler):
         to see the full contributions page.</p>
         <div class="card">
         <table>
-          <tr><th>Name</th><th>Contributions</th><th>&minus; Fee</th><th>= Owe (-Owed)</th><th></th></tr>
+          <tr><th>Name</th><th>Contributions</th><th>Fee</th><th>Owe (-Owed)</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
