@@ -4593,19 +4593,28 @@ class Handler(BaseHTTPRequestHandler):
 
                 <p><strong>View only</strong> &mdash; shows just the "who owes what" summary, with a button to log in
                 for the full page.</p>
-                {f'<input type="text" readonly value="{html.escape(view_url)}" onclick="this.select()" style="width:100%; margin-bottom:0.4em;">' if view_url else '<p class="muted">No link generated yet.</p>'}
-                <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
-                  <input type="hidden" name="mode" value="view">
-                  <button type="submit" class="btn">{"Regenerate" if view_url else "Generate"} view link</button>
-                </form>
+                <div style="display:flex; gap:0.5em; flex-wrap:wrap;">
+                  {f'''<button type="button" class="btn" onclick="copyShareLink('{html.escape(view_url, quote=True)}')">Copy view link</button>''' if view_url else ''}
+                  <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
+                    <input type="hidden" name="mode" value="view">
+                    <button type="submit" class="btn">{"Regenerate" if view_url else "Generate"} view link</button>
+                  </form>
+                </div>
 
                 <p style="margin-top:1.2em;"><strong>Edit</strong> &mdash; shows the full page as if logged in as the
                 trip host, so they can add/edit contributions too.</p>
-                {f'<input type="text" readonly value="{html.escape(edit_url)}" onclick="this.select()" style="width:100%; margin-bottom:0.4em;">' if edit_url else '<p class="muted">No link generated yet.</p>'}
-                <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
-                  <input type="hidden" name="mode" value="edit">
-                  <button type="submit" class="btn">{"Regenerate" if edit_url else "Generate"} edit link</button>
-                </form>
+                <div style="display:flex; gap:0.5em; flex-wrap:wrap;">
+                  {f'''<button type="button" class="btn" onclick="copyShareLink('{html.escape(edit_url, quote=True)}')">Copy edit link</button>''' if edit_url else ''}
+                  <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
+                    <input type="hidden" name="mode" value="edit">
+                    <button type="submit" class="btn">{"Regenerate" if edit_url else "Generate"} edit link</button>
+                  </form>
+                </div>
+                <script>
+                  function copyShareLink(url) {{
+                    navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard')).catch(() => showToast('Could not copy link'));
+                  }}
+                </script>
               </div>
             </dialog>
             """
