@@ -1101,7 +1101,7 @@ class Handler(BaseHTTPRequestHandler):
         from any Petrol contribution the same driver also logs."""
         return """<span class="info-tooltip">
           <button type="button" class="info-icon" style="border:none; background:none; cursor:pointer; color:var(--fb-blue); font-size:1em; padding:0 0.2em;">&#9432;</button>
-          <span class="info-tooltip-content">
+          <span class="info-tooltip-content" style="left:0; transform:none; width:260px; max-width:70vw;">
             <p style="margin:0; text-align:left;">"Maintenance" is the driven-distance contribution -- a per-km
             amount covering wear and tear on the driver's own car, separate from any "Petrol" contribution they
             also log for fuel.</p>
