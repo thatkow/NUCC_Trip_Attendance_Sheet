@@ -706,6 +706,16 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.handle_share_link(conn, user, m.group(1))
 
+            m = re.fullmatch(r"/share/([A-Za-z0-9_-]{32,64})/contributions/(\d+)/edit", path)
+            if m:
+                token = m.group(1)
+                event, host = self._get_event_and_host_by_edit_token(conn, token)
+                if not event:
+                    return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
+                return self.handle_contribution_edit_form(
+                    conn, None, event["id"], int(m.group(2)), effective_user=host, event_base=f"/share/{token}"
+                )
+
             self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
         except PermissionErrorRedirect as e:
             redirect(self, e.location)
@@ -882,6 +892,33 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/events/(\d+)/fees/amend", path)
             if m:
                 return self.handle_fees_amend(conn, user, int(m.group(1)))
+
+            m = re.fullmatch(r"/share/([A-Za-z0-9_-]{32,64})/(contributions(?:/drove)?|contributions/(\d+)/(?:edit|delete)|gear-use(?:/(\d+)/delete)?|fees/(?:lodge|amend))", path)
+            if m:
+                token = m.group(1)
+                sub = m.group(2)
+                event, host = self._get_event_and_host_by_edit_token(conn, token)
+                if not event:
+                    return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
+                event_id = event["id"]
+                base = f"/share/{token}"
+                if sub == "contributions":
+                    return self.handle_contribution_submit(conn, None, event_id, form, effective_user=host, event_base=base)
+                if sub == "contributions/drove":
+                    return self.handle_contribution_drove_submit(conn, None, event_id, form, effective_user=host, event_base=base)
+                if sub.startswith("contributions/") and sub.endswith("/edit"):
+                    return self.handle_contribution_edit_submit(conn, None, event_id, int(m.group(3)), form, effective_user=host, event_base=base)
+                if sub.startswith("contributions/") and sub.endswith("/delete"):
+                    return self.handle_contribution_delete(conn, None, event_id, int(m.group(3)), effective_user=host, event_base=base)
+                if sub == "gear-use":
+                    return self.handle_gear_use_submit(conn, None, event_id, form, effective_user=host, event_base=base)
+                if sub.startswith("gear-use/"):
+                    return self.handle_gear_use_delete(conn, None, event_id, int(m.group(4)), effective_user=host, event_base=base)
+                if sub == "fees/lodge":
+                    return self.handle_fees_lodge(conn, None, event_id, effective_user=host, event_base=base)
+                if sub == "fees/amend":
+                    return self.handle_fees_amend(conn, None, event_id, effective_user=host, event_base=base)
+                return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
 
             m = re.fullmatch(r"/events/(\d+)/checklist", path)
             if m:
@@ -4370,17 +4407,27 @@ class Handler(BaseHTTPRequestHandler):
                 diffs[uid] = (lodged, live)
         return diffs
 
-    def handle_contributions_page(self, conn, user, event_id):
-        self._require_login(user)
+    def handle_contributions_page(self, conn, user, event_id, effective_user=None, event_base=None):
+        """effective_user/event_base let this page (and its action forms) be
+        rendered for an anonymous visitor holding a valid edit share-link
+        (see handle_share_link): effective_user is the trip host, used for
+        all permission/ownership checks instead of the (None) logged-in
+        user, and event_base replaces "/events/<id>" in every action URL on
+        the page with "/share/<token>" so forms submit back through the
+        share-link routes rather than requiring a real session."""
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         if not event:
             return self._send_html(render_page("Not found", "<h1>Trip not found</h1>", user), status=404)
-        is_host = event["host_id"] == user["id"]
+        is_host = event["host_id"] == viewer["id"]
 
         from_accounting = parse_qs(urlparse(self.path).query).get("from", [""])[0] == "accounting"
         back_link = (
             '<a href="/accounting">&larr; back to accounting</a>' if from_accounting
-            else f'<a href="/events/{event_id}">&larr; back to trip</a>'
+            else (f'<a href="/events/{event_id}">&larr; back to trip</a>' if effective_user is None else "")
         )
 
         query = parse_qs(urlparse(self.path).query)
@@ -4490,22 +4537,22 @@ class Handler(BaseHTTPRequestHandler):
               <td>{html.escape(', '.join(c['consumed_by_names'])) if c['consumed_by_names'] else '<em>shared</em>'}</td>
               <td>{money(c['amount'])}</td>
               <td>{f'''<div style="display:flex; align-items:center; gap:0.5em;">
-                <a class="btn" style="padding:0.2em 0.6em;" href="/events/{event_id}/contributions/{c["id"]}/edit">Edit</a>
-                <form class="inline" method="post" action="/events/{event_id}/contributions/{c["id"]}/delete" onsubmit="return confirm('Delete this contribution?');">
+                <a class="btn" style="padding:0.2em 0.6em;" href="{base}/contributions/{c["id"]}/edit">Edit</a>
+                <form class="inline" method="post" action="{base}/contributions/{c["id"]}/delete" onsubmit="return confirm('Delete this contribution?');">
                   <button type="submit" class="btn" style="padding:0.2em 0.6em;">Delete</button>
                 </form>
-              </div>''' if c['contributor_id'] == user['id'] or event['host_id'] == user['id'] else ''}</td>
+              </div>''' if c['contributor_id'] == viewer['id'] or event['host_id'] == viewer['id'] else ''}</td>
             </tr>"""
             for c in contributions
         )
 
         add_form_body = self._render_contribution_form(
-            f"/events/{event_id}/contributions", "Add contribution", all_signed_up, self._resolve_distance_formula(conn, event),
-            is_host=is_host, current_user=user
+            f"{base}/contributions", "Add contribution", all_signed_up, self._resolve_distance_formula(conn, event),
+            is_host=is_host, current_user=viewer
         )
         drove_form_body = self._render_drove_form(
-            f"/events/{event_id}/contributions/drove", all_signed_up, self._resolve_distance_formula(conn, event),
-            is_host=is_host, current_user=user
+            f"{base}/contributions/drove", all_signed_up, self._resolve_distance_formula(conn, event),
+            is_host=is_host, current_user=viewer
         )
 
         gear_use_rows = "".join(
@@ -4513,24 +4560,24 @@ class Handler(BaseHTTPRequestHandler):
               <td>{html.escape(g['participant_name'])}</td>
               <td>{html.escape(g['gear_name'])}</td>
               <td>{money(g['amount'])}</td>
-              <td>{f'''<form class="inline" method="post" action="/events/{event_id}/gear-use/{g["id"]}/delete" onsubmit="return confirm('Remove this gear use?');">
+              <td>{f'''<form class="inline" method="post" action="{base}/gear-use/{g["id"]}/delete" onsubmit="return confirm('Remove this gear use?');">
                 <button type="submit" class="btn" style="padding:0.2em 0.6em;">Remove</button>
-              </form>''' if is_host or g['participant_id'] == user['id'] else ''}</td>
+              </form>''' if is_host or g['participant_id'] == viewer['id'] else ''}</td>
             </tr>"""
             for g in gear_uses
         )
 
         gear_participant_options = "".join(
             f'<option value="{s["id"]}">{html.escape(s["name"])}</option>'
-            for s in ([{"id": user["id"], "name": "Myself"}] + [s for s in all_signed_up if s["id"] != user["id"]] if is_host
-                      else [{"id": user["id"], "name": "Myself"}])
+            for s in ([{"id": viewer["id"], "name": "Myself"}] + [s for s in all_signed_up if s["id"] != viewer["id"]] if is_host
+                      else [{"id": viewer["id"], "name": "Myself"}])
         )
         gear_type_options = "".join(
             f'<option value="{g["id"]}" data-description="{html.escape(g["description"] or "")}">{html.escape(g["name"])} (${g["rate"]}/person)</option>'
             for g in gear_rates
         )
         add_gear_use_form = f"""
-        <form method="post" action="/events/{event_id}/gear-use">
+        <form method="post" action="{base}/gear-use">
           <label>Gear
             <select name="gear_type_id" id="gear-type-select" required onchange="document.getElementById('gear-desc-hint').textContent = this.options[this.selectedIndex].dataset.description || '';">{gear_type_options}</select>
           </label>
@@ -4546,7 +4593,7 @@ class Handler(BaseHTTPRequestHandler):
             from_qs = "?from=accounting" if from_accounting else ""
             if not event["lodged_at"]:
                 lodge_section = f"""
-                <form method="post" action="/events/{event_id}/fees/lodge{from_qs}" style="display:inline;">
+                <form method="post" action="{base}/fees/lodge{from_qs}" style="display:inline;">
                   <button type="submit" class="btn-primary">Lodge fees</button>
                 </form>"""
                 lodge_note = (
@@ -4562,7 +4609,7 @@ class Handler(BaseHTTPRequestHandler):
                     if abs(lodged_totals.get(uid, Decimal("0")) - live_owes.get(uid, Decimal("0"))) >= Decimal("0.01")
                 }
                 lodge_section = f"""
-                <form method="post" action="/events/{event_id}/fees/amend{from_qs}" style="display:inline;">
+                <form method="post" action="{base}/fees/amend{from_qs}" style="display:inline;">
                   <button type="submit" class="btn{' btn-primary' if diffs else ''}" {'' if diffs else 'disabled'}>Amend fees</button>
                 </form>"""
                 lodge_note = (
@@ -4573,7 +4620,7 @@ class Handler(BaseHTTPRequestHandler):
                 )
 
         share_section = ""
-        if is_host:
+        if is_host and effective_user is None:
             if not event["share_view_token"] or not event["share_edit_token"]:
                 with conn.cursor() as cur:
                     if not event["share_view_token"]:
@@ -4598,8 +4645,8 @@ class Handler(BaseHTTPRequestHandler):
                 for the full page.</p>
                 <button type="button" class="btn" onclick="copyShareLink('{html.escape(view_url, quote=True)}')">Copy view link</button>
 
-                <p style="margin-top:1.2em;"><strong>Edit</strong> &mdash; shows the full page as if logged in as the
-                trip host, so they can add/edit contributions too.</p>
+                <p style="margin-top:1.2em;"><strong>Edit</strong> &mdash; shows the full page with working
+                add/edit/delete, scoped to just this trip (no account or site-wide access needed).</p>
                 <button type="button" class="btn" onclick="copyShareLink('{html.escape(edit_url, quote=True)}')">Copy edit link</button>
 
                 <script>
@@ -4808,6 +4855,20 @@ class Handler(BaseHTTPRequestHandler):
                 )
             return cur.fetchone() is not None
 
+    def _get_event_and_host_by_edit_token(self, conn, token):
+        """Resolves a contributions-page edit share-link token to (event,
+        host_user) without creating any session -- used so the edit link
+        grants full page functionality scoped to just this one event,
+        rather than a real site-wide login as the host."""
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM events WHERE share_edit_token = %s", (token,))
+            event = cur.fetchone()
+            if not event:
+                return None, None
+            cur.execute("SELECT * FROM users WHERE id = %s", (event["host_id"],))
+            host = cur.fetchone()
+            return event, host
+
     def handle_share_link(self, conn, user, token):
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM events WHERE share_view_token = %s", (token,))
@@ -4821,15 +4882,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
 
         if mode == "edit":
-            session_token = auth.create_session(conn, event["host_id"])
-            self.send_response(302)
-            self.send_header("Location", f"/events/{event['id']}/contributions")
-            self.send_header(
-                "Set-Cookie",
-                f"{config.SESSION_COOKIE_NAME}={session_token}; Path=/; HttpOnly; Max-Age={config.SESSION_LIFETIME_HOURS * 3600}",
+            _, host = self._get_event_and_host_by_edit_token(conn, token)
+            return self.handle_contributions_page(
+                conn, None, event["id"], effective_user=host, event_base=f"/share/{token}"
             )
-            self.end_headers()
-            return
 
         accounts = self._compute_event_accounts(conn, event["id"])
         account_rows = "".join(
@@ -4856,8 +4912,11 @@ class Handler(BaseHTTPRequestHandler):
         """
         self._send_html(render_page(f"{event['title']} -- Who owes what", body, user))
 
-    def handle_contribution_submit(self, conn, user, event_id, form):
-        self._require_login(user)
+    def handle_contribution_submit(self, conn, user, event_id, form, effective_user=None, event_base=None):
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         if not event:
             return redirect(self, "/")
@@ -4865,26 +4924,26 @@ class Handler(BaseHTTPRequestHandler):
         contribution_type = form.get("type") if form.get("type") in ("expense", "driven_distance") else "expense"
         description = form.get("description", "").strip()
         if not description:
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
         amount_raw = form.get("amount", "").strip()
         km_raw = form.get("km", "").strip()
         consumed_by_ids = [int(v) for v in form.getlist("consumed_by_ids")]
         contributor_id_raw = form.get("contributor_id", "").strip()
-        is_host = event["host_id"] == user["id"]
-        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else user["id"]
+        is_host = event["host_id"] == viewer["id"]
+        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else viewer["id"]
         contributor_name = None
 
         km = float(km_raw) if km_raw else None
         amount_input = float(amount_raw) if amount_raw else 0
 
         if self._is_duplicate_contribution(conn, event_id, contributor_id, contributor_name, description):
-            return redirect(self, f"/events/{event_id}/contributions?error=duplicate")
+            return redirect(self, f"{base}/contributions?error=duplicate")
 
         distance_formula = self._resolve_distance_formula(conn, event)
         try:
             amount, rate = accounting.compute_contribution_amount(contribution_type, amount_input, km, distance_formula)
         except (ValueError, formula.FormulaError):
-            redirect(self, f"/events/{event_id}/contributions")
+            redirect(self, f"{base}/contributions")
             return
 
         with conn.cursor() as cur:
@@ -4901,14 +4960,17 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT INTO contribution_consumers (contribution_id, user_id) VALUES (%s, %s)",
                     [(contribution_id, uid) for uid in consumed_by_ids],
                 )
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
-    def handle_contribution_drove_submit(self, conn, user, event_id, form):
+    def handle_contribution_drove_submit(self, conn, user, event_id, form, effective_user=None, event_base=None):
         """"I drove" shortcut: records a driven_distance contribution (km,
         priced by the event's distance formula) and, if given, a separate
         petrol expense contribution -- both attributed to the same driver
         and split the same way, in one go."""
-        self._require_login(user)
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         if not event:
             return redirect(self, "/")
@@ -4917,25 +4979,25 @@ class Handler(BaseHTTPRequestHandler):
         petrol_raw = form.get("petrol_amount", "").strip()
         consumed_by_ids = [int(v) for v in form.getlist("consumed_by_ids")]
         contributor_id_raw = form.get("contributor_id", "").strip()
-        is_host = event["host_id"] == user["id"]
-        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else user["id"]
+        is_host = event["host_id"] == viewer["id"]
+        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else viewer["id"]
         contributor_name = None
 
         if not km_raw:
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
         km = float(km_raw)
         petrol_amount = float(petrol_raw) if petrol_raw else 0
 
         maintenance_dup = self._is_duplicate_contribution(conn, event_id, contributor_id, contributor_name, "Maintenance")
         petrol_dup = petrol_amount and self._is_duplicate_contribution(conn, event_id, contributor_id, contributor_name, "Petrol")
         if maintenance_dup and (not petrol_amount or petrol_dup):
-            return redirect(self, f"/events/{event_id}/contributions?error=duplicate")
+            return redirect(self, f"{base}/contributions?error=duplicate")
 
         distance_formula = self._resolve_distance_formula(conn, event)
         try:
             amount, rate = accounting.compute_contribution_amount("driven_distance", 0, km, distance_formula)
         except (ValueError, formula.FormulaError):
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
 
         with conn.cursor() as cur:
             contribution_ids = []
@@ -4965,40 +5027,46 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT INTO contribution_consumers (contribution_id, user_id) VALUES (%s, %s)",
                     [(cid, uid) for cid in contribution_ids for uid in consumed_by_ids],
                 )
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
-    def handle_contribution_delete(self, conn, user, event_id, contribution_id):
-        self._require_login(user)
+    def handle_contribution_delete(self, conn, user, event_id, contribution_id, effective_user=None, event_base=None):
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         contribution = self._get_contribution(conn, contribution_id)
         if not event or not contribution or contribution["event_id"] != event_id:
-            return redirect(self, f"/events/{event_id}/contributions")
-        if not self._can_edit_contribution(event, contribution, user):
+            return redirect(self, f"{base}/contributions")
+        if not self._can_edit_contribution(event, contribution, viewer):
             return self._send_html(render_page("Forbidden", "<h1>You can't delete this contribution.</h1>", user), status=403)
 
         with conn.cursor() as cur:
             cur.execute("DELETE FROM contributions WHERE id = %s", (contribution_id,))
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
-    def handle_gear_use_submit(self, conn, user, event_id, form):
+    def handle_gear_use_submit(self, conn, user, event_id, form, effective_user=None, event_base=None):
         """Records a per-person gear-use fee: stored as a regular
         `contributions` row (gear_type_id set, contributor_id NULL -- nobody
         "paid" the club, it's just a direct charge) with a single
         contribution_consumers row for whoever used it, so it flows into
         the existing fee-splitting machinery (accounting.py) automatically."""
-        self._require_login(user)
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         if not event:
             return redirect(self, "/")
-        is_host = event["host_id"] == user["id"]
+        is_host = event["host_id"] == viewer["id"]
 
         gear_type_id_raw = form.get("gear_type_id", "").strip()
         if not gear_type_id_raw:
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
         gear_type_id = int(gear_type_id_raw)
 
         participant_id_raw = form.get("participant_id", "").strip()
-        participant_id = int(participant_id_raw) if is_host and participant_id_raw else user["id"]
+        participant_id = int(participant_id_raw) if is_host and participant_id_raw else viewer["id"]
 
         with conn.cursor() as cur:
             cur.execute(
@@ -5009,7 +5077,7 @@ class Handler(BaseHTTPRequestHandler):
             )
             gear = cur.fetchone()
             if not gear:
-                return redirect(self, f"/events/{event_id}/contributions")
+                return redirect(self, f"{base}/contributions")
             cur.execute(
                 """
                 INSERT INTO contributions (event_id, contributor_id, type, description, amount, gear_type_id)
@@ -5022,14 +5090,17 @@ class Handler(BaseHTTPRequestHandler):
                 "INSERT INTO contribution_consumers (contribution_id, user_id) VALUES (%s, %s)",
                 (contribution_id, participant_id),
             )
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
-    def handle_gear_use_delete(self, conn, user, event_id, contribution_id):
-        self._require_login(user)
+    def handle_gear_use_delete(self, conn, user, event_id, contribution_id, effective_user=None, event_base=None):
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         if not event:
-            return redirect(self, f"/events/{event_id}/contributions")
-        is_host = event["host_id"] == user["id"]
+            return redirect(self, f"{base}/contributions")
+        is_host = event["host_id"] == viewer["id"]
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -5041,17 +5112,18 @@ class Handler(BaseHTTPRequestHandler):
             )
             row = cur.fetchone()
             if not row:
-                return redirect(self, f"/events/{event_id}/contributions")
-            if not is_host and row["user_id"] != user["id"]:
+                return redirect(self, f"{base}/contributions")
+            if not is_host and row["user_id"] != viewer["id"]:
                 return self._send_html(render_page("Forbidden", "<h1>You can't remove this gear use.</h1>", user), status=403)
             cur.execute("DELETE FROM contributions WHERE id = %s", (contribution_id,))
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
-    def _fees_redirect(self, event_id):
+    def _fees_redirect(self, event_id, event_base=None):
         from_accounting = parse_qs(urlparse(self.path).query).get("from", [""])[0] == "accounting"
-        redirect(self, f"/events/{event_id}/contributions" + ("?from=accounting" if from_accounting else ""))
+        base = event_base or f"/events/{event_id}"
+        redirect(self, f"{base}/contributions" + ("?from=accounting" if from_accounting else ""))
 
-    def handle_fees_lodge(self, conn, user, event_id):
+    def handle_fees_lodge(self, conn, user, event_id, effective_user=None, event_base=None):
         """First-time lodging: records each participant's current owed
         amount for this trip as a row in event_fee_lodgements, and marks
         the trip lodged -- only from here does it count toward the
@@ -5059,14 +5131,16 @@ class Handler(BaseHTTPRequestHandler):
         once lodged, further changes go through handle_fees_amend instead,
         which leaves a visible correction trail rather than rewriting
         these rows."""
-        self._require_login(user)
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
         event = self._get_event(conn, event_id)
         if not event:
             return redirect(self, "/")
-        if event["host_id"] != user["id"]:
+        if event["host_id"] != viewer["id"]:
             return self._send_html(render_page("Forbidden", "<h1>Only the host can do this.</h1>", user), status=403)
         if event["lodged_at"]:
-            return self._fees_redirect(event_id)  # already lodged -- amend instead
+            return self._fees_redirect(event_id, event_base)  # already lodged -- amend instead
 
         live_owes = self._get_event_live_owes(conn, event_id)
         with conn.cursor() as cur:
@@ -5077,22 +5151,24 @@ class Handler(BaseHTTPRequestHandler):
                         (event_id, uid, f"Trip: {event['title']}", str(owe)),
                     )
             cur.execute("UPDATE events SET lodged_at = NOW() WHERE id = %s", (event_id,))
-        self._fees_redirect(event_id)
+        self._fees_redirect(event_id, event_base)
 
-    def handle_fees_amend(self, conn, user, event_id):
+    def handle_fees_amend(self, conn, user, event_id, effective_user=None, event_base=None):
         """For each member whose live owe no longer matches their lodged
         total, records a reversal row (negating the old lodged total) and
         a revision row (the new amount) -- so the member's balance history
         (handle_accounting_user_balance_page) shows the correction as two
         visible entries rather than silently changing a number."""
-        self._require_login(user)
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
         event = self._get_event(conn, event_id)
         if not event:
             return redirect(self, "/")
-        if event["host_id"] != user["id"]:
+        if event["host_id"] != viewer["id"]:
             return self._send_html(render_page("Forbidden", "<h1>Only the host can do this.</h1>", user), status=403)
         if not event["lodged_at"]:
-            return self._fees_redirect(event_id)  # nothing lodged yet -- lodge instead
+            return self._fees_redirect(event_id, event_base)  # nothing lodged yet -- lodge instead
 
         diffs = self._get_event_lodgement_diffs(conn, event_id)
         with conn.cursor() as cur:
@@ -5107,7 +5183,7 @@ class Handler(BaseHTTPRequestHandler):
                         "INSERT INTO event_fee_lodgements (event_id, user_id, description, amount) VALUES (%s, %s, %s, %s)",
                         (event_id, uid, f"Trip: {event['title']} (revised)", str(live)),
                     )
-        self._fees_redirect(event_id)
+        self._fees_redirect(event_id, event_base)
 
     def handle_event_checklist_submit(self, conn, user, event_id, form):
         """Host picks which club-wide checklist_items this trip requires --
@@ -5207,13 +5283,16 @@ class Handler(BaseHTTPRequestHandler):
     def _can_edit_contribution(self, event, contribution, user):
         return (contribution["contributor_id"] is not None and contribution["contributor_id"] == user["id"]) or event["host_id"] == user["id"]
 
-    def handle_contribution_edit_form(self, conn, user, event_id, contribution_id):
-        self._require_login(user)
+    def handle_contribution_edit_form(self, conn, user, event_id, contribution_id, effective_user=None, event_base=None):
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         contribution = self._get_contribution(conn, contribution_id)
         if not event or not contribution or contribution["event_id"] != event_id:
             return self._send_html(render_page("Not found", "<h1>Not found</h1>", user), status=404)
-        if not self._can_edit_contribution(event, contribution, user):
+        if not self._can_edit_contribution(event, contribution, viewer):
             return self._send_html(render_page("Forbidden", "<h1>You can't edit this contribution.</h1>", user), status=403)
 
         with conn.cursor() as cur:
@@ -5224,12 +5303,12 @@ class Handler(BaseHTTPRequestHandler):
             all_signed_up = list(cur.fetchall())
 
         form_body = self._render_contribution_form(
-            f"/events/{event_id}/contributions/{contribution_id}/edit", "Save changes", all_signed_up,
+            f"{base}/contributions/{contribution_id}/edit", "Save changes", all_signed_up,
             self._resolve_distance_formula(conn, event), contribution=contribution,
-            is_host=(event["host_id"] == user["id"]), current_user=user
+            is_host=(event["host_id"] == viewer["id"]), current_user=viewer
         )
         body = f"""
-        <p><a href="/events/{event_id}/contributions">&larr; back to contributions</a></p>
+        <p><a href="{base}/contributions">&larr; back to contributions</a></p>
         <div class="card">
         <h1>Edit contribution</h1>
         {form_body}
@@ -5237,26 +5316,29 @@ class Handler(BaseHTTPRequestHandler):
         """
         self._send_html(render_page("Edit contribution", body, user))
 
-    def handle_contribution_edit_submit(self, conn, user, event_id, contribution_id, form):
-        self._require_login(user)
+    def handle_contribution_edit_submit(self, conn, user, event_id, contribution_id, form, effective_user=None, event_base=None):
+        if effective_user is None:
+            self._require_login(user)
+        viewer = effective_user or user
+        base = event_base or f"/events/{event_id}"
         event = self._get_event(conn, event_id)
         contribution = self._get_contribution(conn, contribution_id)
         if not event or not contribution or contribution["event_id"] != event_id:
-            return redirect(self, f"/events/{event_id}/contributions")
-        if not self._can_edit_contribution(event, contribution, user):
+            return redirect(self, f"{base}/contributions")
+        if not self._can_edit_contribution(event, contribution, viewer):
             return self._send_html(render_page("Forbidden", "<h1>You can't edit this contribution.</h1>", user), status=403)
 
         contribution_type = form.get("type") if form.get("type") in ("expense", "driven_distance") else "expense"
         description = form.get("description", "").strip()
         if not description:
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
         amount_raw = form.get("amount", "").strip()
         km_raw = form.get("km", "").strip()
         consumed_by_ids = [int(v) for v in form.getlist("consumed_by_ids")]
         contributor_id_raw = form.get("contributor_id", "").strip()
-        is_host = event["host_id"] == user["id"]
+        is_host = event["host_id"] == viewer["id"]
         original_contributor_id = contribution["contributor_id"]
-        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else (original_contributor_id or user["id"])
+        contributor_id = int(contributor_id_raw) if is_host and contributor_id_raw else (original_contributor_id or viewer["id"])
         contributor_name = None
 
         km = float(km_raw) if km_raw else None
@@ -5266,7 +5348,7 @@ class Handler(BaseHTTPRequestHandler):
                 contribution_type, amount_input, km, self._resolve_distance_formula(conn, event)
             )
         except (ValueError, formula.FormulaError):
-            return redirect(self, f"/events/{event_id}/contributions")
+            return redirect(self, f"{base}/contributions")
 
         with conn.cursor() as cur:
             cur.execute(
@@ -5283,7 +5365,7 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT INTO contribution_consumers (contribution_id, user_id) VALUES (%s, %s)",
                     [(contribution_id, uid) for uid in consumed_by_ids],
                 )
-        redirect(self, f"/events/{event_id}/contributions")
+        redirect(self, f"{base}/contributions")
 
 
 class PermissionErrorRedirect(Exception):
