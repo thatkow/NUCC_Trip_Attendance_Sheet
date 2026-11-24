@@ -1166,7 +1166,7 @@ class Handler(BaseHTTPRequestHandler):
             str(amount),
         ))
         onclick = html.escape(f"openPayDialog({args})", quote=True)
-        return f'<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="{onclick}">Pay</button>'
+        return f'<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="{onclick}">Payment details</button>'
 
     def _render_pay_dialog_and_script(self, bank_details, dialog_id="pay-dialog"):
         """A single shared dialog (populated by JS per row) for the "who
