@@ -34,7 +34,11 @@ CREATE TABLE site_settings (
     anusport_sync_next_at DATETIME NULL, -- when the daemon should next run; updated after every run
     anusport_sync_last_run_at DATETIME NULL,
     anusport_sync_last_summary TEXT NULL, -- short human-readable result of the last run, shown on /admin/anusport-sync
-    anusport_sync_send_emails TINYINT(1) NOT NULL DEFAULT 0 -- whether the automatic (background) sync sends renewal/welcome emails
+    anusport_sync_send_emails TINYINT(1) NOT NULL DEFAULT 0, -- whether the automatic (background) sync sends renewal/welcome emails
+    bank_account_name VARCHAR(255) NULL, -- club's bank details, shown on the contributions page's "Pay" dialog
+    bank_bsb VARCHAR(20) NULL,
+    bank_account_number VARCHAR(32) NULL,
+    bank_logo_url VARCHAR(512) NULL
 );
 INSERT INTO site_settings (id, banner_url, distance_formula) VALUES (1, '/static/banner.jpg', 'km * 0.88');
 

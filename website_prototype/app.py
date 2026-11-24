@@ -742,6 +742,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_banner_submit(conn, user, form)
             if path == "/admin/distance-formula":
                 return self.handle_distance_formula_submit(conn, user, form)
+            if path == "/admin/bank-details":
+                return self.handle_bank_details_submit(conn, user, form)
             if path == "/admin/gear":
                 return self.handle_gear_type_add(conn, user, form)
 
@@ -1081,6 +1083,52 @@ class Handler(BaseHTTPRequestHandler):
         """An event's own distance_formula, if it set one, else the global default."""
         return event.get("distance_formula") or self._get_distance_formula(conn)
 
+    def _get_bank_details(self, conn):
+        with conn.cursor() as cur:
+            cur.execute("SELECT bank_account_name, bank_bsb, bank_account_number, bank_logo_url FROM site_settings WHERE id = 1")
+            return cur.fetchone() or {}
+
+    def _render_pay_dialog_and_script(self, bank_details, dialog_id="pay-dialog"):
+        """A single shared dialog (populated by JS per row) for the "who
+        owes what" Pay button -- same markup/script used on both the real
+        contributions page and the public view share-link page."""
+        logo_url = (bank_details or {}).get("bank_logo_url")
+        logo_html = f'<img src="{html.escape(logo_url)}" style="max-height:48px; display:block; margin-bottom:0.8em;">' if logo_url else ""
+        return f"""
+        <dialog id="{dialog_id}" style="border:none; border-radius:8px; padding:0; max-width:380px; width:90%;">
+          <div class="card" style="margin:0; box-shadow:none; border:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="margin:0;">Pay the club</h3>
+              <button type="button" class="btn" onclick="document.getElementById('{dialog_id}').close()">&times;</button>
+            </div>
+            {logo_html}
+            <div style="display:flex; flex-direction:column; gap:0.6em;">
+              <div><label class="muted" style="display:block;">Account name</label>
+                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-name" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-name')">Copy</button></div></div>
+              <div><label class="muted" style="display:block;">BSB</label>
+                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-bsb" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-bsb')">Copy</button></div></div>
+              <div><label class="muted" style="display:block;">Account number</label>
+                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-acc" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-acc')">Copy</button></div></div>
+              <div><label class="muted" style="display:block;">Amount</label>
+                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-amount" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-amount')">Copy</button></div></div>
+            </div>
+          </div>
+        </dialog>
+        <script>
+          function payDialogCopy(id) {{
+            var el = document.getElementById(id);
+            navigator.clipboard.writeText(el.value).then(() => showToast('Copied to clipboard')).catch(() => showToast('Could not copy'));
+          }}
+          function openPayDialog(dialogId, name, bsb, acc, amount) {{
+            document.getElementById(dialogId + '-name').value = name;
+            document.getElementById(dialogId + '-bsb').value = bsb;
+            document.getElementById(dialogId + '-acc').value = acc;
+            document.getElementById(dialogId + '-amount').value = amount;
+            document.getElementById(dialogId).showModal();
+          }}
+        </script>
+        """
+
     def _get_gear_types(self, conn):
         """The club-wide gear types an admin manages (name + default
         per-person rate + a description of when to charge it), e.g.
@@ -1177,10 +1225,17 @@ class Handler(BaseHTTPRequestHandler):
     def handle_admin_site_page(self, conn, user, formula_error=None):
         self._require_admin(user)
         with conn.cursor() as cur:
-            cur.execute("SELECT banner_url, distance_formula FROM site_settings WHERE id = 1")
+            cur.execute(
+                "SELECT banner_url, distance_formula, bank_account_name, bank_bsb, bank_account_number, bank_logo_url "
+                "FROM site_settings WHERE id = 1"
+            )
             settings_row = cur.fetchone()
         banner_url = (settings_row or {}).get("banner_url") or "/static/banner.jpg"
         distance_formula = (settings_row or {}).get("distance_formula") or "km * 0.88"
+        bank_account_name = (settings_row or {}).get("bank_account_name") or ""
+        bank_bsb = (settings_row or {}).get("bank_bsb") or ""
+        bank_account_number = (settings_row or {}).get("bank_account_number") or ""
+        bank_logo_url = (settings_row or {}).get("bank_logo_url") or ""
 
         body = f"""
         <p><a href="/admin">&larr; back to admin</a></p>
@@ -1229,7 +1284,31 @@ class Handler(BaseHTTPRequestHandler):
         </div>
         </div>
 
+        <div class="card">
+        <h3>Bank details</h3>
+        <p class="muted">Shown to members on the contributions page's "Pay" dialog, for anyone who owes money.</p>
+        {f'<img src="{html.escape(bank_logo_url)}" style="max-height:60px; display:block; margin-bottom:0.8em;">' if bank_logo_url else ''}
+        <form method="post" action="/admin/bank-details" id="bank-details-form">
+          <label>Bank logo<input type="file" id="bank-logo-file" accept="image/*"></label>
+          <input type="hidden" name="logo_data" id="bank-logo-data">
+          <label>Account name<input name="bank_account_name" value="{html.escape(bank_account_name)}"></label>
+          <label>BSB<input name="bank_bsb" value="{html.escape(bank_bsb)}"></label>
+          <label>Account number<input name="bank_account_number" value="{html.escape(bank_account_number)}"></label>
+          <button type="submit" class="btn-primary">Save bank details</button>
+        </form>
+        </div>
+
         <script>
+        document.getElementById('bank-logo-file').addEventListener('change', function() {{
+          var file = this.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function(e) {{
+            document.getElementById('bank-logo-data').value = e.target.result;
+          }};
+          reader.readAsDataURL(file);
+        }});
+
         document.getElementById('banner-file').addEventListener('change', function() {{
           var file = this.files[0];
           if (!file) return;
@@ -1826,6 +1905,38 @@ class Handler(BaseHTTPRequestHandler):
                 "ON DUPLICATE KEY UPDATE distance_formula = VALUES(distance_formula)",
                 (expr,),
             )
+        redirect(self, "/admin/site")
+
+    def handle_bank_details_submit(self, conn, user, form):
+        self._require_admin(user)
+        logo_data_url = form.get("logo_data", "").strip()
+        logo_url = None
+        if logo_data_url:
+            try:
+                logo_url = self._save_data_url_image(logo_data_url, "site", "bank-logo")
+            except ValueError:
+                pass
+        account_name = form.get("bank_account_name", "").strip()
+        bsb = form.get("bank_bsb", "").strip()
+        account_number = form.get("bank_account_number", "").strip()
+
+        with conn.cursor() as cur:
+            if logo_url:
+                cur.execute(
+                    "INSERT INTO site_settings (id, bank_account_name, bank_bsb, bank_account_number, bank_logo_url) "
+                    "VALUES (1, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+                    "bank_account_name = VALUES(bank_account_name), bank_bsb = VALUES(bank_bsb), "
+                    "bank_account_number = VALUES(bank_account_number), bank_logo_url = VALUES(bank_logo_url)",
+                    (account_name, bsb, account_number, logo_url),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO site_settings (id, bank_account_name, bank_bsb, bank_account_number) "
+                    "VALUES (1, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+                    "bank_account_name = VALUES(bank_account_name), bank_bsb = VALUES(bank_bsb), "
+                    "bank_account_number = VALUES(bank_account_number)",
+                    (account_name, bsb, account_number),
+                )
         redirect(self, "/admin/site")
 
     def handle_gear_type_add(self, conn, user, form):
@@ -4518,12 +4629,14 @@ class Handler(BaseHTTPRequestHandler):
               </span>
             </span>"""
 
+        bank_details = self._get_bank_details(conn)
         account_rows = "".join(
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
-              <td>{money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
               <td>{money(a['paid'])} {info_tooltip(a['paid_items'])}</td>
+              <td>{money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
               <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{money(a['owe'])}</td>
+              <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
         )
@@ -4670,12 +4783,13 @@ class Handler(BaseHTTPRequestHandler):
         <div class="card">
         <h3>Who owes what</h3>
         <table>
-          <tr><th>Name</th><th>Fee</th><th>Contributions</th><th>Owe (-Owed)</th></tr>
+          <tr><th>Name</th><th>Contributions</th><th>&minus; Fee</th><th>= Owe (-Owed)</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
         Owe is positive if they still owe money, negative if the club owes them.</p>
         </div>
+        {self._render_pay_dialog_and_script(bank_details)}
 
         <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4888,12 +5002,14 @@ class Handler(BaseHTTPRequestHandler):
             )
 
         accounts = self._compute_event_accounts(conn, event["id"])
+        bank_details = self._get_bank_details(conn)
         account_rows = "".join(
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
-              <td>{money(a['fee'])}</td>
               <td>{money(a['paid'])}</td>
+              <td>{money(a['fee'])}</td>
               <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{money(a['owe'])}</td>
+              <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
         )
@@ -4903,11 +5019,12 @@ class Handler(BaseHTTPRequestHandler):
         to see the full contributions page.</p>
         <div class="card">
         <table>
-          <tr><th>Name</th><th>Fee</th><th>Contributions</th><th>Owe (-Owed)</th></tr>
+          <tr><th>Name</th><th>Contributions</th><th>&minus; Fee</th><th>= Owe (-Owed)</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
         Owe is positive if they still owe money, negative if the club owes them.</p>
+        {self._render_pay_dialog_and_script(bank_details)}
         </div>
         """
         self._send_html(render_page(f"{event['title']} -- Who owes what", body, user))
