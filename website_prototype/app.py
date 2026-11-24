@@ -4274,6 +4274,7 @@ class Handler(BaseHTTPRequestHandler):
                   <form method="post" id="existing-member-form" action="/events/{event_id}/guests/existing" style="display:flex; gap:0.5em;">
                     <input type="hidden" name="user_id" id="existing-member-id">
                     <button type="submit" class="btn-primary" style="flex:1;" {"disabled" if not addable_users else ""}>Add</button>
+                    <button type="submit" name="add_another" value="1" class="btn" style="flex:1;" {"disabled" if not addable_users else ""}>Add &amp; add another</button>
                   </form>
                   <p style="margin-top:0.8em;">
                     <a href="#" onclick="document.getElementById('existing-member-section').style.display='none'; document.getElementById('new-member-section').style.display='block'; return false;">
@@ -4288,7 +4289,10 @@ class Handler(BaseHTTPRequestHandler):
                   <form method="post" action="/events/{event_id}/guests" style="display:flex; flex-direction:column; gap:0.5em;">
                     <input name="name" placeholder="Full name" required style="width:100%;">
                     <input name="email" type="email" placeholder="Email" required style="width:100%;">
-                    <button type="submit" class="btn-primary">Create</button>
+                    <div style="display:flex; gap:0.5em;">
+                      <button type="submit" class="btn-primary" style="flex:1;">Create</button>
+                      <button type="submit" name="add_another" value="1" class="btn" style="flex:1;">Create &amp; add another</button>
+                    </div>
                   </form>
                   <p style="margin-top:0.8em;">
                     <a href="#" onclick="document.getElementById('new-member-section').style.display='none'; document.getElementById('existing-member-section').style.display='block'; return false;">
@@ -4402,6 +4406,7 @@ class Handler(BaseHTTPRequestHandler):
         </div>
         {add_guest_dialog_html}
         {checklist_dialog_html}
+        {"<script>document.getElementById('add-guest-dialog').showModal();</script>" if is_host and parse_qs(urlparse(self.path).query).get("add_participant", [""])[0] == "1" else ""}
         """
         self._send_html(render_page(event["title"], body, user))
 
@@ -5370,6 +5375,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_html(render_page("Forbidden", "<h1>Only the host can add guests.</h1>", user), status=403)
         name = form.get("name", "").strip()
         email = form.get("email", "").strip().lower()
+        reopen = "?add_participant=1" if form.get("add_another") else ""
         if name and email:
             with conn.cursor() as cur:
                 try:
@@ -5377,13 +5383,13 @@ class Handler(BaseHTTPRequestHandler):
                 except pymysql.err.IntegrityError:
                     # Someone with this email already has an account -- don't
                     # create a second, conflicting one for the same person.
-                    return redirect(self, f"/events/{event_id}")
+                    return redirect(self, f"/events/{event_id}{reopen}")
                 guest_id = cur.lastrowid
                 cur.execute(
                     "INSERT INTO event_signups (event_id, user_id, status) VALUES (%s, %s, 'approved')",
                     (event_id, guest_id),
                 )
-        redirect(self, f"/events/{event_id}")
+        redirect(self, f"/events/{event_id}{reopen}")
 
     def handle_event_guest_add_existing(self, conn, user, event_id, form):
         """The host picks an existing member from the lookup in the "Add a
@@ -5403,7 +5409,8 @@ class Handler(BaseHTTPRequestHandler):
                     "INSERT IGNORE INTO event_signups (event_id, user_id, status) VALUES (%s, %s, 'approved')",
                     (event_id, int(user_id_raw)),
                 )
-        redirect(self, f"/events/{event_id}")
+        reopen = "?add_participant=1" if form.get("add_another") else ""
+        redirect(self, f"/events/{event_id}{reopen}")
 
     def handle_event_guest_remove(self, conn, user, event_id, guest_id):
         """Removes a no-login guest account's signup from this trip -- they
