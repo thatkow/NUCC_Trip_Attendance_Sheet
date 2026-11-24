@@ -867,10 +867,6 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.handle_contribution_delete(conn, user, int(m.group(1)), int(m.group(2)))
 
-            m = re.fullmatch(r"/events/(\d+)/contributions/share", path)
-            if m:
-                return self.handle_contributions_share_submit(conn, user, int(m.group(1)), form)
-
             m = re.fullmatch(r"/events/(\d+)/gear-use", path)
             if m:
                 return self.handle_gear_use_submit(conn, user, int(m.group(1)), form)
@@ -4578,8 +4574,16 @@ class Handler(BaseHTTPRequestHandler):
 
         share_section = ""
         if is_host:
-            view_url = f"{self._site_base_url()}/share/{event['share_view_token']}" if event["share_view_token"] else ""
-            edit_url = f"{self._site_base_url()}/share/{event['share_edit_token']}" if event["share_edit_token"] else ""
+            if not event["share_view_token"] or not event["share_edit_token"]:
+                with conn.cursor() as cur:
+                    if not event["share_view_token"]:
+                        event["share_view_token"] = secrets.token_urlsafe(32)
+                        cur.execute("UPDATE events SET share_view_token = %s WHERE id = %s", (event["share_view_token"], event_id))
+                    if not event["share_edit_token"]:
+                        event["share_edit_token"] = secrets.token_urlsafe(32)
+                        cur.execute("UPDATE events SET share_edit_token = %s WHERE id = %s", (event["share_edit_token"], event_id))
+            view_url = f"{self._site_base_url()}/share/{event['share_view_token']}"
+            edit_url = f"{self._site_base_url()}/share/{event['share_edit_token']}"
             share_section = f"""
             <button type="button" class="btn" onclick="document.getElementById('share-dialog').showModal()">Share</button>
             <dialog id="share-dialog" style="border:none; border-radius:8px; padding:0; max-width:480px; width:90%;">
@@ -4588,28 +4592,16 @@ class Handler(BaseHTTPRequestHandler):
                   <h3 style="margin:0;">Share this trip's contributions</h3>
                   <button type="button" class="btn" onclick="document.getElementById('share-dialog').close()">&times;</button>
                 </div>
-                <p class="muted">Anyone with a link below can open it without logging in. Regenerating a link
-                immediately breaks the old one.</p>
+                <p class="muted">Anyone with a link below can open it without logging in.</p>
 
                 <p><strong>View only</strong> &mdash; shows just the "who owes what" summary, with a button to log in
                 for the full page.</p>
-                <div style="display:flex; gap:0.5em; flex-wrap:wrap;">
-                  {f'''<button type="button" class="btn" onclick="copyShareLink('{html.escape(view_url, quote=True)}')">Copy view link</button>''' if view_url else ''}
-                  <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
-                    <input type="hidden" name="mode" value="view">
-                    <button type="submit" class="btn">{"Regenerate" if view_url else "Generate"} view link</button>
-                  </form>
-                </div>
+                <button type="button" class="btn" onclick="copyShareLink('{html.escape(view_url, quote=True)}')">Copy view link</button>
 
                 <p style="margin-top:1.2em;"><strong>Edit</strong> &mdash; shows the full page as if logged in as the
                 trip host, so they can add/edit contributions too.</p>
-                <div style="display:flex; gap:0.5em; flex-wrap:wrap;">
-                  {f'''<button type="button" class="btn" onclick="copyShareLink('{html.escape(edit_url, quote=True)}')">Copy edit link</button>''' if edit_url else ''}
-                  <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
-                    <input type="hidden" name="mode" value="edit">
-                    <button type="submit" class="btn">{"Regenerate" if edit_url else "Generate"} edit link</button>
-                  </form>
-                </div>
+                <button type="button" class="btn" onclick="copyShareLink('{html.escape(edit_url, quote=True)}')">Copy edit link</button>
+
                 <script>
                   function copyShareLink(url) {{
                     navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard')).catch(() => showToast('Could not copy link'));
@@ -4815,20 +4807,6 @@ class Handler(BaseHTTPRequestHandler):
                     (event_id, contributor_name or "", description),
                 )
             return cur.fetchone() is not None
-
-    def handle_contributions_share_submit(self, conn, user, event_id, form):
-        self._require_login(user)
-        event = self._get_event(conn, event_id)
-        if not event or event["host_id"] != user["id"]:
-            return redirect(self, f"/events/{event_id}/contributions")
-        mode = form.get("mode")
-        column = {"view": "share_view_token", "edit": "share_edit_token"}.get(mode)
-        if not column:
-            return redirect(self, f"/events/{event_id}/contributions")
-        token = secrets.token_urlsafe(32)
-        with conn.cursor() as cur:
-            cur.execute(f"UPDATE events SET {column} = %s WHERE id = %s", (token, event_id))
-        redirect(self, f"/events/{event_id}/contributions")
 
     def handle_share_link(self, conn, user, token):
         with conn.cursor() as cur:
