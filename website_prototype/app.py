@@ -4828,8 +4828,6 @@ class Handler(BaseHTTPRequestHandler):
           <tr><th>Name</th><th>Contributions</th><th></th><th>Fee</th><th></th><th>{'Owed (-Owe)' if event['lodged_at'] else 'Exp Owed (-Owe)'}</th><th></th></tr>
           {account_rows}
         </table>
-        <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
-        Owe is positive if they still owe money, negative if the club owes them.</p>
         </div>
         {self._render_pay_dialog_and_script(bank_details)}
 
@@ -5057,6 +5055,68 @@ class Handler(BaseHTTPRequestHandler):
             </tr>"""
             for uid, a in accounts.items()
         )
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.*, COALESCE(cu.name, c.contributor_name) AS contributor_display_name
+                FROM contributions c
+                LEFT JOIN users cu ON cu.id = c.contributor_id
+                WHERE c.event_id = %s AND c.gear_type_id IS NULL ORDER BY c.created_at
+                """,
+                (event["id"],),
+            )
+            contributions = list(cur.fetchall())
+
+            cur.execute(
+                """
+                SELECT cc.contribution_id, cc.user_id, u.name
+                FROM contribution_consumers cc
+                JOIN users u ON u.id = cc.user_id
+                JOIN contributions c ON c.id = cc.contribution_id
+                WHERE c.event_id = %s
+                """,
+                (event["id"],),
+            )
+            consumers_by_contribution = {}
+            for row in cur.fetchall():
+                consumers_by_contribution.setdefault(row["contribution_id"], []).append(row)
+
+            cur.execute(
+                """
+                SELECT c.id, c.amount, gt.name AS gear_name
+                FROM contributions c
+                JOIN gear_types gt ON gt.id = c.gear_type_id
+                WHERE c.event_id = %s ORDER BY c.created_at
+                """,
+                (event["id"],),
+            )
+            gear_uses = list(cur.fetchall())
+
+        for g in gear_uses:
+            consumers = consumers_by_contribution.get(g["id"], [])
+            g["participant_name"] = consumers[0]["name"] if consumers else "?"
+
+        contribution_rows = "".join(
+            f"""<tr>
+              <td>{c['created_at']:%d %b}</td>
+              <td>{html.escape(c['description'])}</td>
+              <td>{c['type']}{f" ({c['km']} km)" if c['type'] == 'driven_distance' else ''}</td>
+              <td>{html.escape(c['contributor_display_name'])}{' <span class="muted">(not a member)</span>' if not c['contributor_id'] else ''}</td>
+              <td>{html.escape(', '.join(r['name'] for r in consumers_by_contribution.get(c['id'], []))) if consumers_by_contribution.get(c['id']) else '<em>shared</em>'}</td>
+              <td>{money(c['amount'])}</td>
+            </tr>"""
+            for c in contributions
+        )
+        gear_use_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(g['participant_name'])}</td>
+              <td>{html.escape(g['gear_name'])}</td>
+              <td>{money(g['amount'])}</td>
+            </tr>"""
+            for g in gear_uses
+        )
+
         body = f"""
         <h1 style="margin:0;">{html.escape(event['title'])} &mdash; Who owes what</h1>
         <p class="muted">You're viewing a read-only shared summary. <a href="/login?next=/events/{event['id']}/contributions">Log in</a>
@@ -5066,9 +5126,23 @@ class Handler(BaseHTTPRequestHandler):
           <tr><th>Name</th><th>Contributions</th><th></th><th>Fee</th><th></th><th>{'Owed (-Owe)' if event['lodged_at'] else 'Exp Owed (-Owe)'}</th><th></th></tr>
           {account_rows}
         </table>
-        <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
-        Owe is positive if they still owe money, negative if the club owes them.</p>
         {self._render_pay_dialog_and_script(bank_details)}
+        </div>
+
+        <div class="card">
+        <h3>Gear use</h3>
+        <table>
+          <tr><th>Participant</th><th>Gear</th><th>Amount</th></tr>
+          {gear_use_rows or '<tr><td colspan="3" class="muted">None yet.</td></tr>'}
+        </table>
+        </div>
+
+        <div class="card">
+        <h3>Contributions</h3>
+        <table>
+          <tr><th>Date</th><th>Description</th><th>Type</th><th>Paid by</th><th>Consumed by</th><th>Amount</th></tr>
+          {contribution_rows or '<tr><td colspan="6">None yet</td></tr>'}
+        </table>
         </div>
         """
         self._send_html(render_page(f"{event['title']} -- Who owes what", body, user))
