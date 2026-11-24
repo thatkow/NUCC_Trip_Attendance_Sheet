@@ -450,6 +450,12 @@ def money(d):
     return f"${d:,.2f}"
 
 
+def signed_money(d):
+    """Like money(), but for a negative amount puts the "-" before the "$"
+    (e.g. "-$5.00") instead of money()'s "$-5.00"."""
+    return f"-{money(-d)}" if d < 0 else money(d)
+
+
 def location_info(location, location_label=None, with_embed=False):
     """Returns (display_name, maps_url, maps_embed_url_or_None).
 
@@ -1088,6 +1094,21 @@ class Handler(BaseHTTPRequestHandler):
             cur.execute("SELECT bank_account_name, bank_bsb, bank_account_number, bank_logo_url FROM site_settings WHERE id = 1")
             return cur.fetchone() or {}
 
+    def _pay_button(self, bank_details, amount, dialog_id="pay-dialog"):
+        """A "Pay" button that opens the shared pay dialog with this
+        amount. Builds the onclick as JSON-encoded JS arguments, then
+        html.escape()s the whole thing so the JSON strings' own double
+        quotes don't prematurely close the (double-quoted) attribute."""
+        args = ", ".join(json.dumps(v) for v in (
+            dialog_id,
+            bank_details.get("bank_account_name") or "",
+            bank_details.get("bank_bsb") or "",
+            bank_details.get("bank_account_number") or "",
+            str(amount),
+        ))
+        onclick = html.escape(f"openPayDialog({args})", quote=True)
+        return f'<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="{onclick}">Pay</button>'
+
     def _render_pay_dialog_and_script(self, bank_details, dialog_id="pay-dialog"):
         """A single shared dialog (populated by JS per row) for the "who
         owes what" Pay button -- same markup/script used on both the real
@@ -1102,16 +1123,31 @@ class Handler(BaseHTTPRequestHandler):
               <button type="button" class="btn" onclick="document.getElementById('{dialog_id}').close()">&times;</button>
             </div>
             {logo_html}
-            <div style="display:flex; flex-direction:column; gap:0.6em;">
-              <div><label class="muted" style="display:block;">Account name</label>
-                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-name" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-name')">Copy</button></div></div>
-              <div><label class="muted" style="display:block;">BSB</label>
-                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-bsb" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-bsb')">Copy</button></div></div>
-              <div><label class="muted" style="display:block;">Account number</label>
-                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-acc" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-acc')">Copy</button></div></div>
-              <div><label class="muted" style="display:block;">Amount</label>
-                <div style="display:flex; gap:0.5em;"><input readonly id="{dialog_id}-amount" style="flex:1;"><button type="button" class="btn" onclick="payDialogCopy('{dialog_id}-amount')">Copy</button></div></div>
+            <div style="display:flex; flex-direction:column; gap:0.5em;">
+              <div style="display:flex; align-items:center; gap:0.6em;">
+                <label class="muted" style="width:90px; flex:0 0 auto;">Account name</label>
+                <input readonly id="{dialog_id}-name" style="flex:1; min-width:0;">
+                <button type="button" class="btn" title="Copy" style="padding:0.2em 0.5em; flex:0 0 auto;" onclick="payDialogCopy('{dialog_id}-name')">&#10697;</button>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6em;">
+                <label class="muted" style="width:90px; flex:0 0 auto;">BSB</label>
+                <input readonly id="{dialog_id}-bsb" style="flex:1; min-width:0;">
+                <button type="button" class="btn" title="Copy" style="padding:0.2em 0.5em; flex:0 0 auto;" onclick="payDialogCopy('{dialog_id}-bsb')">&#10697;</button>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6em;">
+                <label class="muted" style="width:90px; flex:0 0 auto;">Account no.</label>
+                <input readonly id="{dialog_id}-acc" style="flex:1; min-width:0;">
+                <button type="button" class="btn" title="Copy" style="padding:0.2em 0.5em; flex:0 0 auto;" onclick="payDialogCopy('{dialog_id}-acc')">&#10697;</button>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6em;">
+                <label class="muted" style="width:90px; flex:0 0 auto;">Amount</label>
+                <input readonly id="{dialog_id}-amount" style="flex:1; min-width:0;">
+                <button type="button" class="btn" title="Copy" style="padding:0.2em 0.5em; flex:0 0 auto;" onclick="payDialogCopy('{dialog_id}-amount')">&#10697;</button>
+              </div>
             </div>
+            <p class="muted" style="margin-top:1em; margin-bottom:0;">The website isn't notified when you pay --
+            your balance will update once the treasurer processes the bank transactions, and you'll be contacted
+            about anything still outstanding.</p>
           </div>
         </dialog>
         <script>
@@ -4633,10 +4669,12 @@ class Handler(BaseHTTPRequestHandler):
         account_rows = "".join(
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
-              <td>{money(a['paid'])} {info_tooltip(a['paid_items'])}</td>
-              <td><span class="muted">&minus;</span> {money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
-              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}"><span class="muted">=</span> {money(a['owe'])}</td>
-              <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
+              <td class="owe-negative">{money(a['paid'])} {info_tooltip(a['paid_items'])}</td>
+              <td class="muted" style="text-align:center;">&minus;</td>
+              <td class="owe-positive">{money(a['fee'])} {info_tooltip(a['fee_items'])}</td>
+              <td class="muted" style="text-align:center;">=</td>
+              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{signed_money(-a['owe'])}</td>
+              <td>{self._pay_button(bank_details, f"{a['owe']:.2f}") if a['owe'] > 0 and event['lodged_at'] else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
         )
@@ -4710,9 +4748,8 @@ class Handler(BaseHTTPRequestHandler):
                   <button type="submit" class="btn-primary">Lodge fees</button>
                 </form>"""
                 lodge_note = (
-                    '<p class="muted">Not yet lodged -- these fees aren\'t included in the club-wide Member '
-                    'balances until lodged. Lodging records each member\'s current amount; if it changes '
-                    'afterwards, an "Amend" will let you correct it with a visible reversal + revision.</p>'
+                    '<p class="muted">Not yet lodged -- contributions are still being gathered, so amounts '
+                    'may still change. Please don\'t pay yet.</p>'
                 )
             else:
                 live_owes = {uid: a["owe"] for uid, a in accounts.items() if isinstance(uid, int)}
@@ -4783,7 +4820,7 @@ class Handler(BaseHTTPRequestHandler):
         <div class="card">
         <h3>Who owes what</h3>
         <table>
-          <tr><th>Name</th><th>Contributions</th><th>Fee</th><th>Owe (-Owed)</th><th></th></tr>
+          <tr><th>Name</th><th>Contributions</th><th></th><th>Fee</th><th></th><th>{'Owed (-Owe)' if event['lodged_at'] else 'Exp Owed (-Owe)'}</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
@@ -5006,10 +5043,12 @@ class Handler(BaseHTTPRequestHandler):
         account_rows = "".join(
             f"""<tr>
               <td>{html.escape(a['name'])}</td>
-              <td>{money(a['paid'])}</td>
-              <td><span class="muted">&minus;</span> {money(a['fee'])}</td>
-              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}"><span class="muted">=</span> {money(a['owe'])}</td>
-              <td>{f'''<button type="button" class="btn-primary" style="padding:0.2em 0.6em;" onclick="openPayDialog('pay-dialog', {json.dumps(bank_details.get('bank_account_name') or '')}, {json.dumps(bank_details.get('bank_bsb') or '')}, {json.dumps(bank_details.get('bank_account_number') or '')}, {json.dumps(str(money(a['owe'])))})">Pay</button>''' if a['owe'] > 0 else ''}</td>
+              <td class="owe-negative">{money(a['paid'])}</td>
+              <td class="muted" style="text-align:center;">&minus;</td>
+              <td class="owe-positive">{money(a['fee'])}</td>
+              <td class="muted" style="text-align:center;">=</td>
+              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{signed_money(-a['owe'])}</td>
+              <td>{self._pay_button(bank_details, f"{a['owe']:.2f}") if a['owe'] > 0 and event['lodged_at'] else ''}</td>
             </tr>"""
             for uid, a in accounts.items()
         )
@@ -5019,7 +5058,7 @@ class Handler(BaseHTTPRequestHandler):
         to see the full contributions page.</p>
         <div class="card">
         <table>
-          <tr><th>Name</th><th>Contributions</th><th>Fee</th><th>Owe (-Owed)</th><th></th></tr>
+          <tr><th>Name</th><th>Contributions</th><th></th><th>Fee</th><th></th><th>{'Owed (-Owe)' if event['lodged_at'] else 'Exp Owed (-Owe)'}</th><th></th></tr>
           {account_rows}
         </table>
         <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
