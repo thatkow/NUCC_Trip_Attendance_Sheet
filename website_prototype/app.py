@@ -1094,6 +1094,19 @@ class Handler(BaseHTTPRequestHandler):
             cur.execute("SELECT bank_account_name, bank_bsb, bank_account_number, bank_logo_url FROM site_settings WHERE id = 1")
             return cur.fetchone() or {}
 
+    def _contributions_intro_note(self):
+        """One-line context shown at the top of every contributions view
+        (the real page, its edit share-link rendering, and the read-only
+        view share-link) explaining that money doesn't change hands
+        directly between members -- it all goes through the club's own
+        bank account."""
+        return (
+            '<p class="muted">Money for this trip goes through the club\'s bank account, not directly between '
+            'members: gear hire fees are collected into it, and trip expenses -- petrol, vehicle maintenance, '
+            'food, etc. -- are paid back out of it to whoever covered them. The numbers below are each '
+            'person\'s share of that.</p>'
+        )
+
     def _maintenance_info_tooltip(self, distance_formula):
         """Explains the "Maintenance" line item next to the Contributions
         heading -- it's easy to mistake for an unrelated charge, since it's
@@ -4841,6 +4854,7 @@ class Handler(BaseHTTPRequestHandler):
           <h1 style="margin:0;">{html.escape(event['title'])} &mdash; Contributions and Gear Hire</h1>
           <div style="display:flex; gap:0.5em; align-items:center;">{share_section}{lodge_section}</div>
         </div>
+        {self._contributions_intro_note()}
         {lodge_note}
         {error_html}
 
@@ -5143,6 +5157,7 @@ class Handler(BaseHTTPRequestHandler):
         <h1 style="margin:0;">{html.escape(event['title'])} &mdash; Who owes what</h1>
         <p class="muted">You're viewing a read-only shared summary. <a href="/login?next=/events/{event['id']}/contributions">Log in</a>
         to see the full contributions page.</p>
+        {self._contributions_intro_note()}
         <div class="card">
         <table>
           <tr><th>Name</th><th>Contributions</th><th></th><th>Fee</th><th></th><th>{'Owed (-Owe)' if event['lodged_at'] else 'Exp Owed (-Owe)'}</th><th></th></tr>
