@@ -72,6 +72,8 @@ CREATE TABLE events (
     lodged_at DATETIME NULL, -- host-set via the "Lodge" button on the Contributions page: once set, this
                               -- trip's fees count toward the club-wide Member balances rollup (see
                               -- event_fee_lodgements below), via a snapshot rather than a live recomputation
+    share_view_token VARCHAR(64) NULL UNIQUE, -- public read-only link to this event's contributions "who owes what" summary
+    share_edit_token VARCHAR(64) NULL UNIQUE, -- public link that logs the visitor in as the host, for editing contributions without an account
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (host_id) REFERENCES users(id)
 );

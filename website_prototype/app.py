@@ -16,6 +16,7 @@ import html
 import mimetypes
 import os
 import re
+import secrets
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -627,7 +628,8 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.handle_content_page(conn, user, m.group(1))
             if path == "/login":
-                return self.handle_login_form(user)
+                next_url = parse_qs(urlparse(self.path).query).get("next", [""])[0]
+                return self.handle_login_form(user, next_url=next_url if next_url.startswith("/") else None)
             if path == "/forgot-password":
                 return self.handle_forgot_password_form(user)
             m = re.fullmatch(r"/reset-password/([0-9a-f]{64})", path)
@@ -699,6 +701,10 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/events/(\d+)/contributions/(\d+)/edit", path)
             if m:
                 return self.handle_contribution_edit_form(conn, user, int(m.group(1)), int(m.group(2)))
+
+            m = re.fullmatch(r"/share/([A-Za-z0-9_-]{32,64})", path)
+            if m:
+                return self.handle_share_link(conn, user, m.group(1))
 
             self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
         except PermissionErrorRedirect as e:
@@ -861,6 +867,10 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.handle_contribution_delete(conn, user, int(m.group(1)), int(m.group(2)))
 
+            m = re.fullmatch(r"/events/(\d+)/contributions/share", path)
+            if m:
+                return self.handle_contributions_share_submit(conn, user, int(m.group(1)), form)
+
             m = re.fullmatch(r"/events/(\d+)/gear-use", path)
             if m:
                 return self.handle_gear_use_submit(conn, user, int(m.group(1)), form)
@@ -907,14 +917,16 @@ class Handler(BaseHTTPRequestHandler):
         scheme = "http" if host.split(":")[0] in ("localhost", "127.0.0.1") else "https"
         return f"{scheme}://{host}"
 
-    def handle_login_form(self, user, error=None, success=None):
+    def handle_login_form(self, user, error=None, success=None, next_url=None):
         error_html = f'<p class="error">{html.escape(error)}</p>' if error else ""
         success_html = f'<p style="color:#15803d;">{html.escape(success)}</p>' if success else ""
+        next_field = f'<input type="hidden" name="next" value="{html.escape(next_url)}">' if next_url else ""
         body = f"""
         <div class="card" style="max-width:380px; margin:3em auto;">
         <h1>Log in</h1>
         {error_html}{success_html}
         <form method="post" action="/login">
+          {next_field}
           <label>Email<input name="email" type="email" required></label>
           <label>Password<input name="password" type="password" required></label>
           <button type="submit" class="btn-primary" style="width:100%;">Log in</button>
@@ -998,12 +1010,14 @@ class Handler(BaseHTTPRequestHandler):
     def handle_login_submit(self, conn, form):
         email = form.get("email", "")
         password = form.get("password", "")
+        next_url = form.get("next", "")
+        next_url = next_url if next_url.startswith("/") else None
         user = auth.authenticate(conn, email, password)
         if not user:
-            return self.handle_login_form(None, error="Invalid email or password.")
+            return self.handle_login_form(None, error="Invalid email or password.", next_url=next_url)
         token = auth.create_session(conn, user["id"])
         self.send_response(302)
-        self.send_header("Location", "/")
+        self.send_header("Location", next_url or "/")
         self.send_header(
             "Set-Cookie",
             f"{config.SESSION_COOKIE_NAME}={token}; Path=/; HttpOnly; Max-Age={config.SESSION_LIFETIME_HOURS * 3600}",
@@ -4562,11 +4576,45 @@ class Handler(BaseHTTPRequestHandler):
                     + "</p>"
                 )
 
+        share_section = ""
+        if is_host:
+            view_url = f"{self._site_base_url()}/share/{event['share_view_token']}" if event["share_view_token"] else ""
+            edit_url = f"{self._site_base_url()}/share/{event['share_edit_token']}" if event["share_edit_token"] else ""
+            share_section = f"""
+            <button type="button" class="btn" onclick="document.getElementById('share-dialog').showModal()">Share</button>
+            <dialog id="share-dialog" style="border:none; border-radius:8px; padding:0; max-width:480px; width:90%;">
+              <div class="card" style="margin:0; box-shadow:none; border:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h3 style="margin:0;">Share this trip's contributions</h3>
+                  <button type="button" class="btn" onclick="document.getElementById('share-dialog').close()">&times;</button>
+                </div>
+                <p class="muted">Anyone with a link below can open it without logging in. Regenerating a link
+                immediately breaks the old one.</p>
+
+                <p><strong>View only</strong> &mdash; shows just the "who owes what" summary, with a button to log in
+                for the full page.</p>
+                {f'<input type="text" readonly value="{html.escape(view_url)}" onclick="this.select()" style="width:100%; margin-bottom:0.4em;">' if view_url else '<p class="muted">No link generated yet.</p>'}
+                <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
+                  <input type="hidden" name="mode" value="view">
+                  <button type="submit" class="btn">{"Regenerate" if view_url else "Generate"} view link</button>
+                </form>
+
+                <p style="margin-top:1.2em;"><strong>Edit</strong> &mdash; shows the full page as if logged in as the
+                trip host, so they can add/edit contributions too.</p>
+                {f'<input type="text" readonly value="{html.escape(edit_url)}" onclick="this.select()" style="width:100%; margin-bottom:0.4em;">' if edit_url else '<p class="muted">No link generated yet.</p>'}
+                <form method="post" action="/events/{event_id}/contributions/share" style="display:inline;">
+                  <input type="hidden" name="mode" value="edit">
+                  <button type="submit" class="btn">{"Regenerate" if edit_url else "Generate"} edit link</button>
+                </form>
+              </div>
+            </dialog>
+            """
+
         body = f"""
         <p>{back_link}</p>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6em;">
           <h1 style="margin:0;">{html.escape(event['title'])} &mdash; Contributions and Gear Hire</h1>
-          {lodge_section}
+          <div style="display:flex; gap:0.5em; align-items:center;">{share_section}{lodge_section}</div>
         </div>
         {lodge_note}
         {error_html}
@@ -4758,6 +4806,68 @@ class Handler(BaseHTTPRequestHandler):
                     (event_id, contributor_name or "", description),
                 )
             return cur.fetchone() is not None
+
+    def handle_contributions_share_submit(self, conn, user, event_id, form):
+        self._require_login(user)
+        event = self._get_event(conn, event_id)
+        if not event or event["host_id"] != user["id"]:
+            return redirect(self, f"/events/{event_id}/contributions")
+        mode = form.get("mode")
+        column = {"view": "share_view_token", "edit": "share_edit_token"}.get(mode)
+        if not column:
+            return redirect(self, f"/events/{event_id}/contributions")
+        token = secrets.token_urlsafe(32)
+        with conn.cursor() as cur:
+            cur.execute(f"UPDATE events SET {column} = %s WHERE id = %s", (token, event_id))
+        redirect(self, f"/events/{event_id}/contributions")
+
+    def handle_share_link(self, conn, user, token):
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM events WHERE share_view_token = %s", (token,))
+            event = cur.fetchone()
+            mode = "view"
+            if not event:
+                cur.execute("SELECT * FROM events WHERE share_edit_token = %s", (token,))
+                event = cur.fetchone()
+                mode = "edit"
+        if not event:
+            return self._send_html(render_page("Not found", "<h1>404</h1>", user), status=404)
+
+        if mode == "edit":
+            session_token = auth.create_session(conn, event["host_id"])
+            self.send_response(302)
+            self.send_header("Location", f"/events/{event['id']}/contributions")
+            self.send_header(
+                "Set-Cookie",
+                f"{config.SESSION_COOKIE_NAME}={session_token}; Path=/; HttpOnly; Max-Age={config.SESSION_LIFETIME_HOURS * 3600}",
+            )
+            self.end_headers()
+            return
+
+        accounts = self._compute_event_accounts(conn, event["id"])
+        account_rows = "".join(
+            f"""<tr>
+              <td>{html.escape(a['name'])}</td>
+              <td>{money(a['fee'])}</td>
+              <td>{money(a['paid'])}</td>
+              <td class="{'owe-positive' if a['owe'] > 0 else 'owe-negative' if a['owe'] < 0 else ''}">{money(a['owe'])}</td>
+            </tr>"""
+            for uid, a in accounts.items()
+        )
+        body = f"""
+        <h1 style="margin:0;">{html.escape(event['title'])} &mdash; Who owes what</h1>
+        <p class="muted">You're viewing a read-only shared summary. <a href="/login?next=/events/{event['id']}/contributions">Log in</a>
+        to see the full contributions page.</p>
+        <div class="card">
+        <table>
+          <tr><th>Name</th><th>Fee</th><th>Contributions</th><th>Owe (-Owed)</th></tr>
+          {account_rows}
+        </table>
+        <p class="muted">Fee = share of pooled costs (petrol, driven_distance, etc.) plus anything consumed just by them.
+        Owe is positive if they still owe money, negative if the club owes them.</p>
+        </div>
+        """
+        self._send_html(render_page(f"{event['title']} -- Who owes what", body, user))
 
     def handle_contribution_submit(self, conn, user, event_id, form):
         self._require_login(user)
