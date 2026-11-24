@@ -1076,7 +1076,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _require_login(self, user):
         if not user:
-            raise PermissionErrorRedirect("/login")
+            raise PermissionErrorRedirect(f"/login?next={quote_plus(self.path)}")
         return user
 
     def _get_distance_formula(self, conn):
